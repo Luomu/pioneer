@@ -18,7 +18,11 @@ SHADER_CLASS_END()
 
 SHADER_CLASS_BEGIN(PostprocessComposeShader)
 	SHADER_UNIFORM_SAMPLER(fboTex)
+	SHADER_UNIFORM_SAMPLER(glowTex)
 	SHADER_UNIFORM_SAMPLER(bloomTex)
+	SHADER_UNIFORM_SAMPLER(bloomTex2)
+	SHADER_UNIFORM_SAMPLER(bloomTex3)
+	SHADER_UNIFORM_SAMPLER(bloomTex4)
 	SHADER_UNIFORM_FLOAT(avgLum)
 	SHADER_UNIFORM_FLOAT(middleGrey)
 SHADER_CLASS_END()
@@ -29,9 +33,49 @@ SHADER_CLASS_BEGIN(PostprocessDownsampleShader)
 	SHADER_UNIFORM_FLOAT(middleGrey)
 SHADER_CLASS_END()
 
+SHADER_CLASS_BEGIN(PostprocessStreakShader)
+	SHADER_UNIFORM_SAMPLER(fboTex)
+	SHADER_UNIFORM_VEC2(direction)
+	SHADER_UNIFORM_INT(iteration)
+	SHADER_UNIFORM_FLOAT(attenuation)
+SHADER_CLASS_END()
+
+SHADER_CLASS_BEGIN(PostprocessGlowShader)
+	SHADER_UNIFORM_SAMPLER(Texture0)
+	SHADER_UNIFORM_INT(iteration)
+	SHADER_UNIFORM_FLOAT(pixelWidth)
+	SHADER_UNIFORM_FLOAT(pixelHeight)
+SHADER_CLASS_END()
+
+SHADER_CLASS_BEGIN(DownSampleShader)
+	SHADER_UNIFORM_FLOAT(scale);
+	SHADER_UNIFORM_SAMPLER(Texture0)
+SHADER_CLASS_END()
+
+SHADER_CLASS_BEGIN(PresentShader)
+	SHADER_UNIFORM_SAMPLER(Texture0)
+	SHADER_UNIFORM_SAMPLER(Texture1)
+	SHADER_UNIFORM_SAMPLER(Texture2)
+	SHADER_UNIFORM_SAMPLER(Texture3)
+	SHADER_UNIFORM_SAMPLER(Texture4)
+SHADER_CLASS_END()
+
+SHADER_CLASS_BEGIN(GlowCompositeShader)
+	SHADER_UNIFORM_SAMPLER(Texture0)
+	SHADER_UNIFORM_SAMPLER(Texture1)
+	SHADER_UNIFORM_SAMPLER(Texture2)
+	SHADER_UNIFORM_SAMPLER(Texture3)
+	SHADER_UNIFORM_INT(DoNotScaleHack)
+SHADER_CLASS_END()
+
 PostprocessDownsampleShader *postprocessBloom1Downsample;
 PostprocessShader *postprocessBloom2Downsample, *postprocessBloom3VBlur, *postprocessBloom4HBlur, *postprocessLuminance;
 PostprocessComposeShader *postprocessCompose;
+PostprocessStreakShader *postprocessStreak;
+PostprocessGlowShader *postprocessGlow;
+PresentShader *present;
+DownSampleShader *downsample;
+GlowCompositeShader *glowComposite;
 
 SHADER_CLASS_BEGIN(BillboardShader)
 	SHADER_UNIFORM_SAMPLER(some_texture)
@@ -77,9 +121,207 @@ void UnbindAllBuffers()
 	BindArrayBuffer(0);
 }
 
+void ScreenAlignedQuad()
+{
+	glBegin(GL_TRIANGLE_STRIP);
+		glColor3f(1.f, 0.f, 0.f);
+		glTexCoord2f(0.f, 0.f);
+		glVertex2f(0.f, 0.f);
+		glColor3f(0.f, 1.f, 0.f);
+		glTexCoord2f(1.f, 0.f);
+		glVertex2f(1.f, 0.f);;
+		glColor3f(0.f, 0.f, 1.f);
+		glTexCoord2f(0.f, 1.f);
+		glVertex2f(0.f, 1.f);
+		glColor3f(0.f, 1.f, 1.f);
+		glTexCoord2f(1.f, 1.f);
+		glVertex2f(1.f, 1.f);
+	glEnd();
+}
+
+namespace Post {
+	class Pass
+	{
+	public:
+		static void GenerateBufferAndTexture(GLuint *buf, GLuint *tex, const int width, const int height)
+		{
+			glGenFramebuffersEXT(1, buf);
+			glGenTextures(1, tex);
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, *buf);
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, *tex);
+			glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGB16F_ARB, width, height, 0, GL_RGB, GL_HALF_FLOAT_ARB, NULL);
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, *tex, 0);
+			/*if (!CheckFBO()) {
+				DeleteBuffers();
+				return;
+			}*/
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		}
+	};
+
+	class StreakPass : Pass
+	{
+	public:
+		StreakPass() {}
+		~StreakPass() {}
+		static void Render(const int width, const int height, GLuint buf, const GLuint sourceTex, const int iteration, float dire[2])
+		{
+			glViewport(0,0,width, height);
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, buf);
+			glEnable(GL_TEXTURE_RECTANGLE_ARB);
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, sourceTex);
+			State::UseProgram(postprocessStreak);
+			postprocessStreak->set_fboTex(0);
+			postprocessStreak->set_iteration(iteration);
+			postprocessStreak->set_attenuation(0.99f);
+			postprocessStreak->set_direction(dire);
+			ScreenAlignedQuad();
+		}
+	};
+
+	class DownSamplePass : Pass
+	{
+	public:
+		DownSamplePass()
+		{ }
+		~DownSamplePass()
+		{ }
+	private:
+	};
+
+	class GlowPass : Pass
+	{
+	public:
+		GlowPass() :
+			_width(0),
+			_height(0),
+			_iteration(0)
+		{ }
+		GlowPass(const int width, const int height, const int iteration) :
+			_width(width),
+			_height(height),
+			_iteration(iteration)
+		{
+			//create buffers?	
+		}
+		~GlowPass() {}
+		void Render(GLuint buf, const GLuint sourceTex)
+		{
+			glViewport(0,0,_width, _height);
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, buf);
+			glEnable(GL_TEXTURE_RECTANGLE_ARB);
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, sourceTex);
+			State::UseProgram(postprocessGlow);
+			postprocessGlow->set_Texture0(0);
+			postprocessGlow->set_iteration(_iteration);
+			postprocessGlow->set_pixelWidth(static_cast<float>(_width));
+			postprocessGlow->set_pixelHeight(static_cast<float>(_height));
+			ScreenAlignedQuad();
+		}
+	private:
+		int _width;
+		int _height;
+		int _iteration;
+	};
+
+	class GlowCompositePass : Pass
+	{
+	public:
+		GlowCompositePass()
+		{}
+		GlowCompositePass(const int width, const int height) :
+			_width(width),
+			_height(height),
+			_ok(false)
+		{
+			glGenFramebuffersEXT(1, &_buf);
+			glGenTextures(1, &_tex);
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _buf);
+			glBindTexture(GL_TEXTURE_2D, _tex);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, _width, _height, 0, GL_RGB, GL_FLOAT, NULL);
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, _tex, 0);
+			//check completeness
+			GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+			if (status == GL_FRAMEBUFFER_COMPLETE_EXT)
+				_ok = true;
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+		}
+		~GlowCompositePass()
+		{
+			//delete buf/tex
+			glDeleteTextures(1, &_tex);
+			glDeleteFramebuffersEXT(1, &_buf);
+		}
+
+		void Render(GLuint& source1, GLuint& source2, GLuint& source3, GLuint& source4, const int donotscalehack = 0)
+		{
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _buf);
+			glEnable(GL_TEXTURE_RECTANGLE_ARB); //0
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, source1);
+			glActiveTexture(GL_TEXTURE1);
+			glEnable(GL_TEXTURE_RECTANGLE_ARB); //1
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, source2);
+			glActiveTexture(GL_TEXTURE2);
+			glEnable(GL_TEXTURE_RECTANGLE_ARB);//2
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, source3);
+			glActiveTexture(GL_TEXTURE3);
+			glEnable(GL_TEXTURE_RECTANGLE_ARB); //3
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, source4);
+			State::UseProgram(glowComposite);
+			glowComposite->set_DoNotScaleHack(donotscalehack);
+			glowComposite->set_Texture0(0);
+			glowComposite->set_Texture1(1);
+			glowComposite->set_Texture2(2);
+			glowComposite->set_Texture3(3);
+			glViewport(0,0,_width,_height);
+			ScreenAlignedQuad();
+			//cleanup
+			glDisable(GL_TEXTURE_RECTANGLE_ARB); //3
+			glActiveTexture(GL_TEXTURE2);
+			glDisable(GL_TEXTURE_RECTANGLE_ARB); //2
+			glActiveTexture(GL_TEXTURE1);
+			glDisable(GL_TEXTURE_RECTANGLE_ARB); //1
+			glActiveTexture(GL_TEXTURE0);
+			glDisable(GL_TEXTURE_RECTANGLE_ARB); //0
+			glError();
+		}
+
+		bool IsOk() const { return _ok; }
+
+		GLuint* texture() { return &_tex; }
+	private:
+		GLuint _buf;
+		GLuint _tex;
+		int _width;
+		int _height;
+		bool _ok;
+	};
+}
+
 static struct postprocessBuffers_t {
 	GLuint fb, halfsizeFb, bloomFb1, bloomFb2, tex, halfsizeTex, bloomTex1, bloomTex2, depthbuffer, luminanceFb, luminanceTex;
+	GLuint streakBuf1, streakBuf2, streakBuf3, streakBuf4, streakBuf5, streakTex1, streakTex2, streakTex3, streakTex4, streakTex5;
+	GLuint glowBuf1, glowTex1, glowBuf2, glowTex2, glowBuf3, glowTex3, glowBuf4, glowTex4;
+	GLuint quarterBuf, quarterTex;
+	GLuint eighthBuf, eighthTex;
+	GLuint sixteenthBuf, sixteenthTex;
+	GLuint thirtytwoBuf, thirtytwoTex;
 	int width, height;
+	Post::GlowPass glowPass1;
+	Post::GlowPass glowPass2;
+	Post::GlowPass glowPass3;
+	Post::GlowPass glowPass4;
+	Post::GlowCompositePass* glowCompositePass;
+	Post::GlowCompositePass* streakCompositePass;
 	postprocessBuffers_t() {
 		memset(this, 0, sizeof(postprocessBuffers_t));
 	}
@@ -162,6 +404,31 @@ static struct postprocessBuffers_t {
 		}
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
+		//downsample
+		Post::Pass::GenerateBufferAndTexture(&quarterBuf, &quarterTex, width/4, height/4);
+		Post::Pass::GenerateBufferAndTexture(&eighthBuf, &eighthTex, width/8, height/8);
+		Post::Pass::GenerateBufferAndTexture(&sixteenthBuf, &sixteenthTex, width/16, height/16);
+		Post::Pass::GenerateBufferAndTexture(&thirtytwoBuf, &thirtytwoTex, width/32, height/32);
+
+		//streakbufs
+		Post::Pass::GenerateBufferAndTexture(&streakBuf1, &streakTex1, width>>2, height>>2);
+		Post::Pass::GenerateBufferAndTexture(&streakBuf2, &streakTex2, width>>2, height>>2);
+		Post::Pass::GenerateBufferAndTexture(&streakBuf3, &streakTex3, width>>2, height>>2);
+		Post::Pass::GenerateBufferAndTexture(&streakBuf4, &streakTex4, width>>2, height>>2);
+		Post::Pass::GenerateBufferAndTexture(&streakBuf5, &streakTex5, width>>2, height>>2);
+		//end streakbufs
+
+		//glowbufs
+		glowPass1 = Post::GlowPass(width/4, height/4, 1);
+		Post::Pass::GenerateBufferAndTexture(&glowBuf1, &glowTex1, width/4, height/4);
+		glowPass2 = Post::GlowPass(width/8, height/8, 2);
+		Post::Pass::GenerateBufferAndTexture(&glowBuf2, &glowTex2, width/8, height/8);
+		glowPass3 = Post::GlowPass(width/16, height/16, 3);
+		Post::Pass::GenerateBufferAndTexture(&glowBuf3, &glowTex3, width/16, height/16);
+		glowPass4 = Post::GlowPass(width/32, height/32, 4);
+		Post::Pass::GenerateBufferAndTexture(&glowBuf4, &glowTex4, width/32, height/32);
+		//end glowbufs
+
 		glGenFramebuffersEXT(1, &fb);
 		glGenTextures(1, &tex);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fb);
@@ -185,12 +452,29 @@ static struct postprocessBuffers_t {
 			return;
 		}
 
+		glowCompositePass = new Post::GlowCompositePass(width/4,height/4);
+		streakCompositePass = new Post::GlowCompositePass(width/4,height/4);
+
+		if(!glowCompositePass->IsOk()) {
+			DeleteBuffers();
+			return;
+		}
+		if(!streakCompositePass->IsOk()) {
+			DeleteBuffers();
+			return;
+		}
+
 		postprocessBloom1Downsample = new PostprocessDownsampleShader("postprocessBloom1Downsample");
 		postprocessBloom2Downsample = new PostprocessShader("postprocessBloom2Downsample");
 		postprocessBloom3VBlur = new PostprocessShader("postprocessBloom3VBlur");
 		postprocessBloom4HBlur = new PostprocessShader("postprocessBloom4HBlur");
 		postprocessCompose = new PostprocessComposeShader("postprocessCompose");
 		postprocessLuminance = new PostprocessShader("postprocessLuminance");
+		postprocessStreak = new PostprocessStreakShader("postprocessStreak");
+		postprocessGlow = new PostprocessGlowShader("postprocessBlur");
+		present = new PresentShader("present");
+		downsample = new DownSampleShader("downsample");
+		glowComposite = new GlowCompositeShader("glowComposite");
 
 		glError();
 	}
@@ -200,8 +484,144 @@ static struct postprocessBuffers_t {
 		if (bloomFb1) glDeleteFramebuffersEXT(1, &bloomFb1);
 		if (bloomFb2) glDeleteFramebuffersEXT(1, &bloomFb2);
 		if (luminanceFb) glDeleteFramebuffersEXT(1, &luminanceFb);
+		if (streakBuf1) glDeleteFramebuffersEXT(1, &streakBuf1);
+		if (streakBuf2) glDeleteFramebuffersEXT(1, &streakBuf2);
+		if (streakBuf3) glDeleteFramebuffersEXT(1, &streakBuf3);
+		if (streakBuf4) glDeleteFramebuffersEXT(1, &streakBuf4);
+		if (streakBuf5) glDeleteFramebuffersEXT(1, &streakBuf5);
 		fb = halfsizeFb = bloomFb1 = bloomFb2 = luminanceFb = 0;
+		streakBuf1 = streakBuf2 = streakBuf3 = streakBuf4 = streakBuf5 = 0;
+
+		if (glowBuf1) glDeleteFramebuffersEXT(1, &glowBuf1);
+		if (glowBuf2) glDeleteFramebuffersEXT(1, &glowBuf2);
+		if (glowBuf3) glDeleteFramebuffersEXT(1, &glowBuf3);
+		if (glowBuf4) glDeleteFramebuffersEXT(1, &glowBuf4);
+		glowBuf1 = glowBuf2 = glowBuf3 = glowBuf4 = 0;
+
+		if (quarterBuf) glDeleteFramebuffersEXT(1, &quarterBuf);
+		if (eighthBuf) glDeleteFramebuffersEXT(1, &eighthBuf);
+		if (sixteenthBuf) glDeleteFramebuffersEXT(1, &sixteenthBuf);
+		if (thirtytwoBuf) glDeleteFramebuffersEXT(1, &thirtytwoBuf);
+		quarterBuf = eighthBuf = sixteenthBuf = thirtytwoBuf = 0;
+
+		delete glowCompositePass;
+		delete streakCompositePass;
 	}
+
+#if 1
+	void DoPostprocess() {
+		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
+		glDisable(GL_LIGHTING);
+
+		//downsample 1/4
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, quarterBuf);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tex);
+		State::UseProgram(downsample);
+		downsample->set_scale(4.f);
+		downsample->set_Texture0(0);
+		glViewport(0,0,width/4,height/4);
+		ScreenAlignedQuad();
+
+		//blur
+		glowPass1.Render(glowBuf1, quarterTex);
+
+		//downsample blur 1/2 (1/8th screen)
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, eighthBuf);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, glowTex1);
+		State::UseProgram(downsample);
+		downsample->set_scale(2.f);
+		downsample->set_Texture0(0);
+		glViewport(0,0,width/8,height/8);
+		ScreenAlignedQuad();
+
+		//blur the blur
+		glowPass2.Render(glowBuf2, eighthTex);
+
+		//downsample blur 1/2 (1/16th screen)
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sixteenthBuf);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, glowTex2);
+		State::UseProgram(downsample);
+		downsample->set_scale(2.f);
+		downsample->set_Texture0(0);
+		glViewport(0,0,width/16,height/16);
+		ScreenAlignedQuad();
+
+		//blur the blurred blur
+		glowPass3.Render(glowBuf3, sixteenthTex);
+
+		//downsample 1/2 (1/32nd screen)
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, thirtytwoBuf);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, glowTex3);
+		State::UseProgram(downsample);
+		downsample->set_scale(2.f);
+		downsample->set_Texture0(0);
+		glViewport(0,0,width/32, height/32);
+		ScreenAlignedQuad();
+
+		//blur the doubly blurred blur
+		glowPass4.Render(glowBuf4, thirtytwoTex);
+
+		//composite glow to one texture
+		glowCompositePass->Render(glowTex1, glowTex2, glowTex3, glowTex4);
+
+		// left streak, three passes
+		float dire[2] = { 0.5f, 0.5f };
+		Post::StreakPass::Render(width/4, height/4, streakBuf1, quarterTex, 1, dire);
+		Post::StreakPass::Render(width/4, height/4, streakBuf2, streakTex1, 2, dire);
+		Post::StreakPass::Render(width/4, height/4, streakBuf1, streakTex2, 3, dire);
+
+		// right streak, three passes
+		dire[0] = -0.5f;
+		Post::StreakPass::Render(width/4, height/4, streakBuf2, quarterTex, 1, dire);
+		Post::StreakPass::Render(width/4, height/4, streakBuf3, streakTex2, 2, dire);
+		Post::StreakPass::Render(width/4, height/4, streakBuf2, streakTex3, 3, dire);
+
+		// bottom streak, three passes
+		dire[0] = -0.5f;
+		dire[1] = -0.5f;
+		Post::StreakPass::Render(width/4, height/4, streakBuf3, quarterTex, 1, dire);
+		Post::StreakPass::Render(width/4, height/4, streakBuf4, streakTex3, 2, dire);
+		Post::StreakPass::Render(width/4, height/4, streakBuf3, streakTex4, 3, dire);
+
+		// top streak, three passes
+		dire[0] = 0.5f;
+		dire[1] = -0.5f;
+		Post::StreakPass::Render(width/4, height/4, streakBuf4, quarterTex, 1, dire);
+		Post::StreakPass::Render(width/4, height/4, streakBuf5, streakTex4, 2, dire);
+		Post::StreakPass::Render(width/4, height/4, streakBuf4, streakTex5, 3, dire);
+
+		//composite streaks to one texture
+		streakCompositePass->Render(streakTex1, streakTex2, streakTex3, streakTex4, 1);
+
+		//present
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tex);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, *(glowCompositePass->texture()));
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, *(streakCompositePass->texture()));
+		State::UseProgram(present);
+		present->set_Texture0(0);
+		present->set_Texture1(1);
+		present->set_Texture2(2);
+		glViewport(0,0,width,height);
+		ScreenAlignedQuad();
+		glActiveTexture(GL_TEXTURE1);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glActiveTexture(GL_TEXTURE0);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+
+		//cleanup
+		State::UseProgram(0);
+		glEnable(GL_BLEND);
+		glEnable(GL_LIGHTING);
+		glEnable(GL_DEPTH_TEST);
+		glError();
+	}
+#else
 	void DoPostprocess() {
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
@@ -254,101 +674,116 @@ static struct postprocessBuffers_t {
 		postprocessBloom1Downsample->set_avgLum(avgLum[0]);
 		postprocessBloom1Downsample->set_middleGrey(midGrey);
 		postprocessBloom1Downsample->set_fboTex(0);
-		glBegin(GL_TRIANGLE_STRIP);
-			glVertex2f(0.0, 0.0);
-			glVertex2f(1.0, 0.0);
-			glVertex2f(0.0, 1.0);
-			glVertex2f(1.0, 1.0);
-		glEnd();
+		ScreenAlignedQuad();
 
 		glViewport(0,0,width>>2,height>>2);
 		State::UseProgram(postprocessBloom2Downsample);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, bloomFb1);
 		glEnable(GL_TEXTURE_RECTANGLE_ARB);
 		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, halfsizeTex);
-		glBegin(GL_TRIANGLE_STRIP);
-			glVertex2f(0.0, 0.0);
-			glVertex2f(1.0, 0.0);
-			glVertex2f(0.0, 1.0);
-			glVertex2f(1.0, 1.0);
-		glEnd();
-		
+		ScreenAlignedQuad();
+
+		glViewport(0,0,width>>2,height>>2);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, bloomFb2);
 		glEnable(GL_TEXTURE_RECTANGLE_ARB);
 		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, bloomTex1);
 		State::UseProgram(postprocessBloom3VBlur);
 		postprocessBloom3VBlur->set_fboTex(0);
-		glBegin(GL_TRIANGLE_STRIP);
-			glVertex2f(0.0, 0.0);
-			glVertex2f(1.0, 0.0);
-			glVertex2f(0.0, 1.0);
-			glVertex2f(1.0, 1.0);
-		glEnd();
+		ScreenAlignedQuad();
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, bloomFb1);
 		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, bloomTex2);
 		State::UseProgram(postprocessBloom4HBlur);
 		postprocessBloom4HBlur->set_fboTex(0);
-		glBegin(GL_TRIANGLE_STRIP);
-			glTexCoord2f(0.0, 0.0);
-			glVertex2f(0.0, 0.0);
-			glTexCoord2f(1.0, 0.0);
-			glVertex2f(1.0, 0.0);
-			glTexCoord2f(0.0,1.0);
-			glVertex2f(0.0, 1.0);
-			glTexCoord2f(1.0, 1.0);
-			glVertex2f(1.0, 1.0);
-		glEnd();
+		ScreenAlignedQuad();
+
+		//glow, several passes with successively smaller rendertargets
+		//Post::GlowPass::Render(width>>2, height>>2, glowBuf1, tex, 1);
+		glowPass1.Render(glowBuf1, halfsizeTex);
+		//Post::GlowPass::Render(width>>4, height>>4, glowBuf2, glowTex1, 2);
+
+
+		// left streak, three passes
+		float dire[2] = { 1.f, 0.f };
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf1, halfsizeTex, 1, dire);
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf2, streakTex1, 2, dire);
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf1, streakTex2, 3, dire);
+
+		// right streak, three passes
+		dire[0] = -1.f;
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf2, halfsizeTex, 1, dire);
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf3, streakTex2, 2, dire);
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf2, streakTex3, 3, dire);
+
+		// bottom streak, three passes
+		dire[0] = 0.f;
+		dire[1] = 1.f;
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf3, halfsizeTex, 1, dire);
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf4, streakTex3, 2, dire);
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf3, streakTex4, 3, dire);
+
+		// top streak, three passes
+		dire[1] = -1.f;
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf4, halfsizeTex, 1, dire);
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf5, streakTex4, 2, dire);
+		Post::StreakPass::Render(width>>1, height>>1, streakBuf4, streakTex5, 3, dire);
 		
+		//compose
 		glViewport(0,0,width,height);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
 		glEnable(GL_TEXTURE_RECTANGLE_ARB);
 		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tex);
+
 		glActiveTexture(GL_TEXTURE1);
 		glEnable(GL_TEXTURE_RECTANGLE_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, bloomTex1);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, streakTex1);
+
+		glActiveTexture(GL_TEXTURE2);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, streakTex2);
+
+		glActiveTexture(GL_TEXTURE3);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, streakTex3);
+
+		glActiveTexture(GL_TEXTURE4);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, streakTex4);
+
+		glActiveTexture(GL_TEXTURE5);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, glowTex1);
+
 		State::UseProgram(postprocessCompose);
+		postprocessCompose->set_glowTex(5);
 		postprocessCompose->set_fboTex(0);
 		postprocessCompose->set_bloomTex(1);
+		postprocessCompose->set_bloomTex2(2);
+		postprocessCompose->set_bloomTex3(3);
+		postprocessCompose->set_bloomTex4(4);
 		postprocessCompose->set_avgLum(avgLum[0]);
 		//printf("Mid grey %f\n", midGrey);
 		postprocessCompose->set_middleGrey(midGrey);
-		glBegin(GL_TRIANGLE_STRIP);
-			glVertex2f(0.0, 0.0);
-			glVertex2f(1.0, 0.0);
-			glVertex2f(0.0, 1.0);
-			glVertex2f(1.0, 1.0);
-		glEnd();
+		ScreenAlignedQuad();
+
+		//clean up
 		State::UseProgram(0);
-#if 0
-		glViewport(0,0,width,height);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-		glEnable(GL_TEXTURE_2D);
-		glDisable(GL_TEXTURE_RECTANGLE_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
-		glColor3f(1.0,1.0,1.0);
-		glBindTexture(GL_TEXTURE_2D, luminanceTex);
-		State::UseProgram(0);
-		glBegin(GL_TRIANGLE_STRIP);
-			glTexCoord2f(0.0, 0.0);
-			glVertex2f(0.0, 0.0);
-			glTexCoord2f(1.0, 0.0);
-			glVertex2f(1.0, 0.0);
-			glTexCoord2f(0.0, 1.0);
-			glVertex2f(0.0, 1.0);
-			glTexCoord2f(1.0, 1.0);
-			glVertex2f(1.0, 1.0);
-		glEnd();
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
-		glDisable(GL_TEXTURE_2D);
-#endif
 		glEnable(GL_DEPTH_TEST);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glActiveTexture(GL_TEXTURE4);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glActiveTexture(GL_TEXTURE3);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glActiveTexture(GL_TEXTURE2);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glActiveTexture(GL_TEXTURE1);
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);
 		glActiveTexture(GL_TEXTURE0);
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);
 		glError();
 	}
+#endif
 	bool Initted() { return fb ? true : false; }
 } s_hdrBufs;
 

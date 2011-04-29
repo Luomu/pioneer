@@ -38,6 +38,6 @@ void main(void)
     vec4 scenecolor = texture2DRect(Texture0, gl_FragCoord.xy);
     vec4 glowcolor = texture2D(Texture1, gl_TexCoord[0].xy);
     vec4 streakcolor = texture2D(Texture2, gl_TexCoord[0].xy);
-    gl_FragColor = scenecolor + glowcolor * 0.7 + streakcolor * 0.6;
+    gl_FragColor = scenecolor + glowcolor * 1.0 + streakcolor * 1.0;
 }
 #endif

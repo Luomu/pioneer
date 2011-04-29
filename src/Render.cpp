@@ -57,13 +57,21 @@ SHADER_CLASS_BEGIN(PresentShader)
 	SHADER_UNIFORM_SAMPLER(Texture4)
 SHADER_CLASS_END()
 
+//combine five different size textures
 SHADER_CLASS_BEGIN(GlowCompositeShader)
 	SHADER_UNIFORM_SAMPLER(Texture0)
 	SHADER_UNIFORM_SAMPLER(Texture1)
 	SHADER_UNIFORM_SAMPLER(Texture2)
 	SHADER_UNIFORM_SAMPLER(Texture3)
 	SHADER_UNIFORM_SAMPLER(Texture4)
-	SHADER_UNIFORM_INT(DoNotScaleHack)
+SHADER_CLASS_END()
+
+//combine four equal size textures
+SHADER_CLASS_BEGIN(StreakCompositeShader)
+	SHADER_UNIFORM_SAMPLER(Texture0)
+	SHADER_UNIFORM_SAMPLER(Texture1)
+	SHADER_UNIFORM_SAMPLER(Texture2)
+	SHADER_UNIFORM_SAMPLER(Texture3)
 SHADER_CLASS_END()
 
 PostprocessDownsampleShader *postprocessBloom1Downsample;
@@ -74,6 +82,7 @@ PostprocessGlowShader *postprocessGlow;
 PresentShader *present;
 DownSampleShader *downsample;
 GlowCompositeShader *glowComposite;
+StreakCompositeShader *streakComposite;
 
 SHADER_CLASS_BEGIN(BillboardShader)
 	SHADER_UNIFORM_SAMPLER(some_texture)
@@ -141,6 +150,17 @@ namespace Post {
 	class Pass
 	{
 	public:
+		Pass() :
+			_width(-1),
+			_height(-1),
+			_ok(false)
+		{ }
+			
+		Pass(const int width, const int height) :
+			_width(width),
+			_height(height),
+			_ok(false)
+		{ }
 		static void GenerateBufferAndTexture(GLuint *buf, GLuint *tex, const int width, const int height)
 		{
 			glGenFramebuffersEXT(1, buf);
@@ -159,6 +179,11 @@ namespace Post {
 			}*/
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		}
+		bool IsOk() const { return _ok; }
+	protected:
+		int _width;
+		int _height;
+		bool _ok;
 	};
 
 	class StreakPass : Pass
@@ -188,20 +213,17 @@ namespace Post {
 		{ }
 		~DownSamplePass()
 		{ }
-	private:
 	};
 
 	class GlowPass : Pass
 	{
 	public:
 		GlowPass() :
-			_width(0),
-			_height(0),
+			Pass(),
 			_iteration(0)
 		{ }
 		GlowPass(const int width, const int height, const int iteration) :
-			_width(width),
-			_height(height),
+			Pass(width, height),
 			_iteration(iteration)
 		{
 			//create buffers?	
@@ -221,20 +243,30 @@ namespace Post {
 			ScreenAlignedQuad();
 		}
 	private:
-		int _width;
-		int _height;
 		int _iteration;
 	};
 
-	class GlowCompositePass : Pass
+	//Combine n textures into one 2D texture
+	class CompositePass : public Pass
 	{
 	public:
-		GlowCompositePass()
-		{}
-		GlowCompositePass(const int width, const int height) :
-			_width(width),
-			_height(height),
-			_ok(false)
+		CompositePass() : Pass(-1, -1) {}
+
+		CompositePass(const int width, const int height) :
+			Pass(width, height)
+		{
+			GenBufferAndTexture();	
+		}
+		~CompositePass()
+		{
+			//delete buf/tex
+			glDeleteTextures(1, &_tex);
+			glDeleteFramebuffersEXT(1, &_buf);
+		}
+
+		GLuint* texture() { return &_tex; }
+	protected:
+		void GenBufferAndTexture()
 		{
 			glGenFramebuffersEXT(1, &_buf);
 			glGenTextures(1, &_tex);
@@ -251,18 +283,47 @@ namespace Post {
 			if (status == GL_FRAMEBUFFER_COMPLETE_EXT)
 				_ok = true;
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
 		}
+		//virtual void BindTextures() = 0;
+		//virtual void SetProgramParameters() = 0;
+		virtual void CleanUp() = 0;
+		GLuint _tex;
+		GLuint _buf;
+	};
+
+	class GlowCompositePass : public CompositePass
+	{
+	public:
+		GlowCompositePass()
+		{ }
+
+		GlowCompositePass(const int width, const int height) :
+			CompositePass(width, height)
+		{ }
+
 		~GlowCompositePass()
-		{
-			//delete buf/tex
-			glDeleteTextures(1, &_tex);
-			glDeleteFramebuffersEXT(1, &_buf);
-		}
+		{ }
 
-		void Render(GLuint& source1, GLuint& source2, GLuint& source3, GLuint& source4, GLuint& source5, const int donotscalehack = 0)
+		void Render(GLuint& source1, GLuint& source2, GLuint& source3, GLuint& source4, GLuint& source5)
 		{
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _buf);
+			BindTextures(source1, source2, source3, source4, source5);
+			State::UseProgram(glowComposite);
+			glowComposite->set_Texture0(0);
+			glowComposite->set_Texture1(1);
+			glowComposite->set_Texture2(2);
+			glowComposite->set_Texture3(3);
+			glowComposite->set_Texture4(4);
+			glViewport(0,0,_width,_height);
+			ScreenAlignedQuad();
+			CleanUp();
+			glError();
+		}
+
+	protected:
+		virtual void BindTextures(GLuint& source1, GLuint& source2,
+			GLuint& source3, GLuint& source4, GLuint& source5)
+		{
 			glEnable(GL_TEXTURE_RECTANGLE_ARB); //0
 			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, source1);
 			glActiveTexture(GL_TEXTURE1);
@@ -277,15 +338,10 @@ namespace Post {
 			glActiveTexture(GL_TEXTURE4);
 			glEnable(GL_TEXTURE_RECTANGLE_ARB); //4
 			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, source5);
-			State::UseProgram(glowComposite);
-			glowComposite->set_DoNotScaleHack(donotscalehack);
-			glowComposite->set_Texture0(0);
-			glowComposite->set_Texture1(1);
-			glowComposite->set_Texture2(2);
-			glowComposite->set_Texture3(3);
-			glowComposite->set_Texture4(4);
-			glViewport(0,0,_width,_height);
-			ScreenAlignedQuad();
+		}
+
+		virtual void CleanUp()
+		{
 			//cleanup
 			glDisable(GL_TEXTURE_RECTANGLE_ARB); //4
 			glActiveTexture(GL_TEXTURE3);
@@ -296,18 +352,58 @@ namespace Post {
 			glDisable(GL_TEXTURE_RECTANGLE_ARB); //1
 			glActiveTexture(GL_TEXTURE0);
 			glDisable(GL_TEXTURE_RECTANGLE_ARB); //0
+		}
+	};
+
+	//like glowcomposite, except 4 textures and not scaling
+	class StreakCompositePass : public CompositePass
+	{
+	public:
+		StreakCompositePass(const int width, const int height) :
+			CompositePass(width, height)
+		{ }
+
+		void Render(GLuint& source1, GLuint& source2, GLuint& source3, GLuint& source4)
+		{
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _buf);
+			BindTextures(source1, source2, source3, source4);
+			State::UseProgram(streakComposite);
+			streakComposite->set_Texture0(0);
+			streakComposite->set_Texture1(1);
+			streakComposite->set_Texture2(2);
+			streakComposite->set_Texture3(3);
+			glViewport(0,0,_width,_height);
+			ScreenAlignedQuad();
+			CleanUp();
 			glError();
 		}
+	protected:
+		void BindTextures(GLuint& source1, GLuint& source2,
+			GLuint& source3, GLuint& source4)
+		{
+			glEnable(GL_TEXTURE_RECTANGLE_ARB); //0
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, source1);
+			glActiveTexture(GL_TEXTURE1);
+			glEnable(GL_TEXTURE_RECTANGLE_ARB); //1
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, source2);
+			glActiveTexture(GL_TEXTURE2);
+			glEnable(GL_TEXTURE_RECTANGLE_ARB);//2
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, source3);
+			glActiveTexture(GL_TEXTURE3);
+			glEnable(GL_TEXTURE_RECTANGLE_ARB); //3
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, source4);
+		}
 
-		bool IsOk() const { return _ok; }
-
-		GLuint* texture() { return &_tex; }
-	private:
-		GLuint _buf;
-		GLuint _tex;
-		int _width;
-		int _height;
-		bool _ok;
+		void CleanUp()
+		{
+			glDisable(GL_TEXTURE_RECTANGLE_ARB); //3
+			glActiveTexture(GL_TEXTURE2);
+			glDisable(GL_TEXTURE_RECTANGLE_ARB); //2
+			glActiveTexture(GL_TEXTURE1);
+			glDisable(GL_TEXTURE_RECTANGLE_ARB); //1
+			glActiveTexture(GL_TEXTURE0);
+			glDisable(GL_TEXTURE_RECTANGLE_ARB); //0
+		}
 	};
 }
 
@@ -327,7 +423,7 @@ static struct postprocessBuffers_t {
 	Post::GlowPass glowPass4;
 	Post::GlowPass glowPass5;
 	Post::GlowCompositePass* glowCompositePass;
-	Post::GlowCompositePass* streakCompositePass;
+	Post::StreakCompositePass* streakCompositePass;
 	postprocessBuffers_t() {
 		memset(this, 0, sizeof(postprocessBuffers_t));
 	}
@@ -462,7 +558,7 @@ static struct postprocessBuffers_t {
 		}
 
 		glowCompositePass = new Post::GlowCompositePass(width/4,height/4);
-		streakCompositePass = new Post::GlowCompositePass(width/4,height/4);
+		streakCompositePass = new Post::StreakCompositePass(width/4,height/4);
 
 		if(!glowCompositePass->IsOk()) {
 			DeleteBuffers();
@@ -484,6 +580,7 @@ static struct postprocessBuffers_t {
 		present = new PresentShader("present");
 		downsample = new DownSampleShader("downsample");
 		glowComposite = new GlowCompositeShader("glowComposite");
+		streakComposite = new StreakCompositeShader("streakComposite");
 
 		glError();
 	}
@@ -515,26 +612,16 @@ static struct postprocessBuffers_t {
 		if (sixtyfourthBuf) glDeleteFramebuffersEXT(1, &sixtyfourthBuf);
 		quarterBuf = eighthBuf = sixteenthBuf = thirtytwoBuf = sixtyfourthBuf = 0;
 
+		delete postprocessStreak;
+		delete postprocessGlow;
+		delete present;
+		delete downsample;
 		delete glowCompositePass;
 		delete streakCompositePass;
 	}
 
-#if 1
-	void DoPostprocess() {
-		glDisable(GL_DEPTH_TEST);
-		glDisable(GL_BLEND);
-		glDisable(GL_LIGHTING);
-
-		//downsample 1/4
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, quarterBuf);
-		glEnable(GL_TEXTURE_RECTANGLE_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tex);
-		State::UseProgram(downsample);
-		downsample->set_scale(4.f);
-		downsample->set_Texture0(0);
-		glViewport(0,0,width/4,height/4);
-		ScreenAlignedQuad();
-
+	//render five levels of glow and composite into one texture
+	void DoGlow() {
 		//blur
 		glowPass1.Render(glowBuf1, quarterTex);
 
@@ -588,7 +675,10 @@ static struct postprocessBuffers_t {
 
 		//composite glow to one texture
 		glowCompositePass->Render(glowTex1, glowTex2, glowTex3, glowTex4, glowTex5);
+	}
 
+	//Render four streaks, three passes each (2 might be enough) and composite into one texture
+	void DoStreaks() {
 		// left streak, three passes
 		float dire[2] = { 0.5f, 0.5f };
 		Post::StreakPass::Render(width/4, height/4, streakBuf1, quarterTex, 1, dire);
@@ -616,7 +706,27 @@ static struct postprocessBuffers_t {
 		Post::StreakPass::Render(width/4, height/4, streakBuf4, streakTex5, 3, dire);
 
 		//composite streaks to one texture
-		streakCompositePass->Render(streakTex1, streakTex2, streakTex3, streakTex4, streakTex4); //HACK
+		streakCompositePass->Render(streakTex1, streakTex2, streakTex3, streakTex4); //HACK
+	}
+
+#if 1
+	void DoPostprocess() {
+		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
+		glDisable(GL_LIGHTING);
+
+		//downsample 1/4
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, quarterBuf);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tex);
+		State::UseProgram(downsample);
+		downsample->set_scale(4.f);
+		downsample->set_Texture0(0);
+		glViewport(0,0,width/4,height/4);
+		ScreenAlignedQuad();
+
+		DoGlow();
+		DoStreaks();
 
 		//present
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
@@ -632,8 +742,6 @@ static struct postprocessBuffers_t {
 		present->set_Texture2(2);
 		glViewport(0,0,width,height);
 		ScreenAlignedQuad();
-		glActiveTexture(GL_TEXTURE1);
-		glDisable(GL_TEXTURE_RECTANGLE_ARB);
 		glActiveTexture(GL_TEXTURE0);
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);
 
@@ -709,47 +817,7 @@ static struct postprocessBuffers_t {
 		glViewport(0,0,width/4,height/4);
 		ScreenAlignedQuad();
 
-		//blur
-		glowPass1.Render(glowBuf1, quarterTex);
-
-		//downsample blur 1/2 (1/8th screen)
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, eighthBuf);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, glowTex1);
-		State::UseProgram(downsample);
-		downsample->set_scale(2.f);
-		downsample->set_Texture0(0);
-		glViewport(0,0,width/8,height/8);
-		ScreenAlignedQuad();
-
-		//blur the blur
-		glowPass2.Render(glowBuf2, eighthTex);
-
-		//downsample blur 1/2 (1/16th screen)
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sixteenthBuf);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, glowTex2);
-		State::UseProgram(downsample);
-		downsample->set_scale(2.f);
-		downsample->set_Texture0(0);
-		glViewport(0,0,width/16,height/16);
-		ScreenAlignedQuad();
-
-		//blur the blurred blur
-		glowPass3.Render(glowBuf3, sixteenthTex);
-
-		//downsample 1/2 (1/32nd screen)
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, thirtytwoBuf);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, glowTex3);
-		State::UseProgram(downsample);
-		downsample->set_scale(2.f);
-		downsample->set_Texture0(0);
-		glViewport(0,0,width/32, height/32);
-		ScreenAlignedQuad();
-
-		//blur the doubly blurred blur
-		glowPass4.Render(glowBuf4, thirtytwoTex);
-
-		//composite glow to one texture
-		glowCompositePass->Render(glowTex1, glowTex2, glowTex3, glowTex4);
+		DoGlow();
 
 		// left streak, three passes
 		float dire[2] = { 0.5f, 0.5f };
@@ -778,7 +846,7 @@ static struct postprocessBuffers_t {
 		Post::StreakPass::Render(width/4, height/4, streakBuf4, streakTex5, 3, dire);
 
 		//composite streaks to one texture
-		streakCompositePass->Render(streakTex1, streakTex2, streakTex3, streakTex4, 1);
+		streakCompositePass->Render(streakTex1, streakTex2, streakTex3, streakTex4, streakTex4); //HACK
 /*		
 		glDisable(GL_TEXTURE_2D);
 		glViewport(0,0,width>>1,height>>1);

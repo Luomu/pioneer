@@ -9,7 +9,7 @@ void main(void)
 {
 	const vec3 getlum = vec3(0.299, 0.587, 0.114);
 	vec3 col = vec3(0.0);
-	vec2 p = 2.0*gl_FragCoord.xy;
+	vec2 p = 4.0*gl_FragCoord.xy;
 	vec3 c;
 	float lum;
 	float minLumToBloom = max(32.0*avgLum, 1.0);

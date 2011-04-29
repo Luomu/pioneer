@@ -16,11 +16,7 @@ SHADER_CLASS_END()
 
 SHADER_CLASS_BEGIN(PostprocessComposeShader)
 	SHADER_UNIFORM_SAMPLER(fboTex)
-	SHADER_UNIFORM_SAMPLER(glowTex)
 	SHADER_UNIFORM_SAMPLER(bloomTex)
-	SHADER_UNIFORM_SAMPLER(bloomTex2)
-	SHADER_UNIFORM_SAMPLER(bloomTex3)
-	SHADER_UNIFORM_SAMPLER(bloomTex4)
 	SHADER_UNIFORM_FLOAT(avgLum)
 	SHADER_UNIFORM_FLOAT(middleGrey)
 SHADER_CLASS_END()
@@ -506,7 +502,7 @@ static struct postprocessBuffers_t {
 		delete streakCompositePass;
 	}
 
-#if 1
+#if 0
 	void DoPostprocess() {
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_BLEND);
@@ -694,37 +690,6 @@ static struct postprocessBuffers_t {
 		State::UseProgram(postprocessBloom4HBlur);
 		postprocessBloom4HBlur->set_fboTex(0);
 		ScreenAlignedQuad();
-
-		//glow, several passes with successively smaller rendertargets
-		//Post::GlowPass::Render(width>>2, height>>2, glowBuf1, tex, 1);
-		glowPass1.Render(glowBuf1, halfsizeTex);
-		//Post::GlowPass::Render(width>>4, height>>4, glowBuf2, glowTex1, 2);
-
-
-		// left streak, three passes
-		float dire[2] = { 1.f, 0.f };
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf1, halfsizeTex, 1, dire);
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf2, streakTex1, 2, dire);
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf1, streakTex2, 3, dire);
-
-		// right streak, three passes
-		dire[0] = -1.f;
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf2, halfsizeTex, 1, dire);
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf3, streakTex2, 2, dire);
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf2, streakTex3, 3, dire);
-
-		// bottom streak, three passes
-		dire[0] = 0.f;
-		dire[1] = 1.f;
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf3, halfsizeTex, 1, dire);
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf4, streakTex3, 2, dire);
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf3, streakTex4, 3, dire);
-
-		// top streak, three passes
-		dire[1] = -1.f;
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf4, halfsizeTex, 1, dire);
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf5, streakTex4, 2, dire);
-		Post::StreakPass::Render(width>>1, height>>1, streakBuf4, streakTex5, 3, dire);
 		
 		//compose
 		glViewport(0,0,width,height);
@@ -735,31 +700,11 @@ static struct postprocessBuffers_t {
 
 		glActiveTexture(GL_TEXTURE1);
 		glEnable(GL_TEXTURE_RECTANGLE_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, streakTex1);
-
-		glActiveTexture(GL_TEXTURE2);
-		glEnable(GL_TEXTURE_RECTANGLE_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, streakTex2);
-
-		glActiveTexture(GL_TEXTURE3);
-		glEnable(GL_TEXTURE_RECTANGLE_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, streakTex3);
-
-		glActiveTexture(GL_TEXTURE4);
-		glEnable(GL_TEXTURE_RECTANGLE_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, streakTex4);
-
-		glActiveTexture(GL_TEXTURE5);
-		glEnable(GL_TEXTURE_RECTANGLE_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, glowTex1);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, bloomTex1);
 
 		State::UseProgram(postprocessCompose);
-		postprocessCompose->set_glowTex(5);
 		postprocessCompose->set_fboTex(0);
 		postprocessCompose->set_bloomTex(1);
-		postprocessCompose->set_bloomTex2(2);
-		postprocessCompose->set_bloomTex3(3);
-		postprocessCompose->set_bloomTex4(4);
 		postprocessCompose->set_avgLum(avgLum[0]);
 		//printf("Mid grey %f\n", midGrey);
 		postprocessCompose->set_middleGrey(midGrey);
@@ -767,18 +712,11 @@ static struct postprocessBuffers_t {
 
 		//clean up
 		State::UseProgram(0);
-		glEnable(GL_DEPTH_TEST);
-		glDisable(GL_TEXTURE_RECTANGLE_ARB);
-		glActiveTexture(GL_TEXTURE4);
-		glDisable(GL_TEXTURE_RECTANGLE_ARB);
-		glActiveTexture(GL_TEXTURE3);
-		glDisable(GL_TEXTURE_RECTANGLE_ARB);
-		glActiveTexture(GL_TEXTURE2);
-		glDisable(GL_TEXTURE_RECTANGLE_ARB);
-		glActiveTexture(GL_TEXTURE1);
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);
 		glActiveTexture(GL_TEXTURE0);
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glEnable(GL_DEPTH_TEST);
+
 		glError();
 	}
 #endif

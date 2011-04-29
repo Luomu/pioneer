@@ -709,7 +709,7 @@ static struct postprocessBuffers_t {
 		streakCompositePass->Render(streakTex1, streakTex2, streakTex3, streakTex4); //HACK
 	}
 
-#if 1
+#if 0 //change to 1 render without hdr but glow will be overbright without shader adjustments
 	void DoPostprocess() {
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_BLEND);
@@ -818,35 +818,7 @@ static struct postprocessBuffers_t {
 		ScreenAlignedQuad();
 
 		DoGlow();
-
-		// left streak, three passes
-		float dire[2] = { 0.5f, 0.5f };
-		Post::StreakPass::Render(width/4, height/4, streakBuf1, quarterTex, 1, dire);
-		Post::StreakPass::Render(width/4, height/4, streakBuf2, streakTex1, 2, dire);
-		Post::StreakPass::Render(width/4, height/4, streakBuf1, streakTex2, 3, dire);
-
-		// right streak, three passes
-		dire[0] = -0.5f;
-		Post::StreakPass::Render(width/4, height/4, streakBuf2, quarterTex, 1, dire);
-		Post::StreakPass::Render(width/4, height/4, streakBuf3, streakTex2, 2, dire);
-		Post::StreakPass::Render(width/4, height/4, streakBuf2, streakTex3, 3, dire);
-
-		// bottom streak, three passes
-		dire[0] = -0.5f;
-		dire[1] = -0.5f;
-		Post::StreakPass::Render(width/4, height/4, streakBuf3, quarterTex, 1, dire);
-		Post::StreakPass::Render(width/4, height/4, streakBuf4, streakTex3, 2, dire);
-		Post::StreakPass::Render(width/4, height/4, streakBuf3, streakTex4, 3, dire);
-
-		// top streak, three passes
-		dire[0] = 0.5f;
-		dire[1] = -0.5f;
-		Post::StreakPass::Render(width/4, height/4, streakBuf4, quarterTex, 1, dire);
-		Post::StreakPass::Render(width/4, height/4, streakBuf5, streakTex4, 2, dire);
-		Post::StreakPass::Render(width/4, height/4, streakBuf4, streakTex5, 3, dire);
-
-		//composite streaks to one texture
-		streakCompositePass->Render(streakTex1, streakTex2, streakTex3, streakTex4, streakTex4); //HACK
+		DoStreaks();
 /*		
 		glDisable(GL_TEXTURE_2D);
 		glViewport(0,0,width>>1,height>>1);

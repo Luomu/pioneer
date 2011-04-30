@@ -678,27 +678,28 @@ static struct postprocessBuffers_t {
 	//Render four streaks, three passes each (2 might be enough) and composite into one texture
 	void DoStreaks() {
 		// left streak, three passes
-		float dire[2] = { 0.5f, 0.5f };
+		float dire[2] = { 1.f, 0.f };
 		Post::StreakPass::Render(width/4, height/4, streakBuf1, quarterTex, 1, dire);
 		Post::StreakPass::Render(width/4, height/4, streakBuf2, streakTex1, 2, dire);
 		Post::StreakPass::Render(width/4, height/4, streakBuf1, streakTex2, 3, dire);
 
 		// right streak, three passes
-		dire[0] = -0.5f;
+		dire[0] = -1.f;
+		dire[1] = 0.f;
 		Post::StreakPass::Render(width/4, height/4, streakBuf2, quarterTex, 1, dire);
 		Post::StreakPass::Render(width/4, height/4, streakBuf3, streakTex2, 2, dire);
 		Post::StreakPass::Render(width/4, height/4, streakBuf2, streakTex3, 3, dire);
 
 		// bottom streak, three passes
-		dire[0] = -0.5f;
-		dire[1] = -0.5f;
+		dire[0] = 0.f;
+		dire[1] = 1.f;
 		Post::StreakPass::Render(width/4, height/4, streakBuf3, quarterTex, 1, dire);
 		Post::StreakPass::Render(width/4, height/4, streakBuf4, streakTex3, 2, dire);
 		Post::StreakPass::Render(width/4, height/4, streakBuf3, streakTex4, 3, dire);
 
 		// top streak, three passes
-		dire[0] = 0.5f;
-		dire[1] = -0.5f;
+		dire[0] = 0.0f;
+		dire[1] = -1.f;
 		Post::StreakPass::Render(width/4, height/4, streakBuf4, quarterTex, 1, dire);
 		Post::StreakPass::Render(width/4, height/4, streakBuf5, streakTex4, 2, dire);
 		Post::StreakPass::Render(width/4, height/4, streakBuf4, streakTex5, 3, dire);
@@ -814,6 +815,7 @@ static struct postprocessBuffers_t {
 		postprocessBloom1Downsample->set_fboTex(0);
 		glViewport(0,0,width/4,height/4);
 		ScreenAlignedQuad();
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
 
 		DoGlow();
 		DoStreaks();
@@ -868,18 +870,16 @@ static struct postprocessBuffers_t {
 		postprocessCompose->set_bloomTex(1);
 		postprocessCompose->set_streakTex(2);
 		postprocessCompose->set_avgLum(avgLum[0]);
-		//printf("Mid grey %f\n", midGrey);
 		postprocessCompose->set_middleGrey(midGrey);
 		ScreenAlignedQuad();
 
 		//clean up
 		State::UseProgram(0);
-		//glDisable(GL_TEXTURE_RECTANGLE_ARB);
 		glActiveTexture(GL_TEXTURE0);
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);
-		glEnable(GL_DEPTH_TEST);
+		/*glEnable(GL_DEPTH_TEST);
 		glEnable(GL_BLEND);
-		glEnable(GL_LIGHTING);
+		glEnable(GL_LIGHTING);*/
 
 		glError();
 	}

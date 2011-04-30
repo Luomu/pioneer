@@ -10,7 +10,7 @@ void main(void)
 	vec3 col = vec3(texture2DRect(fboTex, vec2(gl_FragCoord.x, gl_FragCoord.y)));
 	vec4 streaks = texture2D(streakTex, gl_TexCoord[0].xy);
 	vec4 glow = texture2D(bloomTex, gl_TexCoord[0].xy);
-	col += glow;
+	col += glow * 0.7;
 	col += streaks;
 
 #if 1

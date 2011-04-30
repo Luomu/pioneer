@@ -817,8 +817,17 @@ static struct postprocessBuffers_t {
 		ScreenAlignedQuad();
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);
 
-		DoGlow();
 		DoStreaks();
+		//use the entire scene for glow. This is temporary until there is threshold separate from streaks.
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, quarterBuf);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tex);
+		State::UseProgram(downsample);
+		downsample->set_scale(4.f);
+		downsample->set_Texture0(0);
+		glViewport(0,0,width/4,height/4);
+		ScreenAlignedQuad();
+		DoGlow();
 /*		
 		glDisable(GL_TEXTURE_2D);
 		glViewport(0,0,width>>1,height>>1);

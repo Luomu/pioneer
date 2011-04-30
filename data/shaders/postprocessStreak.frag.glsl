@@ -17,7 +17,7 @@ void main()
 	float b = pow(float(NUM_SAMPLES), float(iteration));
 	float sf = 0.0;
 	
-	float fattenuation = 0.99;
+	float fattenuation = 0.98;
 
 	for(int s = 0; s < NUM_SAMPLES; s++)
 	{
@@ -25,11 +25,9 @@ void main()
 		float weight = pow(fattenuation, b * sf) * 0.5;
 
 		sampleCoord = gl_FragCoord.xy + (direction * b * vec2(sf) * pxSize);
-		/*if(iteration == 1)
-			sampleCoord /= 0.5;*/
 
 		cOut += weight * texture2DRect(fboTex, sampleCoord).rgb;
-		//cOut = clamp(cOut, 0.0, 1.0);
+		cOut = clamp(cOut, 0.0, 1.0);
 	}
 
 	vec3 streak = clamp(cOut, 0.0, 1.0);

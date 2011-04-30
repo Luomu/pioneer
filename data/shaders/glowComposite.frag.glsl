@@ -36,7 +36,7 @@ void main(void)
     vec2 scale = vec2(1.0); //vec2(256.0) / vec2(1024.0, 768.0);
     vec2 coord = gl_FragCoord.xy / scale;
     vec4 glowcolor, glowcolor2, glowcolor3, glowcolor4, glowcolor5;
-    float[5] weights = {0.5,0.5,1.0,1.0,1.0};
+    float[5] weights = {0.8,0.5,0.4,0.4,0.2};
     glowcolor = upsample(Texture0, coord) * weights[0];
     glowcolor2 = upsample(Texture1, coord / 2.0) * weights[1];
     glowcolor3 = upsample(Texture2, coord / 4.0) * weights[2];

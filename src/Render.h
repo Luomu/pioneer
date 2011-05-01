@@ -94,6 +94,8 @@ namespace Render {
 		static float m_znear, m_zfar;
 		static float m_invLogZfarPlus1; // for z-hack
 		static Shader *m_currentShader;
+
+		static float m_glowThreshold;
 	public:
 		/** Returns true if the shader was changed, or false if shader == m_currentShader */
 		static bool UseProgram(Shader *shader);
@@ -103,6 +105,9 @@ namespace Render {
 		}
 		static int GetNumLights() { return m_numLights; }
 		static void GetZnearZfar(float &outZnear, float &outZfar) {outZnear = m_znear; outZfar = m_zfar; }
+
+		static float glowThreshold();
+		static void setGlowThreshold(const float&);
 	};
 
 	extern Shader *simpleShader;

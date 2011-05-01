@@ -55,6 +55,7 @@
 #include "LuaTimer.h"
 #include "LuaRand.h"
 #include "LuaNameGen.h"
+#include <sstream>
 
 float Pi::gameTickAlpha;
 int Pi::timeAccelIdx = 1;
@@ -609,6 +610,16 @@ void Pi::HandleEvents()
                             }
                             break;
                         }
+						case SDLK_PAGEUP: //increase glow thresh
+						{
+							Render::State::setGlowThreshold(Render::State::glowThreshold()+1.0f);
+							break;
+						}
+						case SDLK_PAGEDOWN: //decrease glow thresh
+						{
+							Render::State::setGlowThreshold(Render::State::glowThreshold()-1.0f);
+							break;
+						}
                         default:
                             break; // This does nothing but it stops the compiler warnings
                     }
@@ -1106,6 +1117,9 @@ void Pi::MainLoop()
 			Gui::Screen::EnterOrtho();
 			glColor3f(1,1,1);
 			Gui::Screen::RenderString(fps_readout, 0, 0);
+			std::ostringstream ss;
+			ss << Render::State::glowThreshold();
+			Gui::Screen::RenderString(ss.str(), 0, 20);
 			Gui::Screen::LeaveOrtho();
 		}
 #endif

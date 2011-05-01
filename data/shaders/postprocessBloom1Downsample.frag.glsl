@@ -2,6 +2,7 @@
 uniform sampler2DRect fboTex;
 uniform float avgLum;
 uniform float middleGrey;
+uniform float threshold; //orig 32
 // 1st downscale stage of making the bloom texture
 // only takes bits of fbo that are bright enough
 
@@ -12,7 +13,7 @@ void main(void)
 	vec2 p = 4.0*gl_FragCoord.xy;
 	vec3 c;
 	float lum;
-	float minLumToBloom = max(80.0*avgLum, 1.0);
+	float minLumToBloom = max(threshold*avgLum, 1.0);
 	
 	c = vec3(texture2DRect(fboTex, vec2(p.x, p.y)));
 	lum = dot(getlum, c);

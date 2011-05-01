@@ -26,6 +26,7 @@ SHADER_CLASS_BEGIN(PostprocessDownsampleShader)
 	SHADER_UNIFORM_SAMPLER(fboTex)
 	SHADER_UNIFORM_FLOAT(avgLum)
 	SHADER_UNIFORM_FLOAT(middleGrey)
+	SHADER_UNIFORM_FLOAT(threshold)
 SHADER_CLASS_END()
 
 SHADER_CLASS_BEGIN(PostprocessStreakShader)
@@ -42,11 +43,13 @@ SHADER_CLASS_BEGIN(PostprocessGlowShader)
 	SHADER_UNIFORM_FLOAT(pixelHeight)
 SHADER_CLASS_END()
 
+//simple 4-sample downscale
 SHADER_CLASS_BEGIN(DownSampleShader)
 	SHADER_UNIFORM_FLOAT(scale);
 	SHADER_UNIFORM_SAMPLER(Texture0)
 SHADER_CLASS_END()
 
+//hdr-less present
 SHADER_CLASS_BEGIN(PresentShader)
 	SHADER_UNIFORM_SAMPLER(Texture0)
 	SHADER_UNIFORM_SAMPLER(Texture1)
@@ -93,6 +96,7 @@ float State::m_znear = 10.0f;
 float State::m_zfar = 1e6f;
 float State::m_invLogZfarPlus1;
 Shader *State::m_currentShader = 0;
+float State::m_glowThreshold = 130.f;
 
 void BindArrayBuffer(GLuint bo)
 {
@@ -813,20 +817,32 @@ static struct postprocessBuffers_t {
 		postprocessBloom1Downsample->set_avgLum(avgLum[0]);
 		postprocessBloom1Downsample->set_middleGrey(midGrey);
 		postprocessBloom1Downsample->set_fboTex(0);
+		postprocessBloom1Downsample->set_threshold(Render::State::glowThreshold());
 		glViewport(0,0,width/4,height/4);
 		ScreenAlignedQuad();
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);
 
 		DoStreaks();
 		//use the entire scene for glow. This is temporary until there is threshold separate from streaks.
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, quarterBuf);
+		/*glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, quarterBuf);
 		glEnable(GL_TEXTURE_RECTANGLE_ARB);
 		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tex);
 		State::UseProgram(downsample);
 		downsample->set_scale(4.f);
 		downsample->set_Texture0(0);
 		glViewport(0,0,width/4,height/4);
+		ScreenAlignedQuad();*/
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, quarterBuf);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tex);
+		State::UseProgram(postprocessBloom1Downsample);
+		postprocessBloom1Downsample->set_avgLum(avgLum[0]);
+		postprocessBloom1Downsample->set_middleGrey(midGrey);
+		postprocessBloom1Downsample->set_fboTex(0);
+		postprocessBloom1Downsample->set_threshold(Render::State::glowThreshold());
+		glViewport(0,0,width/4,height/4);
 		ScreenAlignedQuad();
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
 		DoGlow();
 /*		
 		glDisable(GL_TEXTURE_2D);
@@ -1080,4 +1096,14 @@ bool State::UseProgram(Shader *shader)
 	}
 }
 
-} /* namespace Render */
+float State::glowThreshold()
+{
+	return m_glowThreshold;
+}
+
+void State::setGlowThreshold(const float& th)
+{
+	Render::State::m_glowThreshold = th;
+}
+
+}; /* namespace Render */

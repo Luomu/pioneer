@@ -8,9 +8,9 @@ uniform float middleGrey;
 void main(void)
 {
 	vec3 col = vec3(texture2DRect(fboTex, vec2(gl_FragCoord.x, gl_FragCoord.y)));
-	vec4 streaks = texture2D(streakTex, gl_TexCoord[0].xy);
-	vec4 glow = texture2D(bloomTex, gl_TexCoord[0].xy);
-	col += glow * 0.7;
+	vec3 streaks = vec3(texture2D(streakTex, gl_TexCoord[0].xy));
+	vec3 glow = vec3(texture2D(bloomTex, gl_TexCoord[0].xy));
+	col += glow * 0.3;
 	col += streaks;
 
 #if 1
@@ -32,6 +32,7 @@ void main(void)
 	col.g = -0.9693*X + 1.8760*Y + 0.0416*Z;
 	col.b = 0.0556*X - 0.2040*Y + 1.0572*Z;
 #endif
+	col += glow * 0.3;
 
 	gl_FragColor = vec4(col, 1.0);
 }

@@ -96,7 +96,7 @@ float State::m_znear = 10.0f;
 float State::m_zfar = 1e6f;
 float State::m_invLogZfarPlus1;
 Shader *State::m_currentShader = 0;
-float State::m_glowThreshold = 130.f;
+float State::m_glowThreshold = 3.f;
 
 void BindArrayBuffer(GLuint bo)
 {
@@ -817,7 +817,7 @@ static struct postprocessBuffers_t {
 		postprocessBloom1Downsample->set_avgLum(avgLum[0]);
 		postprocessBloom1Downsample->set_middleGrey(midGrey);
 		postprocessBloom1Downsample->set_fboTex(0);
-		postprocessBloom1Downsample->set_threshold(Render::State::glowThreshold());
+		postprocessBloom1Downsample->set_threshold(Render::State::glowThreshold()*2.f);
 		glViewport(0,0,width/4,height/4);
 		ScreenAlignedQuad();
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);

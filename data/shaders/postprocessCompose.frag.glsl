@@ -5,12 +5,26 @@ uniform sampler2D streakTex;
 uniform float avgLum;
 uniform float middleGrey;
 
+vec4 upsample(sampler2DRect tex, vec2 coord)
+{
+	return texture2DRect(tex, coord);
+    coord -= 0.5;
+    float dist = 0.5;
+    vec4 tl = texture2DRect(tex, coord);
+    vec4 tr = texture2DRect(tex, coord + vec2(dist, 0.0));
+    vec4 bl = texture2DRect(tex, coord + vec2(0.0, dist));
+    vec4 br = texture2DRect(tex, coord + vec2(dist, dist));
+    vec4 tA = mix(tl, tr, 0.5);
+    vec4 tB = mix(bl, br, 0.5);
+    return mix(tA, tB, 0.5);
+}
+
 void main(void)
 {
 	vec3 col = vec3(texture2DRect(fboTex, vec2(gl_FragCoord.x, gl_FragCoord.y)));
 	vec3 streaks = vec3(texture2D(streakTex, gl_TexCoord[0].xy));
 	vec3 glow = vec3(texture2D(bloomTex, gl_TexCoord[0].xy));
-	col += glow * 0.3;
+	col += glow;
 	col += streaks;
 
 #if 1
@@ -32,7 +46,8 @@ void main(void)
 	col.g = -0.9693*X + 1.8760*Y + 0.0416*Z;
 	col.b = 0.0556*X - 0.2040*Y + 1.0572*Z;
 #endif
-	col += glow * 0.3;
+	col += glow * 1.0; //cheat
+	col += streaks;
 
 	gl_FragColor = vec4(col, 1.0);
 }

@@ -612,12 +612,12 @@ void Pi::HandleEvents()
                         }
 						case SDLK_PAGEUP: //increase glow thresh
 						{
-							Render::State::setGlowThreshold(Render::State::glowThreshold()+1.0f);
+							Render::State::setGlowThreshold(Render::State::glowThreshold()+0.1f);
 							break;
 						}
 						case SDLK_PAGEDOWN: //decrease glow thresh
 						{
-							Render::State::setGlowThreshold(Render::State::glowThreshold()-1.0f);
+							Render::State::setGlowThreshold(Render::State::glowThreshold()-0.1f);
 							break;
 						}
                         default:

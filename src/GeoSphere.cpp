@@ -1228,7 +1228,7 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 		shader->set_geosphereCenter(center.x, center.y, center.z);
 #else //new atmosphere stuff
 		ScatteringGroundShader *s = s_groundFromSpace;
-		if (campos.Length() < (radius * 1.025))
+		if (campos.Length() < 1.025)
 			s = s_groundFromAtmosphere;
 		Render::State::UseProgram(s);
 		s->set_cameraPos(campos.x, campos.y, campos.z);

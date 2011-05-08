@@ -41,6 +41,7 @@ public:
 
 	vector3d hackCamPos;
 	vector3f hackLightDir;
+	void DrawAtmosphere(const vector3d& campos, const float radius);
 private:
 	void BuildFirstPatches();
 	GeoPatch *m_patches[6];

@@ -513,6 +513,22 @@ void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 		}
 	}
 	glPopMatrix();
+
+	//atmo...
+	glPushMatrix();
+	glEnable(GL_NORMALIZE);
+	vector3f apos = viewCoords;
+	glTranslatef((float)apos.x, (float)apos.y, (float)apos.z);
+	rad = sbody->GetRadius();
+	glScaled(rad, rad, rad);
+	ftran.ClearToRotOnly();
+	glMultMatrixd(&ftran[0]);
+	apos = ftran.InverseOf() * apos;
+	apos = apos / rad;
+	m_geosphere->DrawAtmosphere(apos, rad);
+	glDisable(GL_NORMALIZE);
+	glPopMatrix();
+
 }
 
 void Planet::SetFrame(Frame *f)

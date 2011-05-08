@@ -6,8 +6,8 @@
 // http://http.developer.nvidia.com/GPUGems2/gpugems2_chapter16.html
 //
 
-uniform vec3 v3CameraPos;		// The camera's current position
-uniform vec3 v3LightPos;		// The direction vector to the light source
+uniform vec3 cameraPos;		// The camera's current position
+uniform vec3 lightPos;		// The direction vector to the light source
 vec3 v3InvWavelength;	// 1 / pow(wavelength, 4) for the red, green, and blue channels
 float fCameraHeight;	// The camera's current height
 float fCameraHeight2;	// fCameraHeight^2
@@ -30,7 +30,6 @@ varying vec3 v3Direction;
 
 #define PI 3.14159265358979323846
 
-
 float scale(float fCos)
 {
 	float x = 1.0 - fCos;
@@ -40,12 +39,12 @@ float scale(float fCos)
 void main(void)
 {
 	//todo: calculate these outside shader
-	v3CameraPos = vec3(-v3CameraPos.x, -v3CameraPos.y, -v3CameraPos.z);
+	cameraPos = vec3(-cameraPos.x, -cameraPos.y, -cameraPos.z);
 	vec3 wl = vec3(0.650, 0.570, 0.475);
 	v3InvWavelength.x = 1.0/pow(wl.x, 4.0);
 	v3InvWavelength.y = 1.0/pow(wl.y, 4.0);
 	v3InvWavelength.z = 1.0/pow(wl.z, 4.0);
-	fCameraHeight = length(v3CameraPos);
+	fCameraHeight = length(cameraPos);
 	fCameraHeight2 = fCameraHeight * fCameraHeight;
 	fInnerRadius = 1.0;
 	fOuterRadius = fInnerRadius * 1.025;
@@ -67,26 +66,26 @@ void main(void)
 
 	// Get the ray from the camera to the vertex and its length (which is the far point of the ray passing through the atmosphere)
 	vec3 v3Pos = gl_Vertex.xyz;
-	vec3 v3Ray = v3Pos - v3CameraPos;
+	vec3 v3Ray = v3Pos - cameraPos;
 	float fFar = length(v3Ray);
 	v3Ray /= fFar;
 
 #ifdef SPACE
 	// Calculate the closest intersection of the ray with the outer atmosphere (which is the near point of the ray passing through the atmosphere)
-	float B = 2.0 * dot(v3CameraPos, v3Ray);
+	float B = 2.0 * dot(cameraPos, v3Ray);
 	float C = fCameraHeight2 - fOuterRadius2;
 	float fDet = max(0.0, B*B - 4.0 * C);
 	float fNear = 0.5 * (-B - sqrt(fDet));
 #endif
 	// Calculate the ray's starting position, then calculate its scattering offset
 #ifdef SPACE
-	vec3 v3Start = v3CameraPos + v3Ray * fNear;
+	vec3 v3Start = cameraPos + v3Ray * fNear;
 	fFar -= fNear;
 	float fStartAngle = dot(v3Ray, v3Start) / fOuterRadius;
 	float fStartDepth = exp(-1.0 / fScaleDepth);
 	float fStartOffset = fStartDepth*scale(fStartAngle);
 #else
-	vec3 v3Start = v3CameraPos;
+	vec3 v3Start = cameraPos;
 	float fHeight = length(v3Start);
 	float fDepth = exp(fScaleOverScaleDepth * (fInnerRadius - fCameraHeight));
 	float fStartAngle = dot(v3Ray, v3Start) / fHeight;
@@ -107,7 +106,7 @@ void main(void)
 	{
 		float fHeight = length(v3SamplePoint);
 		float fDepth = exp(fScaleOverScaleDepth * (fInnerRadius - fHeight));
-		float fLightAngle = dot(v3LightPos, v3SamplePoint) / fHeight;
+		float fLightAngle = dot(lightPos, v3SamplePoint) / fHeight;
 		float fCameraAngle = dot(v3Ray, v3SamplePoint) / fHeight;
 		float fScatter = (fStartOffset + fDepth*(scale(fLightAngle) - scale(fCameraAngle)));
 		vec3 v3Attenuate = exp(-fScatter * (v3InvWavelength * fKr4PI + fKm4PI));
@@ -123,6 +122,6 @@ void main(void)
 #else
 	gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
 #endif
-	v3Direction = v3CameraPos - v3Pos;
+	v3Direction = cameraPos - v3Pos;
 }
 

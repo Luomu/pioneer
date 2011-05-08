@@ -11,7 +11,8 @@ varying vec4 secondaryColor;
 
 void main(void)
 {
-	gl_FragColor = gl_Color * (0.25 * secondaryColor) + primaryColor;
+	//gl_FragColor = gl_Color * (0.25 * secondaryColor) + primaryColor;
+	gl_FragColor = primaryColor + gl_Color * secondaryColor;
 
 #ifdef ZHACK
 	SetFragDepth(gl_TexCoord[6].z);

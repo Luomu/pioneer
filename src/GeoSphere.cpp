@@ -1231,7 +1231,7 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 		if (campos.Length() < 1.025)
 			s = s_groundFromAtmosphere;
 		Render::State::UseProgram(s);
-		s->set_cameraPos(campos.x, campos.y, campos.z);
+		s->set_cameraPos(hackCamPos.x, hackCamPos.y, hackCamPos.z);
 		s->set_lightPos(hackLightDir.x, hackLightDir.y, hackLightDir.z);
 #endif
 	}

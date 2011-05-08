@@ -13,13 +13,13 @@ float fCameraHeight;	// The camera's current height
 float fCameraHeight2;	// fCameraHeight^2
 float fOuterRadius;		// The outer (atmosphere) radius
 float fOuterRadius2;	// fOuterRadius^2
-float fInnerRadius;		// The inner (planetary) radius
-float fInnerRadius2;	// fInnerRadius^2
+uniform float innerRadius;		// The inner (planetary) radius
+float innerRadius2;	// innerRadius^2
 float fKrESun;			// Kr * ESun
 float fKmESun;			// Km * ESun
 float fKr4PI;			// Kr * 4 * PI
 float fKm4PI;			// Km * 4 * PI
-float fScale;			// 1 / (fOuterRadius - fInnerRadius)
+float fScale;			// 1 / (fOuterRadius - innerRadius)
 float fScaleDepth;		// The scale depth (i.e. the altitude at which the atmosphere's average density is found)
 float fScaleOverScaleDepth;	// fScale / fScaleDepth
 
@@ -46,10 +46,10 @@ void main(void)
 	v3InvWavelength.z = 1.0/pow(wl.z, 4.0);
 	fCameraHeight = length(cameraPos);
 	fCameraHeight2 = fCameraHeight * fCameraHeight;
-	fInnerRadius = 1.0;
-	fOuterRadius = fInnerRadius * 1.025;
-	fInnerRadius2 = fInnerRadius * fInnerRadius;
-	fOuterRadius2 = fInnerRadius * 1.025 * fInnerRadius * 1.025;
+	//innerRadius = 1.0;
+	fOuterRadius = innerRadius * 1.025;
+	innerRadius2 = innerRadius * innerRadius;
+	fOuterRadius2 = innerRadius * 1.025 * innerRadius * 1.025;
 	float Kr = 0.0025;
 	float Km = 0.0015;
 	float ESun = 15.0;
@@ -60,9 +60,9 @@ void main(void)
 	fKm4PI = Km * 4.0 * PI;
 	fSamples = 2.0;
 	nSamples = 2;
-	fScale = 1.0 / (fOuterRadius - fInnerRadius);
+	fScale = 1.0 / (fOuterRadius - innerRadius);
 	fScaleDepth = 0.25;
-	fScaleOverScaleDepth = (1.0 / (fOuterRadius - fInnerRadius)) / fScaleDepth;
+	fScaleOverScaleDepth = (1.0 / (fOuterRadius - innerRadius)) / fScaleDepth;
 
 	// Get the ray from the camera to the vertex and its length (which is the far point of the ray passing through the atmosphere)
 	vec3 v3Pos = gl_Vertex.xyz;
@@ -87,11 +87,10 @@ void main(void)
 #else
 	vec3 v3Start = cameraPos;
 	float fHeight = length(v3Start);
-	float fDepth = exp(fScaleOverScaleDepth * (fInnerRadius - fCameraHeight));
+	float fDepth = exp(fScaleOverScaleDepth * (innerRadius - fCameraHeight));
 	float fStartAngle = dot(v3Ray, v3Start) / fHeight;
 	float fStartOffset = fDepth*scale(fStartAngle);
 #endif
-
 
 	// Initialize the scattering loop variables
 	//gl_FrontColor = vec4(0.0, 0.0, 0.0, 0.0);
@@ -105,7 +104,7 @@ void main(void)
 	for(int i=0; i<nSamples; i++)
 	{
 		float fHeight = length(v3SamplePoint);
-		float fDepth = exp(fScaleOverScaleDepth * (fInnerRadius - fHeight));
+		float fDepth = exp(fScaleOverScaleDepth * (innerRadius - fHeight));
 		float fLightAngle = dot(lightPos, v3SamplePoint) / fHeight;
 		float fCameraAngle = dot(v3Ray, v3SamplePoint) / fHeight;
 		float fScatter = (fStartOffset + fDepth*(scale(fLightAngle) - scale(fCameraAngle)));

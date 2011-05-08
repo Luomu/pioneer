@@ -368,12 +368,50 @@ void Planet::DrawAtmosphere(vector3d &apos)
 	_DrawAtmosphere(0.999, 1.05, apos, c);
 }
 
-void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
+void Planet::HackRender(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 {
-
 	matrix4x4d ftran = viewTransform;
 	vector3d fpos = viewCoords;
 	double rad = sbody->GetRadius();
+
+	glPushMatrix();
+	glEnable(GL_NORMALIZE);
+	glTranslatef((float)fpos.x, (float)fpos.y, (float)fpos.z);
+	glScaled(rad, rad, rad);
+	ftran.ClearToRotOnly();
+	glMultMatrixd(&ftran[0]);
+	fpos = ftran.InverseOf() * fpos;
+	fpos = fpos / rad;
+	vector3d campos = fpos;
+
+	//light
+	matrix4x4f invViewRot;
+	glGetFloatv(GL_MODELVIEW_MATRIX, &invViewRot[0]);
+	invViewRot.ClearToRotOnly();
+	invViewRot = invViewRot.InverseOf();
+	vector3f lightDir;
+	const int numLights = Pi::worldView->GetNumLights();
+	float temp[4];
+	glGetLightfv(GL_LIGHT0, GL_POSITION, temp);
+	lightDir = (invViewRot * vector3f(temp[0], temp[1], temp[2])).Normalized();
+	m_geosphere->hackLightDir = lightDir;
+
+	//m_geosphere->Render(campos, rad, 1.0);
+	m_geosphere->DrawAtmosphere(campos, 1.0);
+	glDisable(GL_NORMALIZE);
+	glPopMatrix();
+}
+
+void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
+{
+	matrix4x4d ftran = viewTransform;
+	vector3d fpos = viewCoords;
+	double rad = sbody->GetRadius();
+
+#if 0
+	HackRender(viewCoords,viewTransform);
+	return;
+#endif
 
 	float znear, zfar;
 	Pi::worldView->GetNearFarClipPlane(&znear, &zfar);
@@ -424,8 +462,8 @@ void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 	m_geosphere->hackCamPos = hackpos;
 	glDisable(GL_NORMALIZE);
 	glPopMatrix();
-
 //horrible hacks end
+
 	glPushMatrix();
 	glTranslatef((float)fpos.x, (float)fpos.y, (float)fpos.z);
 	glColor3f(1,1,1);
@@ -495,7 +533,8 @@ void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 		glPushMatrix();
 		glScaled(rad, rad, rad);
 		campos = campos * (1.0/rad);
-		m_geosphere->Render(campos, sbody->GetRadius(), scale);
+		m_geosphere->Render(campos, 1.0, scale);
+		m_geosphere->DrawAtmosphere(campos, 1.0);
 		
 		if (sbody->GetSuperType() == SBody::SUPERTYPE_GAS_GIANT) DrawGasGiantRings();
 		
@@ -513,22 +552,6 @@ void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 		}
 	}
 	glPopMatrix();
-
-	//atmo...
-	glPushMatrix();
-	glEnable(GL_NORMALIZE);
-	vector3f apos = viewCoords;
-	glTranslatef((float)apos.x, (float)apos.y, (float)apos.z);
-	rad = sbody->GetRadius();
-	glScaled(rad, rad, rad);
-	ftran.ClearToRotOnly();
-	glMultMatrixd(&ftran[0]);
-	apos = ftran.InverseOf() * apos;
-	apos = apos / rad;
-	m_geosphere->DrawAtmosphere(apos, rad);
-	glDisable(GL_NORMALIZE);
-	glPopMatrix();
-
 }
 
 void Planet::SetFrame(Frame *f)

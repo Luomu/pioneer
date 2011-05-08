@@ -30,11 +30,13 @@ SHADER_CLASS_END()
 SHADER_CLASS_BEGIN(ScatteringGroundShader)
 	SHADER_UNIFORM_VEC3(cameraPos)
 	SHADER_UNIFORM_VEC3(lightPos)
+	SHADER_UNIFORM_FLOAT(innerRadius)
 SHADER_CLASS_END()
 
 SHADER_CLASS_BEGIN(ScatteringAtmosphereShader)
 	SHADER_UNIFORM_VEC3(cameraPos)
 	SHADER_UNIFORM_VEC3(lightPos)
+	SHADER_UNIFORM_FLOAT(innerRadius)
 SHADER_CLASS_END()
 
 static GeosphereShader *s_geosphereSurfaceShader[4], *s_geosphereSkyShader[4];
@@ -1233,6 +1235,7 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 		Render::State::UseProgram(s);
 		s->set_cameraPos(hackCamPos.x, hackCamPos.y, hackCamPos.z);
 		s->set_lightPos(hackLightDir.x, hackLightDir.y, hackLightDir.z);
+		s->set_innerRadius(1.f);
 #endif
 	}
 
@@ -1289,7 +1292,7 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 }
 
 void GeoSphere::DrawAtmosphere(const vector3d& campos, const float radius)
-{
+{/*
 	matrix4x4f invViewRot;
 	glGetFloatv(GL_MODELVIEW_MATRIX, &invViewRot[0]);
 	invViewRot.ClearToRotOnly();
@@ -1298,7 +1301,7 @@ void GeoSphere::DrawAtmosphere(const vector3d& campos, const float radius)
 	assert(numLights > 0);
 	float temp[4];
 	glGetLightfv(GL_LIGHT0, GL_POSITION, temp);
-	hackLightDir = (invViewRot * vector3f(temp[0], temp[1], temp[2])).Normalized();
+	hackLightDir = (invViewRot * vector3f(temp[0], temp[1], temp[2])).Normalized();*/
 
 	glFrontFace(GL_CW);
 	ScatteringAtmosphereShader* s = s_skyFromSpace;
@@ -1307,6 +1310,7 @@ void GeoSphere::DrawAtmosphere(const vector3d& campos, const float radius)
 	Render::State::UseProgram(s);
 	s->set_cameraPos(hackCamPos.x, hackCamPos.y, hackCamPos.z);
 	s->set_lightPos(hackLightDir.x, hackLightDir.y, hackLightDir.z);
+	s->set_innerRadius(1.f);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_ONE, GL_ONE);
 	gluSphere(Pi::gluQuadric, 1.025, 100, 100);

@@ -12,7 +12,6 @@ uniform vec3 lightPos;
 
 varying vec3 v3Direction;
 
-
 void main (void)
 {
 	float g = -0.95f;

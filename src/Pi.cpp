@@ -968,41 +968,6 @@ void Pi::Start()
             player->m_equipment.Add(Equip::HYPERCLOUD_ANALYZER);
             player->UpdateMass();
 
-            Ship *enemy = new Ship(ShipType::EAGLE_LRF);
-            enemy->SetFrame(player->GetFrame());
-            enemy->SetPosition(player->GetPosition()+vector3d(0,0,-9000.0));
-            enemy->SetVelocity(vector3d(0,0,0));
-            enemy->m_equipment.Set(Equip::SLOT_ENGINE, 0, Equip::DRIVE_CLASS1);
-            enemy->m_equipment.Set(Equip::SLOT_LASER, 0, Equip::PULSECANNON_1MW);
-            enemy->m_equipment.Add(Equip::HYDROGEN, 2);
-            enemy->m_equipment.Add(Equip::ATMOSPHERIC_SHIELDING);
-            enemy->m_equipment.Add(Equip::AUTOPILOT);
-            enemy->m_equipment.Add(Equip::SCANNER);
-            enemy->UpdateMass();
-            enemy->AIKill(player);
-            Space::AddBody(enemy);
-
-            player->SetCombatTarget(enemy);
-
-            const ShipType *shipdef;
-            double mass, acc1, acc2, acc3;
-            printf("Player ship mass = %.0fkg, Enemy ship mass = %.0fkg\n",
-                   player->GetMass(), enemy->GetMass());
-
-            shipdef = &player->GetShipType();
-            mass = player->GetMass();
-            acc1 = shipdef->linThrust[ShipType::THRUSTER_FORWARD] / (9.81*mass);
-            acc2 = shipdef->linThrust[ShipType::THRUSTER_REVERSE] / (9.81*mass);
-            acc3 = shipdef->linThrust[ShipType::THRUSTER_UP] / (9.81*mass);
-            printf("Player ship thrust = %.1fg, %.1fg, %.1fg\n", acc1, acc2, acc3);
-
-            shipdef = &enemy->GetShipType();
-            mass = enemy->GetMass();
-            acc1 = shipdef->linThrust[ShipType::THRUSTER_FORWARD] / (9.81*mass);
-            acc2 = shipdef->linThrust[ShipType::THRUSTER_REVERSE] / (9.81*mass);
-            acc3 = shipdef->linThrust[ShipType::THRUSTER_UP] / (9.81*mass);
-            printf("Enemy ship thrust = %.1fg, %.1fg, %.1fg\n", acc1, acc2, acc3);
-
             /*	Frame *stationFrame = new Frame(pframe, "Station frame...");
              stationFrame->SetRadius(5000);
              stationFrame->m_sbody = 0;

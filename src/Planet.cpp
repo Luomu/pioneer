@@ -402,6 +402,35 @@ void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 	glPushMatrix();
 	glTranslatef(float(fpos.x), float(fpos.y), float(fpos.z));
 	glColor3f(1,1,1);
+//horrible hacks start
+	glEnable(GL_NORMALIZE);
+	glScaled(rad, rad, rad);
+	ftran.ClearToRotOnly();
+	glMultMatrixd(&ftran[0]);
+	fpos = ftran.InverseOf() * fpos;
+	fpos = fpos / rad;
+	//vector3d campos = ftran.InverseOf() * fpos;
+	vector3d campos = fpos;
+	//campos /= rad;
+	//GeoSphere::DrawBlob(1.0, fpos, ftran);
+//liiight
+	matrix4x4f invViewRot;
+	glGetFloatv(GL_MODELVIEW_MATRIX, &invViewRot[0]);
+	invViewRot.ClearToRotOnly();
+	invViewRot = invViewRot.InverseOf();
+	const int numLights = Pi::worldView->GetNumLights();
+	assert(numLights > 0);
+	float temp[4];
+	glGetLightfv(GL_LIGHT0, GL_POSITION, temp);
+	m_geosphere->hackLightDir = (invViewRot * vector3f(temp[0], temp[1], temp[2])).Normalized();
+//end liiight
+	m_geosphere->Render(campos, rad, 1.0);
+	//m_geosphere->DrawAtmosphere(campos, 1.0);
+	glDisable(GL_NORMALIZE);
+	glPopMatrix();
+	return;
+
+//horrible hacks end
 
 	if (apparent_size < 0.001) {
 		Render::State::UseProgram(0);

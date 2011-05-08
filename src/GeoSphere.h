@@ -38,6 +38,9 @@ public:
 	}
 	// in sbody radii
 	double GetMaxFeatureHeight() const { return m_style.GetMaxHeight(); }
+
+	vector3d hackCamPos;
+	vector3f hackLightDir;
 private:
 	void BuildFirstPatches();
 	GeoPatch *m_patches[6];

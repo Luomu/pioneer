@@ -6,14 +6,14 @@
 // http://http.developer.nvidia.com/GPUGems2/gpugems2_chapter16.html
 //
 
-uniform vec3 v3CameraPos;		// The camera's current position
-uniform vec3 v3LightPos;		// The direction vector to the light source
+uniform vec3 cameraPos;		// The camera's current position
+uniform vec3 lightPos;		// The direction vector to the light source
 vec3 v3InvWavelength;	// 1 / pow(wavelength, 4) for the red, green, and blue channels
 float fCameraHeight;	// The camera's current height
 float fCameraHeight2;	// fCameraHeight^2
 float fOuterRadius;		// The outer (atmosphere) radius
 float fOuterRadius2;	// fOuterRadius^2
-uniform float fInnerRadius;		// The inner (planetary) radius
+uniform float innerRadius;		// The inner (planetary) radius
 float fInnerRadius2;	// fInnerRadius^2
 float fKrESun;	 // Kr * ESun
 float fKmESun;	 // Km * ESun
@@ -41,14 +41,14 @@ float scale(float fCos)
 void main(void)
 {
 	//todo: calculate these outside shader
-	v3CameraPos = vec3(-v3CameraPos.x, -v3CameraPos.y, -v3CameraPos.z);
-	fCameraHeight = length(v3CameraPos);
+	cameraPos = vec3(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+	fCameraHeight = length(cameraPos);
 	fCameraHeight2 = fCameraHeight * fCameraHeight;
 
-	fInnerRadius = 1.0;
-	fOuterRadius = fInnerRadius * 1.025;
-	fInnerRadius2 = fInnerRadius * fInnerRadius;
-	fOuterRadius2 = fInnerRadius * 1.025 * fInnerRadius * 1.025;
+	innerRadius = 1.0;
+	fOuterRadius = innerRadius * 1.025;
+	fInnerRadius2 = innerRadius * innerRadius;
+	fOuterRadius2 = innerRadius * 1.025 * innerRadius * 1.025;
 	
 	vec3 wl = vec3(0.650, 0.570, 0.475);
 	v3InvWavelength.x = 1.0/pow(wl.x, 4.0);
@@ -65,19 +65,19 @@ void main(void)
 	fKm4PI = Km * 4.0 * PI;
 	fSamples = 2.0;
 	nSamples = 2;
-	fScale = 1.0 / (fOuterRadius - fInnerRadius);
+	fScale = 1.0 / (fOuterRadius - innerRadius);
 	fScaleDepth = 0.25;
-	fScaleOverScaleDepth = (1.0 / (fOuterRadius - fInnerRadius)) / fScaleDepth;
+	fScaleOverScaleDepth = (1.0 / (fOuterRadius - innerRadius)) / fScaleDepth;
 
 	// Get the ray from the camera to the vertex and its length (which is the far point of the ray passing through the atmosphere)
 	vec3 v3Pos = gl_Vertex.xyz;
-	vec3 v3Ray = v3Pos - v3CameraPos;
+	vec3 v3Ray = v3Pos - cameraPos;
 	float fFar = length(v3Ray);
 	v3Ray /= fFar;
 
 #ifdef SPACE
 	// Calculate the closest intersection of the ray with the outer atmosphere (which is the near point of the ray passing through the atmosphere)
-	float B = 2.0 * dot(v3CameraPos, v3Ray);
+	float B = 2.0 * dot(cameraPos, v3Ray);
 	float C = fCameraHeight2 - fOuterRadius2;
 	float fDet = max(0.0, B*B - 4.0 * C);
 	float fNear = 0.5 * (-B - sqrt(fDet));
@@ -85,15 +85,15 @@ void main(void)
 
 	// Calculate the ray's starting position, then calculate its scattering offset
 #ifdef SPACE
-	vec3 v3Start = v3CameraPos + v3Ray * fNear;
+	vec3 v3Start = cameraPos + v3Ray * fNear;
 	fFar -= fNear;
-	float fDepth = exp((fInnerRadius - fOuterRadius) / fScaleDepth);
+	float fDepth = exp((innerRadius - fOuterRadius) / fScaleDepth);
 #else
-	vec3 v3Start = v3CameraPos;
-	float fDepth = exp((fInnerRadius - fCameraHeight) / fScaleDepth);
+	vec3 v3Start = cameraPos;
+	float fDepth = exp((innerRadius - fCameraHeight) / fScaleDepth);
 #endif
 	float fCameraAngle = dot(-v3Ray, v3Pos) / length(v3Pos);
-	float fLightAngle = dot(v3LightPos, v3Pos) / length(v3Pos);
+	float fLightAngle = dot(lightPos, v3Pos) / length(v3Pos);
 	float fCameraScale = scale(fCameraAngle);
 	float fLightScale = scale(fLightAngle);
 	float fCameraOffset = fDepth*fCameraScale;
@@ -111,7 +111,7 @@ void main(void)
 	for(int i=0; i<nSamples; i++)
 	{
 		float fHeight = length(v3SamplePoint);
-		float fDepth = exp(fScaleOverScaleDepth * (fInnerRadius - fHeight));
+		float fDepth = exp(fScaleOverScaleDepth * (innerRadius - fHeight));
 		float fScatter = fDepth*fTemp - fCameraOffset;
 		v3Attenuate = exp(-fScatter * (v3InvWavelength * fKr4PI + fKm4PI));
 		v3FrontColor += v3Attenuate * (fDepth * fScaledLength);

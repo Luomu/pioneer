@@ -1230,7 +1230,7 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 		shader->set_geosphereCenter(center.x, center.y, center.z);
 #else //new atmosphere stuff
 		ScatteringGroundShader *s = s_groundFromSpace;
-		if (campos.Length() < 1.025)
+		if (campos.Length() < ATMOSPHERE_RADIUS)
 			s = s_groundFromAtmosphere;
 		Render::State::UseProgram(s);
 		s->set_cameraPos(hackCamPos.x, hackCamPos.y, hackCamPos.z);
@@ -1291,21 +1291,11 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 #endif /* !GEOSPHERE_USE_THREADING */
 }
 
-void GeoSphere::DrawAtmosphere(const vector3d& campos, const float radius)
-{/*
-	matrix4x4f invViewRot;
-	glGetFloatv(GL_MODELVIEW_MATRIX, &invViewRot[0]);
-	invViewRot.ClearToRotOnly();
-	invViewRot = invViewRot.InverseOf();
-	const int numLights = Pi::worldView->GetNumLights();
-	assert(numLights > 0);
-	float temp[4];
-	glGetLightfv(GL_LIGHT0, GL_POSITION, temp);
-	hackLightDir = (invViewRot * vector3f(temp[0], temp[1], temp[2])).Normalized();*/
-
+void GeoSphere::DrawAtmosphere(const vector3d& campos)
+{
 	glFrontFace(GL_CW);
 	ScatteringAtmosphereShader* s = s_skyFromSpace;
-	if (campos.Length() < 1.025)
+	if (campos.Length() < ATMOSPHERE_RADIUS)
 		s = s_skyFromAtmosphere;
 	Render::State::UseProgram(s);
 	s->set_cameraPos(hackCamPos.x, hackCamPos.y, hackCamPos.z);
@@ -1313,7 +1303,7 @@ void GeoSphere::DrawAtmosphere(const vector3d& campos, const float radius)
 	s->set_innerRadius(1.f);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_ONE, GL_ONE);
-	gluSphere(Pi::gluQuadric, 1.025, 100, 100);
+	gluSphere(Pi::gluQuadric, ATMOSPHERE_RADIUS, 100, 100);
 	glDisable(GL_BLEND);
 	glFrontFace(GL_CCW);
 	Render::State::UseProgram(0);

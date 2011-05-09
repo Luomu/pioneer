@@ -1234,7 +1234,7 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 			s = s_groundFromAtmosphere;
 		Render::State::UseProgram(s);
 		s->set_cameraPos(hackCamPos.x, hackCamPos.y, hackCamPos.z);
-		s->set_lightPos(hackLightDir.x, hackLightDir.y, hackLightDir.z);
+		s->set_lightPos(lightDir.x, lightDir.y, lightDir.z);
 		s->set_innerRadius(1.f);
 #endif
 	}
@@ -1264,8 +1264,8 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 	glMaterialfv (GL_FRONT, GL_EMISSION, black);
 	glEnable(GL_COLOR_MATERIAL);
 
-//	glLineWidth(1.0);
-//	glPolygonMode(GL_FRONT, GL_LINE);
+	//glLineWidth(1.0);
+	//glPolygonMode(GL_FRONT, GL_LINE);
 	for (int i=0; i<6; i++) {
 		m_patches[i]->Render(campos, planes);
 	}
@@ -1277,9 +1277,9 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 	// if the update thread has deleted any geopatches, destroy the vbos
 	// associated with them
 	DestroyVBOs();
-		/*this->m_tempCampos = campos;
-		UpdateLODThread(this);
-		return;*/
+	/*this->m_tempCampos = campos;
+	UpdateLODThread(this);
+	return;*/
 	
 	if (!m_runUpdateThread) {
 		this->m_tempCampos = campos;
@@ -1299,10 +1299,11 @@ void GeoSphere::DrawAtmosphere(const vector3d& campos)
 		s = s_skyFromAtmosphere;
 	Render::State::UseProgram(s);
 	s->set_cameraPos(hackCamPos.x, hackCamPos.y, hackCamPos.z);
-	s->set_lightPos(hackLightDir.x, hackLightDir.y, hackLightDir.z);
+	s->set_lightPos(lightDir.x, lightDir.y, lightDir.z);
 	s->set_innerRadius(1.f);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_ONE, GL_ONE);
+	//todo: LOD
 	gluSphere(Pi::gluQuadric, ATMOSPHERE_RADIUS, 100, 100);
 	glDisable(GL_BLEND);
 	glFrontFace(GL_CCW);

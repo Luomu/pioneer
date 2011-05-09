@@ -39,8 +39,9 @@ public:
 	// in sbody radii
 	double GetMaxFeatureHeight() const { return m_style.GetMaxHeight(); }
 
+	//hacks
 	vector3d hackCamPos;
-	vector3f hackLightDir;
+	vector3f lightDir;
 	void DrawAtmosphere(const vector3d& campos);
 private:
 	void BuildFirstPatches();

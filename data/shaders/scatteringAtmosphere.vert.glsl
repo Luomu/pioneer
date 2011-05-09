@@ -8,19 +8,19 @@
 
 uniform vec3 cameraPos;		// The camera's current position
 uniform vec3 lightPos;		// The direction vector to the light source
-vec3 v3InvWavelength;	// 1 / pow(wavelength, 4) for the red, green, and blue channels
-float fCameraHeight;	// The camera's current height
-float fCameraHeight2;	// fCameraHeight^2
-float fOuterRadius;		// The outer (atmosphere) radius
-float fOuterRadius2;	// fOuterRadius^2
-uniform float innerRadius;		// The inner (planetary) radius
-float innerRadius2;	// innerRadius^2
-float fKrESun;			// Kr * ESun
-float fKmESun;			// Km * ESun
-float fKr4PI;			// Kr * 4 * PI
-float fKm4PI;			// Km * 4 * PI
-float fScale;			// 1 / (fOuterRadius - innerRadius)
-float fScaleDepth;		// The scale depth (i.e. the altitude at which the atmosphere's average density is found)
+vec3 v3InvWavelength;		// 1 / pow(wavelength, 4) for the red, green, and blue channels
+float fCameraHeight;		// The camera's current height
+float fCameraHeight2;		// fCameraHeight^2
+uniform float innerRadius;	// The inner (planetary) radius
+float innerRadius2;			// innerRadius^2
+float fOuterRadius;			// The outer (atmosphere) radius
+float fOuterRadius2;		// fOuterRadius^2
+float fKrESun;				// Kr * ESun
+float fKmESun;				// Km * ESun
+float fKr4PI;				// Kr * 4 * PI
+float fKm4PI;				// Km * 4 * PI
+float fScale;				// 1 / (fOuterRadius - innerRadius)
+float fScaleDepth;			// The scale depth (i.e. the altitude at which the atmosphere's average density is found)
 float fScaleOverScaleDepth;	// fScale / fScaleDepth
 
 int nSamples;
@@ -39,8 +39,8 @@ float scale(float fCos)
 void main(void)
 {
 	//todo: calculate these outside shader
-	cameraPos = vec3(-cameraPos.x, -cameraPos.y, -cameraPos.z);
-	vec3 wl = vec3(0.650, 0.570, 0.475);
+	vec3 wl = vec3(0.650, 0.570, 0.475); //earth-like
+	//vec3 wl = vec3(0.42, 0.52, 0.68); //reddish
 	v3InvWavelength.x = 1.0/pow(wl.x, 4.0);
 	v3InvWavelength.y = 1.0/pow(wl.y, 4.0);
 	v3InvWavelength.z = 1.0/pow(wl.z, 4.0);

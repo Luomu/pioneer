@@ -407,6 +407,7 @@ void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 	glMultMatrixd(&ftran[0]);
 	vector3f hpos = ftran.InverseOf() * fpos;
 	hpos = hpos / rad;
+	hpos = -hpos;
 	vector3d hackpos = hpos;
 
 	//calculate light position - we just assume light 0, should actually
@@ -419,7 +420,7 @@ void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 	assert(numLights > 0);
 	float temp[4];
 	glGetLightfv(GL_LIGHT0, GL_POSITION, temp);
-	m_geosphere->hackLightDir = (invViewRot * vector3f(temp[0], temp[1], temp[2])).Normalized();
+	m_geosphere->lightDir = (invViewRot * vector3f(temp[0], temp[1], temp[2])).Normalized();
 
 	m_geosphere->hackCamPos = hackpos;
 	glDisable(GL_NORMALIZE);

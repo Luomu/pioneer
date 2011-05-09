@@ -27,16 +27,21 @@ SHADER_CLASS_BEGIN(GeosphereShader)
 	SHADER_UNIFORM_FLOAT(geosphereAtmosFogDensity)
 SHADER_CLASS_END()
 
+//will add uniforms as needed - for testing just tweak the shaders
 SHADER_CLASS_BEGIN(ScatteringGroundShader)
 	SHADER_UNIFORM_VEC3(cameraPos)
 	SHADER_UNIFORM_VEC3(lightPos)
 	SHADER_UNIFORM_FLOAT(innerRadius)
+	SHADER_UNIFORM_FLOAT(Kr)
+	//SHADER_UNIFORM_VEC3(wavelength)
 SHADER_CLASS_END()
 
 SHADER_CLASS_BEGIN(ScatteringAtmosphereShader)
 	SHADER_UNIFORM_VEC3(cameraPos)
 	SHADER_UNIFORM_VEC3(lightPos)
 	SHADER_UNIFORM_FLOAT(innerRadius)
+	SHADER_UNIFORM_FLOAT(Kr)
+	//SHADER_UNIFORM_VEC3(wavelength)
 SHADER_CLASS_END()
 
 static GeosphereShader *s_geosphereSurfaceShader[4], *s_geosphereSkyShader[4];
@@ -1192,9 +1197,9 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 	// no frustum test of entire geosphere, since Space::Render does this
 	// for each body using its GetBoundingRadius() value
 
+	double atmosDensity = 0.0;
 	if (Render::AreShadersEnabled()) {
 		Color atmosCol;
-		double atmosDensity;
 		matrix4x4d modelMatrix;
 		glGetDoublev (GL_MODELVIEW_MATRIX, &modelMatrix[0]);
 		vector3d center = modelMatrix * vector3d(0.0, 0.0, 0.0);
@@ -1236,6 +1241,10 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 		s->set_cameraPos(hackCamPos.x, hackCamPos.y, hackCamPos.z);
 		s->set_lightPos(lightDir.x, lightDir.y, lightDir.z);
 		s->set_innerRadius(1.f);
+		if(atmosDensity > 0.0)
+			s->set_Kr(0.0025f);
+		else //in vacuum we might as well not use the shader but this works too
+			s->set_Kr(0.0f);
 #endif
 	}
 
@@ -1281,6 +1290,10 @@ void GeoSphere::Render(vector3d campos, const float radius, const float scale) {
 	UpdateLODThread(this);
 	return;*/
 	
+	if(atmosDensity > 0.0) {
+		DrawAtmosphere(campos);
+	}
+	
 	if (!m_runUpdateThread) {
 		this->m_tempCampos = campos;
 		m_runUpdateThread = 1;
@@ -1301,6 +1314,7 @@ void GeoSphere::DrawAtmosphere(const vector3d& campos)
 	s->set_cameraPos(hackCamPos.x, hackCamPos.y, hackCamPos.z);
 	s->set_lightPos(lightDir.x, lightDir.y, lightDir.z);
 	s->set_innerRadius(1.f);
+	s->set_Kr(0.0025f);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_ONE, GL_ONE);
 	//todo: LOD

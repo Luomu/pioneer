@@ -399,9 +399,10 @@ void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 	//if (GetLabel() == "Earth") printf("Horizon %fkm, shrink %d\n", dist_to_horizon*0.001, shrink);
 
 //horrible hacks start
+	//had some weird problem wih camera position, either the scattering
+	//or the terrain LOD appeared wrong (looked fine from space)
 	glPushMatrix();
 	glTranslatef((float)fpos.x, (float)fpos.y, (float)fpos.z);
-	glEnable(GL_NORMALIZE);
 	glScaled(rad, rad, rad);
 	ftran.ClearToRotOnly();
 	glMultMatrixd(&ftran[0]);
@@ -423,7 +424,6 @@ void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 	m_geosphere->lightDir = (invViewRot * vector3f(temp[0], temp[1], temp[2])).Normalized();
 
 	m_geosphere->hackCamPos = hackpos;
-	glDisable(GL_NORMALIZE);
 	glPopMatrix();
 //horrible hacks end
 
@@ -497,7 +497,6 @@ void Planet::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 		glScaled(rad, rad, rad);
 		campos = campos * (1.0/rad);
 		m_geosphere->Render(campos, 1.0, scale);
-		m_geosphere->DrawAtmosphere(campos);
 		
 		if (sbody->GetSuperType() == SBody::SUPERTYPE_GAS_GIANT) DrawGasGiantRings();
 		

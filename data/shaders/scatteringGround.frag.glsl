@@ -12,6 +12,7 @@ varying vec4 secondaryColor;
 void main(void)
 {
 	//gl_FragColor = gl_Color * (0.25 * secondaryColor) + primaryColor;
+	//ideally this would be blended with whatever fancy terrain rendering we want (specular, bump etc)
 	gl_FragColor = primaryColor + gl_Color * secondaryColor;
 
 #ifdef ZHACK

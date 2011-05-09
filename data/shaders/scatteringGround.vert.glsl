@@ -1,5 +1,5 @@
 //
-// Atmospheric scattering vertex shader
+// Atmospheric scattering vertex shader, ground version
 //
 // Original code: Copyright (c) 2004 Sean O'Neil
 //
@@ -29,6 +29,10 @@ float fSamples;
 varying vec4 primaryColor;
 varying vec4 secondaryColor;
 
+uniform float Kr;			// Rayleigh scattering constant (Earth 0.0025)
+//uniform float Km;			// Mie scattering constant (Earth 0.0015)
+/*uniform*/ vec3 wavelength;	// RGB, nanometers (Earth 0.650, 0.570, 0.475)
+
 #define PI 3.14159265358979323846
 
 
@@ -44,16 +48,14 @@ void main(void)
 	//todo: calculate these outside shader
 	fCameraHeight = length(cameraPos);
 	fCameraHeight2 = fCameraHeight * fCameraHeight;
-	innerRadius = 1.0;
 	fOuterRadius = innerRadius * 1.025;
 	fInnerRadius2 = innerRadius * innerRadius;
 	fOuterRadius2 = innerRadius * 1.025 * innerRadius * 1.025;
-	vec3 wl = vec3(0.650, 0.570, 0.475); //earth-like
-	//vec3 wl = vec3(0.42, 0.52, 0.68); //reddish
-	v3InvWavelength.x = 1.0/pow(wl.x, 4.0);
-	v3InvWavelength.y = 1.0/pow(wl.y, 4.0);
-	v3InvWavelength.z = 1.0/pow(wl.z, 4.0);
-	float Kr = 0.0025;
+	wavelength = vec3(0.650, 0.570, 0.475); //earth-like
+	//wavelength = vec3(0.42, 0.52, 0.68); //reddish
+	v3InvWavelength.x = 1.0/pow(wavelength.x, 4.0);
+	v3InvWavelength.y = 1.0/pow(wavelength.y, 4.0);
+	v3InvWavelength.z = 1.0/pow(wavelength.z, 4.0);
 	float Km = 0.0015;
 	float ESun = 15.0;
 	float mieG = -0.95;

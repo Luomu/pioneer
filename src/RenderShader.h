@@ -25,6 +25,17 @@
 		if (!loc_##name) { loc_##name = glGetUniformLocation(m_program, #name); } \
 		if ((val_##name[0] != a) || (val_##name[1] != b) || (val_##name[2] != c)) { glUniform3f(loc_##name, a,b,c); val_##name[0]=a; val_##name[1]=b;val_##name[2]=c; } \
 	}
+#define SHADER_UNIFORM_VEC2(name) \
+       private: \
+       GLuint loc_##name; float val_##name[2]; \
+       public: \
+       void set_##name(float v[2]) { \
+               set_##name(v[0],v[1]); \
+       } \
+       void set_##name(float a, float b) { \
+               if (!loc_##name) { loc_##name = glGetUniformLocation(m_program, #name); } \
+               if ((val_##name[0] != a) || (val_##name[1] != b)) { glUniform2f(loc_##name, a,b); val_##name[0]=a; val_##name[1]=b; } \
+       }
 #define SHADER_UNIFORM_FLOAT(name) \
 	private: \
 	GLuint loc_##name; float val_##name; \

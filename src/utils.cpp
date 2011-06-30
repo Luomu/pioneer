@@ -36,6 +36,14 @@
 #define PNG_SKIP_SETJMP_CHECK
 #include <png.h>
 
+//for Utils::Timer
+#if defined(_MSC_VER)
+# define NOMINMAX //we don't want windows min/max, we use stl
+#include <windows.h>
+#else
+#include <sys/time.h>
+#endif
+
 std::string GetPiUserDir(const std::string &subdir)
 {
 
@@ -513,4 +521,41 @@ void Screendump(const char* destFile, const int W, const int H)
 
 	fclose(out);
 	printf("Screenshot %s saved\n", fname.c_str());
+}
+
+namespace Utils {
+
+Timer::Timer()
+{
+	Restart();
+}
+
+void Timer::Restart()
+{
+#if defined(_MSC_VER)
+	QueryPerformanceCounter(&m_start);
+#else
+	gettimeofday(&m_start, 0);
+#endif
+
+}
+
+float Timer::GetSeconds() const
+{
+#if defined(_MSC_VER)
+	LARGE_INTEGER now;
+	LARGE_INTEGER freq;
+
+	QueryPerformanceCounter(&now);
+	QueryPerformanceFrequency(&freq);
+
+	return (now.QuadPart - m_start.QuadPart) / static_cast<float>(freq.QuadPart);
+#else
+	timeval now;
+	gettimeofday(&now, 0);
+
+	return now.tv_sec - m_start.tv_sec + (now.tv_usec - m_start.tv_usec) / 1000000.0f;
+#endif
+}
+
 }

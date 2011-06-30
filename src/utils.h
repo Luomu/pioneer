@@ -111,4 +111,19 @@ static inline float roundf(float x)
 }
 #endif /* _MSC_VER */
 
+namespace Utils {
+	class Timer {
+	private:
+#if defined(_MSC_VER)
+		LARGE_INTEGER m_start;
+#else
+		timeval m_start;
+#endif
+	public:
+		Timer();
+		void Restart();
+		float GetSeconds() const;
+	};
+}
+
 #endif /* _UTILS_H */

@@ -57,7 +57,7 @@ void main(void)
 	vec3 vColor = downsample(fboTex, coord).rgb;
 	float fLum = avgLum;
 	vColor *= middleGrey / (fLum + 0.001);
-	vColor = max(0.0, vColor - threshold);
+	vColor = max(vec3(0.0), vColor - threshold);
 	vColor /= (brightOffset + vColor); //map to 0.0-1.0
 	gl_FragColor = vec4(vColor, 1.0);
 }

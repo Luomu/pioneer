@@ -6,10 +6,10 @@
 #include "View.h"
 #include "Render.h"
 #include "Serializer.h"
+#include "Background.h"
 
 class Body;
 class Frame;
-class SBodyPath;
 class LabelSet;
 class Ship;
 
@@ -60,14 +60,17 @@ private:
 	void OnChangeWheelsState(Gui::MultiStateImageButton *b);
 	void OnChangeLabelsState(Gui::MultiStateImageButton *b);
 	void OnChangeFlightState(Gui::MultiStateImageButton *b);
-	void OnChangeHyperspaceTarget();
+	void OnHyperspaceTargetChanged();
 	void OnPlayerDockOrUndock();
+	void OnPlayerChangeTarget();
 	void OnPlayerChangeFlightControlState();
 	void SelectBody(Body *, bool reselectIsDeselect);
 	Body* PickBody(const double screenX, const double screenY) const;
 	void MouseButtonDown(int button, int x, int y);
+
 	Gui::ImageButton *m_hyperspaceButton;
-	GLuint m_bgstarsVbo;
+	bool m_showHyperspaceButton;
+
 	Gui::Fixed *m_commsOptions;
 	Gui::VBox *m_commsNavOptions;
 	Gui::HBox *m_commsNavOptionsContainer;
@@ -79,8 +82,8 @@ private:
 	enum CamType m_camType;
 	int m_numLights;
 	Uint32 m_showTargetActionsTimeout;
-	Render::Shader *m_bgStarShader;
-	bool m_haveStars;
+	Background::Starfield m_starfield;
+	Background::MilkyWay m_milkyWay;
 
 #if DEVKEYS
 	Gui::Label *m_debugInfo;
@@ -90,7 +93,8 @@ private:
 	Gui::MeterBar *m_hudHullTemp, *m_hudWeaponTemp, *m_hudHullIntegrity, *m_hudShieldIntegrity;
 	Gui::MeterBar *m_hudTargetHullIntegrity, *m_hudTargetShieldIntegrity;
 
-	sigc::connection m_onPlayerChangeHyperspaceTargetCon;
+	sigc::connection m_onHyperspaceTargetChangedCon;
+
 	sigc::connection m_onPlayerChangeTargetCon;
 	sigc::connection m_onChangeFlightControlStateCon;
 	sigc::connection m_onMouseButtonDown;

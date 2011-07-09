@@ -7,6 +7,7 @@ bin_PROGRAMS = pioneer modelviewer
 noinst_HEADERS = \
 	Aabb.h \
 	AmbientSounds.h \
+	Background.h \
 	BBAdvertChatForm.h \
 	BezierCurve.h \
 	Body.h \
@@ -47,13 +48,14 @@ noinst_HEADERS = \
 	LuaFormat.h \
 	LuaGame.h \
 	LuaManager.h \
+	LuaMusic.h \
 	LuaNameGen.h \
 	LuaObject.h \
 	LuaPlanet.h \
 	LuaPlayer.h \
 	LuaRand.h \
 	LuaSBody.h \
-	LuaSBodyPath.h \
+	LuaSystemPath.h \
 	LuaSerializer.h \
 	LuaShip.h \
 	LuaShipType.h \
@@ -95,15 +97,17 @@ noinst_HEADERS = \
 	ShipFlavour.h \
 	ShipType.h \
 	Sound.h \
+	SoundMusic.h \
 	Space.h \
 	SpaceStation.h \
 	SpaceStationView.h \
 	Star.h \
 	StarSystem.h \
-	SysLoc.h \
 	SystemInfoView.h \
+	SystemPath.h \
 	SystemView.h \
 	TextureFont.h \
+	TextureManager.h \
 	VectorFont.h \
 	VideoLink.h \
 	View.h \
@@ -120,6 +124,7 @@ noinst_HEADERS = \
 
 pioneer_SOURCES	= \
 	AmbientSounds.cpp \
+	Background.cpp \
 	BBAdvertChatForm.cpp \
 	Body.cpp \
 	CargoBody.cpp \
@@ -156,13 +161,14 @@ pioneer_SOURCES	= \
 	LuaFormat.cpp \
 	LuaGame.cpp \
 	LuaManager.cpp \
+	LuaMusic.cpp \
 	LuaNameGen.cpp \
 	LuaObject.cpp \
 	LuaPlanet.cpp \
 	LuaPlayer.cpp \
 	LuaRand.cpp \
 	LuaSBody.cpp \
-	LuaSBodyPath.cpp \
+	LuaSystemPath.cpp \
 	LuaSerializer.cpp \
 	LuaShip.cpp \
 	LuaShipType.cpp \
@@ -200,15 +206,16 @@ pioneer_SOURCES	= \
 	ShipFlavour.cpp \
 	ShipType.cpp \
 	Sound.cpp \
+	SoundMusic.cpp \
 	Space.cpp \
 	SpaceStation.cpp \
 	SpaceStationView.cpp \
 	Star.cpp \
 	StarSystem.cpp \
-	SysLoc.cpp \
 	SystemInfoView.cpp \
 	SystemView.cpp \
 	TextureFont.cpp \
+	TextureManager.cpp \
 	VectorFont.cpp \
 	WorldView.cpp \
 	main.cpp \
@@ -237,6 +244,7 @@ modelviewer_SOURCES = \
 	Render.cpp \
 	RenderShader.cpp \
 	TextureFont.cpp \
+	TextureManager.cpp \
 	VectorFont.cpp \
 	perlin.cpp \
 	utils.cpp

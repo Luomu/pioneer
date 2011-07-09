@@ -1,37 +1,5 @@
-#ifdef __MINGW32__
-#define WINVER 0x0500
-#include <w32api.h>
-#define _WIN32_IE IE5
-#endif
-
-#include <stdlib.h>
-#include <math.h>
 #include "libs.h"
-#include "utils.h"
 #include "gui/Gui.h"
-#include <string>
-#include <map>
-
-#ifdef _WIN32
-
-#ifdef __MINGW32__
-#include <dirent.h>
-#include <sys/stat.h>
-#include <stdexcept>
-#define WINSHLWAPI
-#else /* !__MINGW32__ */
-#include "win32-dirent.h"
-#endif
-
-#include <shlobj.h>
-#include <shlwapi.h>
-
-#else /* !_WIN32 */
-#include <dirent.h>
-#include <errno.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#endif
 
 #define PNG_SKIP_SETJMP_CHECK
 #include <png.h>
@@ -486,7 +454,7 @@ void Screendump(const char* destFile, const int W, const int H)
 		return;
 	}
 
-	FILE *out = fopen(fname.c_str(), "w");
+	FILE *out = fopen(fname.c_str(), "wb");
 	if (!out) {
 		png_destroy_write_struct(&png_ptr, &info_ptr);
 		fprintf(stderr, "Couldn't open %s for writing\n", fname.c_str());
@@ -499,7 +467,7 @@ void Screendump(const char* destFile, const int W, const int H)
 		PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
 		PNG_FILTER_TYPE_DEFAULT);
 
-	png_bytep rows[H];
+	png_bytepp rows = new png_bytep[H];
 
 	for (unsigned int i = 0; i < H; ++i) {
 		rows[i] = reinterpret_cast<png_bytep>(&pixel_data[(H-i-1) * W * 3]);
@@ -508,6 +476,9 @@ void Screendump(const char* destFile, const int W, const int H)
 	png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, 0);
 
 	png_destroy_write_struct(&png_ptr, &info_ptr);
+
+	delete[] rows;
+
 	fclose(out);
 	printf("Screenshot %s saved\n", fname.c_str());
 }

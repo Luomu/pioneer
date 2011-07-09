@@ -25,13 +25,11 @@ GalacticView::GalacticView()
 	SetTransparency(true);
 	m_zoom = 1.0f;
 
-	m_zoomInButton = new Gui::ImageButton(PIONEER_DATA_DIR "/icons/zoom_in_f7.png");
-	//m_zoomInButton->SetShortcut(SDLK_F6, KMOD_NONE);
+	m_zoomInButton = new Gui::ImageButton(PIONEER_DATA_DIR "/icons/zoom_in.png");
 	m_zoomInButton->SetToolTip("Zoom in");
 	Add(m_zoomInButton, 700, 5);
 	
-	m_zoomOutButton = new Gui::ImageButton(PIONEER_DATA_DIR "/icons/zoom_out_f8.png");
-	//m_zoomOutButton->SetShortcut(SDLK_F7, KMOD_NONE);
+	m_zoomOutButton = new Gui::ImageButton(PIONEER_DATA_DIR "/icons/zoom_out.png");
 	m_zoomOutButton->SetToolTip("Zoom out");
 	Add(m_zoomOutButton, 732, 5);
 	
@@ -59,10 +57,6 @@ void GalacticView::Load(Serializer::Reader &rd)
 {
 }
 
-/*void GalacticView::OnClickSystemInfo()
-{
-	Pi::SetView(Pi::systemInfoView);
-}*/
 
 struct galaclabel_t {
 	const char *label;
@@ -98,10 +92,9 @@ void GalacticView::PutLabels(vector3d offset)
 
 void GalacticView::Draw3D()
 {
-	int secx, secy;
-	Pi::sectorView->GetSector(&secx, &secy);
-	float offset_x = (secx*Sector::SIZE + Galaxy::SOL_OFFSET_X)/Galaxy::GALAXY_RADIUS;
-	float offset_y = (-secy*Sector::SIZE + Galaxy::SOL_OFFSET_Y)/Galaxy::GALAXY_RADIUS;
+	SystemPath path = Pi::sectorView->GetSelectedSystem();
+	float offset_x = (path.sectorX*Sector::SIZE + Galaxy::SOL_OFFSET_X)/Galaxy::GALAXY_RADIUS;
+	float offset_y = (-path.sectorY*Sector::SIZE + Galaxy::SOL_OFFSET_Y)/Galaxy::GALAXY_RADIUS;
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();

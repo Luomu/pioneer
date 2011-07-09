@@ -12,23 +12,15 @@
 #include "HyperspaceCloud.h"
 #include "KeyBindings.h"
 #include "perlin.h"
+#include "SectorView.h"
 
 const double WorldView::PICK_OBJECT_RECT_SIZE = 20.0;
 static const Color s_hudTextColor(0.0f,1.0f,0.0f,0.8f);
 
-#define BG_STAR_MAX	65536
 #define HUD_CROSSHAIR_SIZE	24.0f
 
-#pragma pack(4)
-struct BgStar {
-	float x,y,z;
-	float r,g,b;
-};
-#pragma pack()
-
-static BgStar s_bgstar[BG_STAR_MAX];
-
-WorldView::WorldView(): View()
+WorldView::WorldView(): View(),
+	m_showHyperspaceButton(false)
 {
 	float size[2];
 	GetSize(size);
@@ -149,26 +141,24 @@ WorldView::WorldView(): View()
 	Add(m_combatDist, 0, 0);			// text/color/position set dynamically
 	Add(m_combatSpeed, 0, 0);			// text/color/position set dynamically
 
-	m_onPlayerChangeHyperspaceTargetCon =
-		Pi::onPlayerChangeHyperspaceTarget.connect(sigc::mem_fun(this, &WorldView::OnChangeHyperspaceTarget));
+	m_onHyperspaceTargetChangedCon =
+		Pi::sectorView->onHyperspaceTargetChanged.connect(sigc::mem_fun(this, &WorldView::OnHyperspaceTargetChanged));
+
 	m_onPlayerChangeTargetCon =
-		Pi::onPlayerChangeTarget.connect(sigc::mem_fun(this, &WorldView::UpdateCommsOptions));
+		Pi::onPlayerChangeTarget.connect(sigc::mem_fun(this, &WorldView::OnPlayerChangeTarget));
 	m_onChangeFlightControlStateCon =
 		Pi::onPlayerChangeFlightControlState.connect(sigc::mem_fun(this, &WorldView::OnPlayerChangeFlightControlState));
 	m_onMouseButtonDown =
-		Pi::onMouseButtonDown.connect(sigc::mem_fun(this, &WorldView::MouseButtonDown));	
-	
-	m_bgStarShader = 0;
-	m_haveStars = false;
+		Pi::onMouseButtonDown.connect(sigc::mem_fun(this, &WorldView::MouseButtonDown));
 }
 
 WorldView::~WorldView()
 {
-	m_onPlayerChangeHyperspaceTargetCon.disconnect();
+	m_onHyperspaceTargetChangedCon.disconnect();
+
 	m_onPlayerChangeTargetCon.disconnect();
 	m_onChangeFlightControlStateCon.disconnect();
 	m_onMouseButtonDown.disconnect();
-	if (m_bgStarShader) delete m_bgStarShader;
 }
 
 void WorldView::Save(Serializer::Writer &wr)
@@ -255,7 +245,7 @@ void WorldView::OnChangeLabelsState(Gui::MultiStateImageButton *b)
 void WorldView::OnClickBlastoff()
 {
 	Pi::BoinkNoise();
-	if (Pi::player->GetDockedWith()) {
+	if (Pi::player->GetFlightState() == Ship::DOCKED) {
 		if (!Pi::player->Undock()) {
 			Pi::cpan->MsgLog()->ImportantMessage(Pi::player->GetDockedWith()->GetLabel(),
 					"Permission to launch denied: docking bay busy.");
@@ -268,192 +258,27 @@ void WorldView::OnClickBlastoff()
 
 void WorldView::OnClickHyperspace()
 {
-    if (Pi::player->GetHyperspaceCountdown() > 0.0) {
-        // Hyperspace countdown in effect.. abort!
-        Pi::player->ResetHyperspaceCountdown();
-        Pi::cpan->MsgLog()->Message("", "Hyperspace jump aborted.");
-    } else {
-        // Initiate hyperspace drive
-        const SBodyPath *path = Pi::player->GetHyperspaceTarget();
-        Pi::player->TryHyperspaceTo(path);
-    }
+	if (Pi::player->GetHyperspaceCountdown() > 0.0) {
+		// Hyperspace countdown in effect.. abort!
+		Pi::player->ResetHyperspaceCountdown();
+		Pi::cpan->MsgLog()->Message("", "Hyperspace jump aborted.");
+	} else {
+		// Initiate hyperspace drive
+		SystemPath path = Pi::sectorView->GetHyperspaceTarget();
+		Pi::player->StartHyperspaceCountdown(path);
+	}
 }
 
 // This is the background starfield
 void WorldView::DrawBgStars() 
 {
-	double hyperspaceAnim = Space::GetHyperspaceAnim();
-
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_LIGHTING);
-
-
-	//This is needed because there is no system seed for the main menu
-	unsigned long seed = Pi::IsGameStarted() ? Pi::currentSystem->m_seed : UNIVERSE_SEED;
-	
-	// Slight colour variation to stars based on seed
-	MTRand rand(seed);
-
-	if (!m_haveStars) {
-		for (int i=0; i<BG_STAR_MAX; i++) {
-			float col = float(rand.Double(0,1));
-
-			col *= col * col * 3.0;
-			col = (col > 0.725 ? 1.45-col : col);
-			col = Clamp(col, 0.00f, 0.725f);
-
-			if (i<6) {
-				col = 0.9;
-			} else if (i<21) {
-				col = 0.85;
-			} else if (i<46) {
-				col = 0.8;
-			}
-
-			s_bgstar[i].r = rand.Double(col-0.05f,col);
-			s_bgstar[i].g = rand.Double(col-0.1f,s_bgstar[i].r);
-			s_bgstar[i].b = rand.Double(col-0.05f,col);
-
-			// this is proper random distribution on a sphere's surface
-			// XXX TODO
-			// perhaps distribute stars to give greater density towards the galaxy's centre and in the galactic plane?
-			const float theta = float(rand.Double(0.0, 2.0*M_PI));
-			const float u = float(rand.Double(-1.0, 1.0));
-
-			s_bgstar[i].x = 1000.0f * sqrt(1.0f - u*u) * cos(theta);
-			s_bgstar[i].y = 1000.0f * u;
-			s_bgstar[i].z = 1000.0f * sqrt(1.0f - u*u) * sin(theta);
-		}	
-		if (USE_VBO) {
-			glGenBuffersARB(1, &m_bgstarsVbo);
-			glBindBufferARB(GL_ARRAY_BUFFER, m_bgstarsVbo);
-			glBufferDataARB(GL_ARRAY_BUFFER, sizeof(BgStar)*BG_STAR_MAX, s_bgstar, GL_STATIC_DRAW);
-			glBindBufferARB(GL_ARRAY_BUFFER, 0);
-		}
-
-		m_bgStarShader = new Render::Shader("bgstars");
-
-		m_haveStars = true;
-	}
-
-	// draw the milkyway
-	{
-		// might be nice to shove this crap in a vbo.
-		float theta;
-		// make it rotated a bit so star systems are not in the same
-		// plane (could make it different per system...
-		glPushMatrix();
-		glRotatef(40.0, 1.0,2.0,3.0);
-		glBegin(GL_TRIANGLE_STRIP);
-		for (theta=0.0; theta < 2.0*M_PI; theta+=0.1) {
-			glColor3f(0.0,0.0,0.0);
-			glVertex3f(100.0f*sin(theta), float(-40.0 - 30.0*noise(sin(theta),1.0,cos(theta))), 100.0f*cos(theta));
-			glColor3f(0.05,0.05,0.05);
-			glVertex3f(100.0f*sin(theta), float(5.0*noise(sin(theta),0.0,cos(theta))), 100.0f*cos(theta));
-		}
-		theta = 2.0*M_PI;
-		glColor3f(0.0,0.0,0.0);
-		glVertex3f(100.0f*sin(theta), float(-40.0 - 30.0*noise(sin(theta),1.0,cos(theta))), 100.0f*cos(theta));
-		glColor3f(0.05,0.05,0.05);
-		glVertex3f(100.0f*sin(theta), float(5.0*noise(sin(theta),0.0,cos(theta))), 100.0f*cos(theta));
-
-		glEnd();
-		glBegin(GL_TRIANGLE_STRIP);
-		for (theta=0.0; theta < 2.0*M_PI; theta+=0.1) {
-			glColor3f(0.05,0.05,0.05);
-			glVertex3f(100.0f*sin(theta), float(5.0*noise(sin(theta),0.0,cos(theta))), 100.0f*cos(theta));
-			glColor3f(0.0,0.0,0.0);
-			glVertex3f(100.0f*sin(theta), float(40.0 + 30.0*noise(sin(theta),-1.0,cos(theta))), 100.0f*cos(theta));
-		}
-		theta = 2.0*M_PI;
-		glColor3f(0.05,0.05,0.05);
-		glVertex3f(100.0f*sin(theta), float(5.0*noise(sin(theta),0.0,cos(theta))), 100.0f*cos(theta));
-		glColor3f(0.0,0.0,0.0);
-		glVertex3f(100.0f*sin(theta), float(40.0 + 30.0*noise(sin(theta),-1.0,cos(theta))), 100.0f*cos(theta));
-		glEnd();
-		glPopMatrix();
-	}
-
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_COLOR_ARRAY);
-
-	if (Render::AreShadersEnabled()) {
-		glError();
-		Render::State::UseProgram(m_bgStarShader);
-		glError();
-		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE_ARB);
-	} else {
-		glDisable(GL_POINT_SMOOTH);
-		glPointSize(1.0f);
-	}
-
-	if (hyperspaceAnim == 0) {
-		if (USE_VBO) {
-			glBindBufferARB(GL_ARRAY_BUFFER, m_bgstarsVbo);
-			glVertexPointer(3, GL_FLOAT, sizeof(struct BgStar), 0);
-			glColorPointer(3, GL_FLOAT, sizeof(struct BgStar), reinterpret_cast<void *>(3*sizeof(float)));
-			glDrawArrays(GL_POINTS, 0, BG_STAR_MAX);
-			glBindBufferARB(GL_ARRAY_BUFFER, 0);
-		} else {
-			glVertexPointer(3, GL_FLOAT, sizeof(struct BgStar), &s_bgstar[0].x);
-			glColorPointer(3, GL_FLOAT, sizeof(struct BgStar), &s_bgstar[0].r);
-			glDrawArrays(GL_POINTS, 0, BG_STAR_MAX);
-		}
-	} else {
-		/* HYPERSPACING!!!!!!!!!!!!!!!!!!! */
-		/* all this jizz isn't really necessary, since the player will
-		 * be in the root frame when hyperspacing... */
-		matrix4x4d m, rot;
-		Frame::GetFrameTransform(Space::rootFrame, Pi::player->GetFrame(), m);
-		m.ClearToRotOnly();
-		Pi::player->GetRotMatrix(rot);
-		m = rot.InverseOf() * m;
-		vector3d pz(m[2], m[6], m[10]);
-
-		// roughly, the multiplier gets smaller as the duration gets larger.
-		// the time-looking bits in this are completely arbitrary - I figured
-		// it out by tweaking the numbers until it looked sort of right
-		double mult = 0.0015 / (Space::GetHyperspaceDuration() / (60.0*60.0*24.0*7.0));
-
-		float *vtx = new float[BG_STAR_MAX*12];
-		for (int i=0; i<BG_STAR_MAX; i++) {
-			vtx[i*12] = s_bgstar[i].x;
-			vtx[i*12+1] = s_bgstar[i].y;
-			vtx[i*12+2] = s_bgstar[i].z;
-
-			vtx[i*12+3] = s_bgstar[i].r * 0.5;
-			vtx[i*12+4] = s_bgstar[i].g * 0.5;
-			vtx[i*12+5] = s_bgstar[i].b * 0.5;
-
-			vector3f v(s_bgstar[i].x, s_bgstar[i].y, s_bgstar[i].z);
-			v += pz*hyperspaceAnim*mult;
-
-			vtx[i*12+6] = v.x;
-			vtx[i*12+7] = v.y;
-			vtx[i*12+8] = v.z;
-
-			vtx[i*12+9] = s_bgstar[i].r * 0.5;
-			vtx[i*12+10] = s_bgstar[i].g * 0.5;
-			vtx[i*12+11] = s_bgstar[i].b * 0.5;
-		}
-
-		glVertexPointer(3, GL_FLOAT, 6*sizeof(float), vtx);
-		glColorPointer(3, GL_FLOAT, 6*sizeof(float), vtx+3);
-		glDrawArrays(GL_LINES, 0, 2*BG_STAR_MAX);
-
-		delete[] vtx;
-	}
-	glEnable(GL_LIGHTING);
-	glEnable(GL_DEPTH_TEST);
-
-	if (Render::AreShadersEnabled()) {
-		Render::State::UseProgram(0);
-		glDisable(GL_VERTEX_PROGRAM_POINT_SIZE_ARB);
-		glDisable(GL_POINT_SMOOTH);
-	}
-
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_COLOR_ARRAY);
+	// make it rotated a bit so star systems are not in the same
+	// plane (could make it different per system...
+	glPushMatrix();
+	glRotatef(40.0, 1.0,2.0,3.0);
+	m_milkyWay.Draw();
+	glPopMatrix();
+	m_starfield.Draw();
 }
 
 static void position_system_lights(Frame *camFrame, Frame *frame, int &lightNum)
@@ -510,11 +335,8 @@ static void position_system_lights(Frame *camFrame, Frame *frame, int &lightNum)
 WorldView::CamType WorldView::GetCamType() const
 {
 	if (m_camType == CAM_EXTERNAL) {
-		/* Don't allow external view while doing docking animation or
-		 * when docked with an orbital starport */
-		if (//(Pi::player->GetFlightState() == Ship::DOCKING) ||
-			(Pi::player->GetDockedWith() &&
-			 !Pi::player->GetDockedWith()->IsGroundStation())) {
+		// don't allow external view when docked with an orbital starport
+		if (Pi::player->GetFlightState() == Ship::DOCKED && !Pi::player->GetDockedWith()->IsGroundStation()) {
 			return CAM_FRONT;
 		} else {
 			return CAM_EXTERNAL;
@@ -531,7 +353,9 @@ void WorldView::Draw3D()
 	float znear, zfar;
 	GetNearFarClipPlane(&znear, &zfar);
 	// why the hell do i give these functions such big names..
-	const float zoom = 0.9f; // angle of viewing = 2.0*atan(zoom);
+   const float FOV_MAX = 170.0f; // Maximum FOV in degrees
+   const float FOV_MIN = 20.0f;  // Minimum FOV in degrees
+	const float zoom = tan(DEG2RAD(Clamp(Pi::config.Float("FOV"), FOV_MIN, FOV_MAX)/2.0f)); // angle of viewing = 2.0*atan(zoom);
 	const float left = zoom * znear;
 	const float fracH = left / Pi::GetScrAspect();
 	glFrustum(-left, left, -fracH, fracH, znear, zfar);
@@ -643,59 +467,62 @@ void WorldView::RefreshButtonStateAndVisibility()
 	else {
 		m_wheelsButton->SetActiveState(int(Pi::player->GetWheelState()));
 
-		// XXX also don't show hyperspace button if the current target is
-		// invalid. this is difficult to achieve efficiently as long as "no
-		// target" is the same as (0,0,0,0)
-		if (Pi::player->GetFlightState() == Ship::FLYING && !Space::GetHyperspaceAnim())
+		if (m_showHyperspaceButton && Pi::player->GetFlightState() == Ship::FLYING)
 			m_hyperspaceButton->Show();
 		else
 			m_hyperspaceButton->Hide();
 
-		if (Space::GetHyperspaceAnim()) {
-			m_flightStatus->SetText("Hyperspace");
-			m_launchButton->Hide();
-			m_flightControlButton->Hide();
-		}
-		
-		else
-			switch(Pi::player->GetFlightState()) {
-				case Ship::LANDED:
-					m_flightStatus->SetText("Landed");
-					m_launchButton->Show();
-					m_flightControlButton->Hide();
-					break;
+		switch(Pi::player->GetFlightState()) {
+			case Ship::LANDED:
+				m_flightStatus->SetText("Landed");
+				m_launchButton->Show();
+				m_flightControlButton->Hide();
+				break;
 				
-				case Ship::DOCKING:
-					m_flightStatus->SetText("Docking");
-					m_launchButton->Hide();
-					m_flightControlButton->Hide();
-					break;
+			case Ship::DOCKING:
+				m_flightStatus->SetText("Docking");
+				m_launchButton->Hide();
+				m_flightControlButton->Hide();
+				break;
 
-				case Ship::FLYING:
-				default:
-					Player::FlightControlState fstate = Pi::player->GetFlightControlState();
-					switch (fstate) {
-						case Player::CONTROL_MANUAL:
-							m_flightStatus->SetText("Manual Control"); break;
+			case Ship::DOCKED:
+				m_flightStatus->SetText("Docked");
+				m_launchButton->Show();
+				m_flightControlButton->Hide();
+				break;
 
-						case Player::CONTROL_FIXSPEED: {
-							std::string msg;
-							if (Pi::player->GetSetSpeed() > 1000) {
-								msg = stringf(256, "Set speed: %.2f km/s", Pi::player->GetSetSpeed()*0.001);
-							} else {
-								msg = stringf(256, "Set speed: %.0f m/s", Pi::player->GetSetSpeed());
-							}
-							m_flightStatus->SetText(msg);
-							break;
+			case Ship::HYPERSPACE:
+				m_flightStatus->SetText("Hyperspace");
+				m_launchButton->Hide();
+				m_flightControlButton->Hide();
+				break;
+
+			case Ship::FLYING:
+			default:
+				Player::FlightControlState fstate = Pi::player->GetFlightControlState();
+				switch (fstate) {
+					case Player::CONTROL_MANUAL:
+						m_flightStatus->SetText("Manual Control"); break;
+
+					case Player::CONTROL_FIXSPEED: {
+						std::string msg;
+						if (Pi::player->GetSetSpeed() > 1000) {
+							msg = stringf(256, "Set speed: %.2f km/s", Pi::player->GetSetSpeed()*0.001);
+						} else {
+							msg = stringf(256, "Set speed: %.0f m/s", Pi::player->GetSetSpeed());
 						}
-
-						case Player::CONTROL_AUTOPILOT:
-							m_flightStatus->SetText("Autopilot");
-							break;
+						m_flightStatus->SetText(msg);
+						break;
 					}
-					m_launchButton->Hide();
-					m_flightControlButton->Show();
-			}
+
+					case Player::CONTROL_AUTOPILOT:
+						m_flightStatus->SetText("Autopilot");
+						break;
+				}
+
+				m_launchButton->Hide();
+				m_flightControlButton->Show();
+		}
 	}
 
 	// Direction indicator
@@ -734,10 +561,10 @@ void WorldView::RefreshButtonStateAndVisibility()
 	}
 #endif
 
-	if (const SBodyPath *dest = Space::GetHyperspaceDest()) {
+	if (const SystemPath *dest = Space::GetHyperspaceDest()) {
 		StarSystem *s = StarSystem::GetCached(*dest);
 		char buf[128];
-		snprintf(buf, sizeof(buf), "In transit to %s [%d,%d]", s->GetName().c_str(), dest->GetSectorX(), dest->GetSectorY());
+		snprintf(buf, sizeof(buf), "In transit to %s [%d,%d]", s->GetName().c_str(), dest->sectorX, dest->sectorY);
 		m_hudVelocity->SetText(buf);
 		m_hudVelocity->Show();
 
@@ -897,8 +724,8 @@ void WorldView::RefreshButtonStateAndVisibility()
 				text += "Hyperspace arrival cloud remnant";
 			}
 			else {
-				const SBodyPath *dest = ship->GetHyperspaceTarget();
-				Sector s(dest->sectorX, dest->sectorY);
+				const SystemPath dest = ship->GetHyperspaceDest();
+				Sector s(dest.sectorX, dest.sectorY);
 				text += stringf(512,
 					"Hyperspace %s cloud\n"
 					"Ship mass: %dt\n"
@@ -907,7 +734,7 @@ void WorldView::RefreshButtonStateAndVisibility()
 					cloud->IsArrival() ? "arrival" : "departure",
 					ship->CalcStats()->total_mass,
                     cloud->IsArrival() ? "Source" : "Destination",
-					s.m_systems[dest->systemNum].name.c_str(),
+					s.m_systems[dest.systemIndex].name.c_str(),
 					format_date(cloud->GetDueDate()).c_str()
 				);
 			}
@@ -972,10 +799,12 @@ void WorldView::Update()
 		if (Pi::KeyState(SDLK_RIGHT)) m_externalViewRotY += 45*frameTime;
 		if (Pi::KeyState(SDLK_EQUALS)) m_externalViewDist -= 400*frameTime;
 		if (Pi::KeyState(SDLK_MINUS)) m_externalViewDist += 400*frameTime;
+		if (Pi::KeyState(SDLK_HOME)) m_externalViewDist = 200;
 		m_externalViewDist = std::max(Pi::player->GetBoundingRadius(), m_externalViewDist);
 
 		// when landed don't let external view look from below
-		if (Pi::player->GetFlightState() == Ship::LANDED) m_externalViewRotX = Clamp(m_externalViewRotX, -170.0, -10.0);
+		if (Pi::player->GetFlightState() == Ship::LANDED || Pi::player->GetFlightState() == Ship::DOCKED)
+			m_externalViewRotX = Clamp(m_externalViewRotX, -170.0, -10.0);
 	}
 	if (KeyBindings::targetObject.IsActive()) {
 		/* Hitting tab causes objects in the crosshairs to be selected */
@@ -1054,9 +883,8 @@ void WorldView::BuildCommsNavOptions()
 		m_commsNavOptions->PackEnd(new Gui::Label("#f0f" + (*i)->name));
 
 		for ( std::vector<SBody*>::const_iterator j = group.begin(); j != group.end(); j++) {
-			SBodyPath path;
-			Pi::currentSystem->GetPathOf(*j, &path);
-			Body *body = Space::FindBodyForSBodyPath(&path);
+			SystemPath path = Pi::currentSystem->GetPathOf(*j);
+			Body *body = Space::FindBodyForPath(&path);
 			AddCommsNavOption((*j)->name, body);
 		}
 	}
@@ -1090,23 +918,32 @@ static void PlayerPayFine()
 	}
 }
 
-#if 0
-static void OnPlayerSetHyperspaceTargetTo(SBodyPath path)
+void WorldView::OnHyperspaceTargetChanged()
 {
-	Pi::player->SetHyperspaceTarget(&path);
-}
-#endif /* 0 */
+	if (Pi::player->GetHyperspaceCountdown() > 0.0) {
+		Pi::player->ResetHyperspaceCountdown();
+		Pi::cpan->MsgLog()->Message("", "Hyperspace jump aborted.");
+	}
 
-void WorldView::OnChangeHyperspaceTarget()
-{
-	const SBodyPath *path = Pi::player->GetHyperspaceTarget();
+	const SystemPath path = Pi::sectorView->GetHyperspaceTarget();
+
 	StarSystem *system = StarSystem::GetCached(path);
 	Pi::cpan->MsgLog()->Message("", std::string("Set hyperspace destination to "+system->GetName()));
+	system->Release();
 
 	int fuelReqd;
 	double dur;
-	if (Pi::player->CanHyperspaceTo(path, fuelReqd, dur)) m_hyperspaceButton->Show();
-	else m_hyperspaceButton->Hide();
+	m_showHyperspaceButton = Pi::player->CanHyperspaceTo(&path, fuelReqd, dur);
+}
+
+void WorldView::OnPlayerChangeTarget()
+{
+	Body *b = Pi::player->GetNavTarget();
+	if (b &&
+		(!b->IsType(Object::HYPERSPACECLOUD) ||
+		 Pi::sectorView->GetHyperspaceTarget() != static_cast<HyperspaceCloud*>(b)->GetShip()->GetHyperspaceDest()))
+		Pi::sectorView->FloatHyperspaceTarget();
+	UpdateCommsOptions();
 }
 
 static void autopilot_flyto(Body *b)
@@ -1132,7 +969,8 @@ static void autopilot_orbit(Body *b, double alt)
 
 static void player_target_hypercloud(HyperspaceCloud *cloud)
 {
-	Pi::player->SetHyperspaceTarget(cloud);
+	Pi::player->SetFollowCloud(cloud);
+	Pi::sectorView->SetHyperspaceTarget(cloud->GetShip()->GetHyperspaceDest());
 }
 
 void WorldView::UpdateCommsOptions()
@@ -1451,7 +1289,7 @@ void WorldView::Draw()
 	View::Draw();
 
 	// don't draw crosshairs etc in hyperspace
-	if (Space::GetHyperspaceAnim() != 0) return;
+	if (Pi::player->GetFlightState() == Ship::HYPERSPACE) return;
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glColor4f(1.0f, 1.0f, 1.0f, 0.8f);

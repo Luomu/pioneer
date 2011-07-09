@@ -8,7 +8,8 @@
 #include "ShipCpanel.h"
 #include "KeyBindings.h"
 
-Player::Player(ShipType::Type shipType): Ship(shipType)
+Player::Player(ShipType::Type shipType): Ship(shipType),
+	m_followCloud(0)
 {
 	m_mouseActive = false;
 	m_flightControlState = CONTROL_MANUAL;
@@ -32,6 +33,7 @@ void Player::Save(Serializer::Writer &wr)
 	wr.Double(m_setSpeed);
 	wr.Int32(m_killCount);
 	wr.Int32(m_knownKillCount);
+	wr.Int32(Serializer::LookupBody(m_followCloud));
 }
 
 void Player::Load(Serializer::Reader &rd)
@@ -42,6 +44,12 @@ void Player::Load(Serializer::Reader &rd)
 	m_setSpeed = rd.Double();
 	m_killCount = rd.Int32();
 	m_knownKillCount = rd.Int32();
+	m_followCloudIndex = rd.Int32();
+}
+
+void Player::PostLoadFixup()
+{
+	m_followCloud = dynamic_cast<HyperspaceCloud*>(Serializer::LookupBody(m_followCloudIndex));
 }
 
 void Player::OnHaveKilled(Body *guyWeKilled)
@@ -175,10 +183,8 @@ void Player::PollControls(const float timeStep)
 	double invTimeAccel = 1.0 / time_accel;
 	static bool stickySpeedKey = false;
 
-	if ((time_accel == 0) || GetDockedWith() || Pi::player->IsDead() ||
-	    (GetFlightState() != FLYING)) {
+	if (time_accel == 0 || Pi::player->IsDead() || GetFlightState() != FLYING)
 		return;
-	}
 
 	// if flying 
 	{
@@ -314,7 +320,7 @@ void Player::SetAlertState(Ship::AlertState as)
 
 		case ALERT_SHIP_FIRING:
 			Pi::cpan->MsgLog()->ImportantMessage("", "Laser fire detected.");
-			Sound::PlaySfx("warning");
+			Sound::PlaySfx("warning", 0.2f, 0.2f, 0);
 			break;
 	}
 

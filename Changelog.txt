@@ -1,3 +1,73 @@
+Alpha 13
+
+  * New features
+    * New song 'spacegroove' (#267)
+    * Caching of models and textures on startup, reduces loading times (#271)
+    * Separate hyperspace target from selected system in sector view (#269)
+    * Charon a moon of pluto (#276)
+    * Gas giants overhaul, 5 new gas giant colours/terrains implimented (#276)
+    * Atmosphere selection changed, planets can have a more varied atmospheric composition (#276)
+    * Planetary rings are more varied and come in various colours (#276)
+
+  * Fixes
+    * Move sector view to current system on first open (#262)
+    * Check hyperspace validity at hyperspace time, fixes erroneous jumps to
+      Sol (#269)
+
+  * Internal changes
+    * Merged SysLoc and SBodyPath into a single SystemPath class (#261)
+    * Refactored SectorView to use SystemPath internally (#262)
+    * Tweaks and improvements to several terrains (#276)
+
+Alpha 12
+
+  * New features
+    * Music! 17 songs and scriptable music engine and control script
+      (#233, #250, #171, #267)
+    * New star and planet images in system info view (#167)
+    * 'Home' key resets camera in external view (#199)
+    * Re-implemented and re-enabled old hill, mountain, volcano, desert and
+      river terrains for Earth and Mars-like worlds (#211)
+    * New "dunes" terrain for Mars-like worlds (#211)
+    * Earth terrain tweaks: more noise variations and reduced mountain
+      height (#211)
+    * System information (F7) button cycles through info tabs in system info
+      view (#212)
+    * Pause buttons now toggles game settings if game is already
+      paused (#217, #221)
+    * Can now set navigation target by clicking on bodies in the system info
+      view. Navigation target will be highlighted in the info view. Body info
+      is displayed on mouse hover (#220, #255)
+    * Lots of new and updated parts for facegen (#213)
+    * User configurable FOV support in the config file (#219)
+    * Distance and fuel required text in sector view now colourised to
+      indicate if jump is possible (#227)
+    * Highlight populated systems in sector view (#242)
+    * Mouse can now control ship rotation in ship info and shipyard (#243)
+    * New Lua event onFrameChanged and dynamic body frame attributes to help
+      determine which planet/station/etc a ship is near (#249)
+
+  * Fixes
+    * Lua model args passed as doubles to avoid loss of precision (eg
+      time) (#174, #176)
+    * Removed misleading F7/F8 text from zoom icons (#201)
+    * Pass alert state to Lua onShipAlertChanged event (#191, #195)
+    * Avoid loss of precision when calculating radius of very tiny bodies (#189)
+    * Hyperspace range is displayed correctly again (#222)
+    * Occasional crash in system cache pruning (#230, #237)
+    * Crash due to buffer overrun in sound player (#253)
+    * Fixed HDR lighting on Radeon (#87, #263)
+    * Replace broken hill/dune terrain with something that works
+    * Adjust Saturn, Uranus and Neptune so they have rings as appropriate
+
+  * Internal changes
+    * All model timing now based of game time (#175, #178)
+    * City models are now loaded at startup (#71)
+    * All terrains optimised (octave count reduced) (#211)
+    * Optionally use ccache to speed up builds (#235)
+    * New HYPERSPACE and DOCKED flight states to explicitly describe some
+      conditions instead of having to infer from other data (#89, #252)
+
 Alpha 11
 
   * New features
@@ -7,6 +77,7 @@ Alpha 11
     * Manual thruster adjustments can now be made in set-speed mode (#118)
     * 5 new ground based starports (1, 2, 3, 4 landing pad configs. 
       1 Airport config) (#120)
+    * Major upgrade to coriolis station model (#158)
     * Clicking on the hyperspace icon a second time after a hyperspace is
       initiated cancels the jump (#25)
     * Screenshots are now in PNG format (#91, #140)
@@ -25,10 +96,13 @@ Alpha 11
     * Remove duplicate system 'EI Cancri' [2,0]
     * Crash on call to Lua method Player.AddCrime
     * Crash on any mission failure (#144)
+	* Mission status screen layout tweaks (#145)
 
   * Internal changes
     * Lots of code cleanups, warnings silenced, etc
     * Fonts rendering controlled by per-font config files (#106, #113)
+    * Background stars & Milky Way use a VBO (#164)
+    * Remove non-VBO code paths in the terrain renderer
 
 Alpha 10
 

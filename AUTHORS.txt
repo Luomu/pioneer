@@ -1,6 +1,6 @@
-The Pioneer team are (13 May 2011, alpha 10):
+The Pioneer team are (8 July 2011, alpha 12):
 
-Project lead: John Jordan
+Project leads: Tom Morton, John Jordan
 
 Maintainer: Robert Norris
 
@@ -14,6 +14,8 @@ Programming:
   Phil Howlett
   Darren Salt
   Kimmo Kotajärvi
+  Andrew Copland
+  Paul Mahol
 
 Art:
   Gernot
@@ -24,7 +26,11 @@ Art:
   Tim Jones
   Ulf Pettersson
   Konrad Mruk
+  Marcel Tulloh
 
+Music:
+  Dan Bennett
+  Aaron Lewis
 
 Thanks to those that have moved on (we hope to see you back!)
 
@@ -36,7 +42,6 @@ Art:
   Peter Kurucz
   Fran Morton
   Steve Tyler
-  Marcel Tulloh
   Uncle Bob
 
 

@@ -51,7 +51,7 @@ namespace Render {
 	void PostProcess();
 	void SwapBuffers();
 
-	void PutPointSprites(int num, vector3f v[], float size, const float modulationCol[4], GLuint tex, int stride = sizeof(vector3f));
+	void PutPointSprites(int num, vector3f v[], float size, const float modulationCol[4], int stride = sizeof(vector3f));
 }
 
 #endif /* _RENDER_H */

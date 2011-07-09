@@ -31,6 +31,7 @@
 #include "Render.h"
 #include "AmbientSounds.h"
 #include "CustomSystem.h"
+#include "CityOnPlanet.h"
 #include "LuaManager.h"
 #include "LuaBody.h"
 #include "LuaShip.h"
@@ -40,7 +41,7 @@
 #include "LuaPlayer.h"
 #include "LuaCargoBody.h"
 #include "LuaStarSystem.h"
-#include "LuaSBodyPath.h"
+#include "LuaSystemPath.h"
 #include "LuaSBody.h"
 #include "LuaShipType.h"
 #include "LuaEquipType.h"
@@ -55,6 +56,9 @@
 #include "LuaTimer.h"
 #include "LuaRand.h"
 #include "LuaNameGen.h"
+#include "LuaMusic.h"
+#include "SoundMusic.h"
+#include "Background.h"
 #include <sstream>
 
 float Pi::gameTickAlpha;
@@ -69,7 +73,6 @@ sigc::signal<void, SDL_keysym*> Pi::onKeyRelease;
 sigc::signal<void, int, int, int> Pi::onMouseButtonUp;
 sigc::signal<void, int, int, int> Pi::onMouseButtonDown;
 sigc::signal<void> Pi::onPlayerChangeTarget;
-sigc::signal<void> Pi::onPlayerChangeHyperspaceTarget;
 sigc::signal<void> Pi::onPlayerChangeFlightControlState;
 sigc::signal<void> Pi::onPlayerChangeEquipment;
 sigc::signal<void, const SpaceStation*> Pi::onDockingClearanceExpired;
@@ -80,16 +83,18 @@ LuaEventQueue<> Pi::luaOnGameStart("onGameStart");
 LuaEventQueue<> Pi::luaOnGameEnd("onGameEnd");
 LuaEventQueue<Ship> Pi::luaOnEnterSystem("onEnterSystem");
 LuaEventQueue<Ship> Pi::luaOnLeaveSystem("onLeaveSystem");
+LuaEventQueue<Body> Pi::luaOnFrameChanged("onFrameChanged");
 LuaEventQueue<Ship,Body> Pi::luaOnShipDestroyed("onShipDestroyed");
 LuaEventQueue<Ship,Body> Pi::luaOnShipHit("onShipHit");
 LuaEventQueue<Ship,Body> Pi::luaOnShipCollided("onShipCollided");
 LuaEventQueue<Ship,SpaceStation> Pi::luaOnShipDocked("onShipDocked");
 LuaEventQueue<Ship,SpaceStation> Pi::luaOnShipUndocked("onShipUndocked");
-LuaEventQueue<Ship> Pi::luaOnShipAlertChanged("onShipAlertChanged");
+LuaEventQueue<Ship,const char *> Pi::luaOnShipAlertChanged("onShipAlertChanged");
 LuaEventQueue<Ship,CargoBody> Pi::luaOnJettison("onJettison");
 LuaEventQueue<Ship> Pi::luaOnAICompleted("onAICompleted");
 LuaEventQueue<SpaceStation> Pi::luaOnCreateBB("onCreateBB");
 LuaEventQueue<SpaceStation> Pi::luaOnUpdateBB("onUpdateBB");
+LuaEventQueue<> Pi::luaOnSongFinished("onSongFinished");
 int Pi::keyModState;
 char Pi::keyState[SDLK_LAST];
 char Pi::mouseButton[6];
@@ -139,6 +144,8 @@ const char * const Pi::combatRating[] = {
 ObjectViewerView *Pi::objectViewerView;
 #endif
 
+Sound::MusicPlayer Pi::musicPlayer;
+
 int Pi::CombatRating(int kills)
 {
 	if (kills < 8) return 0;
@@ -183,10 +190,10 @@ static void LuaInit()
 	LuaPlanet::RegisterClass();
 	LuaStar::RegisterClass();
 	LuaPlayer::RegisterClass();
-    LuaCargoBody::RegisterClass();
+	LuaCargoBody::RegisterClass();
 	LuaStarSystem::RegisterClass();
-	LuaSBodyPath::RegisterClass();
-    LuaSBody::RegisterClass();
+	LuaSystemPath::RegisterClass();
+	LuaSBody::RegisterClass();
 	LuaShipType::RegisterClass();
 	LuaEquipType::RegisterClass();
 	LuaRand::RegisterClass();
@@ -201,6 +208,7 @@ static void LuaInit()
 	Pi::luaOnGameEnd.RegisterEventQueue();
 	Pi::luaOnEnterSystem.RegisterEventQueue();
 	Pi::luaOnLeaveSystem.RegisterEventQueue();
+	Pi::luaOnFrameChanged.RegisterEventQueue();
 	Pi::luaOnShipDestroyed.RegisterEventQueue();
 	Pi::luaOnShipHit.RegisterEventQueue();
 	Pi::luaOnShipCollided.RegisterEventQueue();
@@ -211,6 +219,7 @@ static void LuaInit()
 	Pi::luaOnAICompleted.RegisterEventQueue();
 	Pi::luaOnCreateBB.RegisterEventQueue();
 	Pi::luaOnUpdateBB.RegisterEventQueue();
+	Pi::luaOnSongFinished.RegisterEventQueue();
 
 	LuaConstants::Register();
 	LuaEngine::Register();
@@ -218,7 +227,8 @@ static void LuaInit()
 	LuaUI::Register();
 	LuaFormat::Register();
 	LuaSpace::Register();
-    LuaNameGen::Register();
+	LuaNameGen::Register();
+	LuaMusic::Register();
 
 	luaL_dofile(l, (std::string(PIONEER_DATA_DIR) + "/pistartup.lua").c_str());
 
@@ -230,6 +240,7 @@ static void LuaInit()
 static void LuaInitGame() {
 	Pi::luaOnGameStart.ClearEvents();
 	Pi::luaOnGameEnd.ClearEvents();
+	Pi::luaOnFrameChanged.ClearEvents();
 	Pi::luaOnShipDestroyed.ClearEvents();
 	Pi::luaOnShipHit.ClearEvents();
 	Pi::luaOnShipCollided.ClearEvents();
@@ -240,6 +251,7 @@ static void LuaInitGame() {
 	Pi::luaOnAICompleted.ClearEvents();
 	Pi::luaOnCreateBB.ClearEvents();
 	Pi::luaOnUpdateBB.ClearEvents();
+	Pi::luaOnSongFinished.ClearEvents();
 }
 
 void Pi::Init()
@@ -332,8 +344,10 @@ void Pi::Init()
 	}
 	Render::Init(width, height);
 	draw_progress(0.1f);
+
 	Galaxy::Init();
 	draw_progress(0.2f);
+
 	NameGenerator::Init();
 	if (config.Int("DisableShaders")) Render::ToggleShaders();
 	if (config.Int("EnableHDR")) Render::ToggleHDR();
@@ -351,18 +365,24 @@ void Pi::Init()
 
 	ShipType::Init();
 	draw_progress(0.5f);
+
 	GeoSphere::Init();
 	draw_progress(0.6f);
-	GeoSphere::Init();
+
+	CityOnPlanet::Init();
 	draw_progress(0.7f);
+
 	Space::Init();
 	draw_progress(0.8f);
+
 	SpaceStation::Init();
 	draw_progress(0.9f);
 
 	if (!config.Int("DisableSound")) {
 		Sound::Init();
-		Sound::SetGlobalVolume(config.Float("SfxVolume"));
+		Sound::SetMasterVolume(config.Float("MasterVolume"));
+		Sound::SetSfxVolume(config.Float("SfxVolume"));
+		GetMusicPlayer().SetVolume(config.Float("MusicVolume"));
 		Sound::Pause(0);
 	}
 	draw_progress(1.0f);
@@ -674,7 +694,7 @@ void Pi::HandleEvents()
 	}
 }
 
-static void draw_intro(WorldView *view, float _time)
+static void draw_intro(Background::Starfield *starfield, Background::MilkyWay *milkyway, float _time)
 {
 	float lightCol[4] = { 1,1,1,0 };
 	float lightDir[4] = { 0,1,1,0 };
@@ -691,9 +711,14 @@ static void draw_intro(WorldView *view, float _time)
 		{ { 0.5f, 0.5f, 0.5f, 1.0f }, { 0, 0, 0 }, { 0, 0, 0 }, 0 },
 		{ { 0.8f, 0.8f, 0.8f, 1.0f }, { 0, 0, 0 }, { 0, 0, 0 }, 0 } },
 	};
+
 	glPushMatrix();
 	glRotatef(_time*10, 1, 0, 0);
-	view->DrawBgStars();
+	glPushMatrix();
+	glRotatef(40.0, 1.0, 2.0, 3.0);
+	milkyway->Draw();
+	glPopMatrix();
+	starfield->Draw();
 	glPopMatrix();
 	
 	glPushAttrib(GL_ALL_ATTRIB_BITS);
@@ -805,8 +830,8 @@ void Pi::InitGame()
 	Space::AddBody(player);
 	
 	cpan = new ShipCpanel();
-	worldView = new WorldView();
 	sectorView = new SectorView();
+	worldView = new WorldView();
 	galacticView = new GalacticView();
 	systemView = new SystemView();
 	systemInfoView = new SystemInfoView();
@@ -874,7 +899,8 @@ void Pi::UninitGame()
 
 void Pi::Start()
 {
-	WorldView *view = new WorldView();
+	Background::Starfield *starfield = new Background::Starfield();
+	Background::MilkyWay *milkyway = new Background::MilkyWay();
 	
 	Gui::Fixed *splash = new Gui::Fixed(Gui::Screen::GetWidth(), Gui::Screen::GetHeight());
 	Gui::Screen::AddBaseWidget(splash, 0, 0);
@@ -925,7 +951,7 @@ void Pi::Start()
 
 		Pi::SetMouseGrab(false);
 
-		draw_intro(view, _time);
+		draw_intro(starfield, milkyway, _time);
 		Render::PostProcess();
 		Gui::Draw();
 		Render::SwapBuffers();
@@ -941,14 +967,15 @@ void Pi::Start()
 	
 	Gui::Screen::RemoveBaseWidget(splash);
 	delete splash;
-	delete view;
+	delete starfield;
+	delete milkyway;
 	
 	InitGame();
 
     switch (choice) {
         case 1: // Earth start point
         {
-            SBodyPath path(0,0,0);
+            SystemPath path(0,0,0);
             Space::SetupSystemForGameStart(&path, 4, 0);
             StartGame();
             MainLoop();
@@ -956,7 +983,7 @@ void Pi::Start()
         }
         case 2: // Epsilon Eridani start point
         {
-            SBodyPath path(1,0,1);
+            SystemPath path(1,0,1);
             Space::SetupSystemForGameStart(&path, 0, 0);
             StartGame();
             MainLoop();
@@ -964,7 +991,7 @@ void Pi::Start()
         }
         case 3: // Debug start point
         {
-            SBodyPath path(1,0,1);
+            SystemPath path(1,0,1);
             Space::DoHyperspaceTo(&path);
             for (std::list<Body*>::iterator i = Space::bodies.begin(); i != Space::bodies.end(); i++) {
                 const SBody *sbody = (*i)->GetSBody();
@@ -1129,7 +1156,7 @@ void Pi::MainLoop()
 		//if (glGetError()) printf ("GL: %s\n", gluErrorString (glGetError ()));
 		
 		int timeAccel = Pi::requestedTimeAccelIdx;
-		if (Pi::player->GetFlightState() == Ship::FLYING && !Space::GetHyperspaceAnim()) {
+		if (Pi::player->GetFlightState() == Ship::FLYING) {
 
 			// special timeaccel lock rules while in alert
 			if (Pi::player->GetAlertState() == Ship::ALERT_SHIP_NEARBY)
@@ -1195,6 +1222,7 @@ void Pi::MainLoop()
 		}
 		cpan->Update();
 		currentView->Update();
+		musicPlayer.Update();
 
 		if (SDL_GetTicks() - last_stats > 1000) {
 			Pi::statSceneTris += LmrModelGetStatsTris();
@@ -1219,21 +1247,15 @@ void Pi::MainLoop()
 
 StarSystem *Pi::GetSelectedSystem()
 {
-	int sector_x, sector_y, system_idx;
-	Pi::sectorView->GetSelectedSystem(&sector_x, &sector_y, &system_idx);
-	if (system_idx == -1) {
-		selectedSystem = 0;
-		return NULL;
-	}
+	SystemPath selectedPath = Pi::sectorView->GetSelectedSystem();
+
 	if (selectedSystem) {
-		if (!selectedSystem->IsSystem(sector_x, sector_y, system_idx)) {
-            selectedSystem->Release();
-			selectedSystem = 0;
-		}
+		if (selectedSystem->GetPath().IsSameSystem(selectedPath))
+			return selectedSystem;
+		selectedSystem->Release();
 	}
-	if (!selectedSystem) {
-		selectedSystem = StarSystem::GetCached(sector_x, sector_y, system_idx);
-	}
+
+	selectedSystem = StarSystem::GetCached(selectedPath);
 	return selectedSystem;
 }
 
@@ -1309,7 +1331,11 @@ void Pi::Unserialize(Serializer::Reader &rd)
 
 float Pi::CalcHyperspaceRange(int hyperclass, int total_mass_in_tonnes)
 {
-	return 200.0f * hyperclass * hyperclass / float(total_mass_in_tonnes);
+	// for the sake of hyperspace range, we count ships mass as 60% of original.
+	// Brian: "The 60% value was arrived at through trial and error, 
+	// to scale the entire jump range calculation after things like ship mass,
+	// cargo mass, hyperdrive class, fuel use and fun were factored in."
+	return 200.0f * hyperclass * hyperclass / (float(total_mass_in_tonnes)*0.6);
 }
 
 void Pi::Message(const std::string &message, const std::string &from, enum MsgLevel level)

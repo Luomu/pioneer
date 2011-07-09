@@ -43,13 +43,13 @@ public:
 		Add(l, 260, 20+YSEP*2);
 		
 		l = new Gui::Label("Due");
-		Add(l, 440, 20+YSEP*2);
+		Add(l, 420, 20+YSEP*2);
 		
 		l = new Gui::Label("Reward");
-		Add(l, 560, 20+YSEP*2);
+		Add(l, 580, 20+YSEP*2);
 
 		l = new Gui::Label("Status");
-		Add(l, 660, 20+YSEP*2);
+		Add(l, 680, 20+YSEP*2);
 
 		ShowChildren();
 
@@ -62,9 +62,9 @@ public:
 
 		float ypos = 0;
 		for (std::list<const Mission*>::const_iterator i = missions.begin(); i != missions.end(); ++i) {
-			SBodyPath sbp = (*i)->location;
-			StarSystem *s = StarSystem::GetCached(sbp);
-			SBody *sbody = s->GetBodyByPath(&sbp);
+			SystemPath path = (*i)->location;
+			StarSystem *s = StarSystem::GetCached(path);
+			SBody *sbody = s->GetBodyByPath(&path);
 
 			l = new Gui::Label((*i)->type);
 			innerbox->Add(l, 0, ypos);
@@ -72,14 +72,14 @@ public:
 			l = new Gui::Label((*i)->client);
 			innerbox->Add(l, 80, ypos);
 			
-			l = new Gui::Label(stringf(256, "%s,\n%s (%d, %d)", sbody->name.c_str(), s->GetName().c_str(), sbp.sectorX, sbp.sectorY));
+			l = new Gui::Label(stringf(256, "%s,\n%s (%d, %d)", sbody->name.c_str(), s->GetName().c_str(), path.sectorX, path.sectorY));
 			innerbox->Add(l, 240, ypos);
 			
 			l = new Gui::Label(format_date((*i)->due));
-			innerbox->Add(l, 420, ypos);
+			innerbox->Add(l, 400, ypos);
 
 			l = new Gui::Label(format_money((*i)->reward));
-			innerbox->Add(l, 540, ypos);
+			innerbox->Add(l, 560, ypos);
 
 			switch ((*i)->status) {
 				case Mission::FAILED: l = new Gui::Label("#f00Failed"); break;
@@ -87,7 +87,7 @@ public:
 				default:
 				case Mission::ACTIVE: l = new Gui::Label("#0f0Active"); break;
 			}
-			innerbox->Add(l, 640, ypos);
+			innerbox->Add(l, 660, ypos);
 
 			ypos += YSEP*3;
 		}
@@ -259,7 +259,6 @@ InfoView::InfoView(): View()
 	m_tabs->AddPage(new Gui::Label("Missions"), page);
 	
 	Add(m_tabs, 0, 0);
-//	m_tabs->SetShortcut(SDLK_F3, KMOD_NONE);
 	m_doUpdate = true;
 }
 
@@ -287,8 +286,17 @@ void InfoView::Draw3D()
 	float guiscale[2];
 	Gui::Screen::GetCoords2Pixels(guiscale);
 	static float rot1, rot2;
-	rot1 += .5*Pi::GetFrameTime();
-	rot2 += Pi::GetFrameTime();
+	if (Pi::MouseButtonState(3)) {
+		int m[2];
+		Pi::GetMouseMotion(m);
+		rot1 += -0.002*m[1];
+		rot2 += -0.002*m[0];
+	}
+	else
+	{
+		rot1 += .5*Pi::GetFrameTime();
+		rot2 += Pi::GetFrameTime();
+	}
 	glClearColor(0,.2,.4,0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glMatrixMode(GL_PROJECTION);

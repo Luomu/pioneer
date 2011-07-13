@@ -35,7 +35,8 @@ local onChat = function(form, ref, option)
 			clientLocation = ad.location,
 			reward   = ad.reward,
 			due      = ad.due,
-			flavour  = ad.flavour
+			flavour  = ad.flavour,
+			status   = 'ACTIVE'
 		}
 
 		local mref = Game.player:AddMission(mission)
@@ -145,6 +146,24 @@ local onDeploy = function(ship, cargo)
 	end
 end
 
+local onLanded = function(ship, body)
+	for ref,mission in pairs(missions) do
+		print(mission.status,mission.location)
+		if mission.status == 'ACTIVE' then
+			--~ if mission.location:GetBodyName() == body.label then
+				--~ UI.Message("Geological probe deployed.")
+				--~ mission.status = 'COMPLETED'
+			--~ end
+			if body.label == 'Earth' then
+				UI.Message("Geological probe deployed.")
+				mission.status = 'COMPLETED'
+				mission.location = mission.clientLocation
+				Game.player:UpdateMission(ref, mission)
+			end
+		end
+	end
+end
+
 local loaded_data
 
 local onGameStart = function ()
@@ -178,5 +197,6 @@ EventQueue.onCreateBB:Connect(onCreateBB)
 EventQueue.onUpdateBB:Connect(onUpdateBB)
 EventQueue.onShipDocked:Connect(onShipDocked)
 EventQueue.onJettison:Connect(onDeploy)
+EventQueue.onShipLanded:Connect(onLanded)
 
 Serializer:Register("DeployProbe", serialize, unserialize)

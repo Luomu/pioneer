@@ -89,6 +89,7 @@ LuaEventQueue<Ship,Body> Pi::luaOnShipHit("onShipHit");
 LuaEventQueue<Ship,Body> Pi::luaOnShipCollided("onShipCollided");
 LuaEventQueue<Ship,SpaceStation> Pi::luaOnShipDocked("onShipDocked");
 LuaEventQueue<Ship,SpaceStation> Pi::luaOnShipUndocked("onShipUndocked");
+LuaEventQueue<Ship, Body> Pi::luaOnShipLanded("onShipLanded");
 LuaEventQueue<Ship,const char *> Pi::luaOnShipAlertChanged("onShipAlertChanged");
 LuaEventQueue<Ship,CargoBody> Pi::luaOnJettison("onJettison");
 LuaEventQueue<Ship> Pi::luaOnAICompleted("onAICompleted");
@@ -213,6 +214,7 @@ static void LuaInit()
 	Pi::luaOnShipHit.RegisterEventQueue();
 	Pi::luaOnShipCollided.RegisterEventQueue();
 	Pi::luaOnShipDocked.RegisterEventQueue();
+	Pi::luaOnShipLanded.RegisterEventQueue();
 	Pi::luaOnShipUndocked.RegisterEventQueue();
 	Pi::luaOnShipAlertChanged.RegisterEventQueue();
 	Pi::luaOnJettison.RegisterEventQueue();
@@ -246,6 +248,7 @@ static void LuaInitGame() {
 	Pi::luaOnShipCollided.ClearEvents();
 	Pi::luaOnShipDocked.ClearEvents();
 	Pi::luaOnShipUndocked.ClearEvents();
+	Pi::luaOnShipLanded.ClearEvents();
 	Pi::luaOnShipAlertChanged.ClearEvents();
 	Pi::luaOnJettison.ClearEvents();
 	Pi::luaOnAICompleted.ClearEvents();
@@ -383,7 +386,11 @@ void Pi::Init()
 		Sound::SetMasterVolume(config.Float("MasterVolume"));
 		Sound::SetSfxVolume(config.Float("SfxVolume"));
 		GetMusicPlayer().SetVolume(config.Float("MusicVolume"));
+
 		Sound::Pause(0);
+		if (config.Int("MasterMuted")) Sound::Pause(1);
+		if (config.Int("SfxMuted")) Sound::SetSfxVolume(0.f);
+		if (config.Int("MusicMuted")) GetMusicPlayer().SetEnabled(false);
 	}
 	draw_progress(1.0f);
 
@@ -842,7 +849,7 @@ void Pi::InitGame()
 	objectViewerView = new ObjectViewerView();
 #endif
 
-	AmbientSounds::Init();
+	if (!config.Int("DisableSound")) AmbientSounds::Init();
 
 	LuaInitGame();
 }
@@ -873,7 +880,7 @@ void Pi::StartGame()
 
 void Pi::UninitGame()
 {
-	AmbientSounds::Uninit();
+	if (!config.Int("DisableSound")) AmbientSounds::Uninit();
 	Sound::DestroyAllEvents();
 
 #if OBJECTVIEWER
@@ -1217,7 +1224,7 @@ void Pi::MainLoop()
 			}
 		} else {
 			// this is something we need not do every turn...
-			AmbientSounds::Update();
+			if (!config.Int("DisableSound")) AmbientSounds::Update();
 			StarSystem::ShrinkCache();
 		}
 		cpan->Update();

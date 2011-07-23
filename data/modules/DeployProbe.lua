@@ -5,7 +5,7 @@
 -- way to check landing on a planet
 -- a quest specific item
 -- a way to use the item
-local max_delivery_dist = 20
+local max_dist = 10
 
 local missions = {}
 local ads = {}
@@ -63,28 +63,57 @@ local onDelete = function(ref)
 	ads[ref] = nil
 end
 
+function findSuitablePlanet(systems)
+	local suitablePaths = {}
+
+	for k,sys in pairs(systems) do
+		local syspaths = sys:GetBodyPaths()
+		for p,path in pairs(syspaths) do
+			local bod = path:GetSystemBody()
+			if bod.superType == 'ROCKY_PLANET' then
+				table.insert(suitablePaths, path)
+			end
+		end
+	end
+
+	if #suitablePaths == 0 then
+		return nil
+	else
+		return suitablePaths[Engine.rand:Integer(1, #suitablePaths)]
+	end
+end
+
 local makeAdvert = function(station)
 	--need to find: landable planet in an unexplored system
 	--reusing same planets is not a big problem
-	local nearbysystems = Game.system:GetNearbySystems(max_delivery_dist, function (s) return #s:GetStationPaths() > 0 end)
-	if #nearbysystems == 0 then return end
+	--we could also avoid this and let the player pick a promising system
+	--and value the data based on some criteria (that the player can figure out
+	--with experience)
+	local systems = Game.system:GetNearbySystems(max_dist, function(s) return s.population == 0 end)
+	if #systems == 0 then return end --unlikely
 
-	local nearbysystem = nearbysystems[Engine.rand:Integer(1,#nearbysystems)]
-	local dist = nearbysystem:DistanceTo(Game.system)
+	local path = findSuitablePlanet(systems)
+	if path == nil then return end
 
-	local nearbystations = nearbysystem:GetStationPaths()
-	local location = nearbystations[Engine.rand:Integer(1,#nearbystations)]
+	--~ local nearbysystems = Game.system:GetNearbySystems(max_dist, findSuitableSystem)
+	--~ if #nearbysystems == 0 then return end
+
+	--~ local nearbysystem = nearbysystems[Engine.rand:Integer(1,#nearbysystems)]
+	--~ local dist = path:GetStarSystem():DistanceTo(Game.system)
+
+	--~ local nearbystations = nearbysystem:GetStationPaths()
+	local location = path
 	local flavour = "WANTED. Someone to probe a ball of rock. Big rewards."
 	local isfemale = Engine.rand:Integer(1) == 1
 	local client = NameGen.FullName(isfemale)
-	local due = Game.time + 3*24*60*60
+	local due = Game.time + 15*24*60*60 --plenty of time
 	local reward = 5000
 
 	local ad = {
 		station  = station,
 		flavour  = flavour,
 		client   = client,
-		location = station.path,
+		location = path,
 		targetLocation = location,
 		due      = due,
 		reward   = reward,

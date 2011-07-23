@@ -5,7 +5,13 @@
 -- way to check landing on a planet
 -- a quest specific item
 -- a way to use the item
+-- reward bonus is based on distance from client and planet
+-- characteristics (which cannot be accessed yet) and danger
+-- from environmental hazards (which do not exist yet)
 local max_dist = 10
+local base_reward = 5000 --how much is enough?
+local distance_bonus = 100 --per LY
+local probe_type = 'MINING_MACHINERY' --the probest there is now
 
 local missions = {}
 local ads = {}
@@ -22,7 +28,7 @@ local onChat = function(form, ref, option)
 
 	if option == 0 then --greeting
 		form:SetFace({ female = ad.isfemale, seed = ad.faceseed })
-		form:SetMessage("Hello. There.\n\nYou will need one ton of free cargo space.")
+		form:SetMessage("Hello. We want you to drop our fancy probe on a planet of your choosing. You need one ton of free cargo space.")
 	elseif option == 1 then --accept
 		form:RemoveAdvertOnClose()
 
@@ -31,27 +37,30 @@ local onChat = function(form, ref, option)
 		local mission = {
 			type     = "Probing",
 			client   = ad.client,
-			location = ad.targetLocation,
-			clientLocation = ad.location,
+			location = ad.location,
 			reward   = ad.reward,
 			due      = ad.due,
 			flavour  = ad.flavour,
-			status   = 'ACTIVE'
+			status   = 'ACTIVE',
+			bonus    = 0,
 		}
 
 		local mref = Game.player:AddMission(mission)
 		missions[mref] = mission
 
-		form:SetMessage("Good. Get to it. Must be done by " .. Format.Date(ad.due))
-		Game.player:AddEquip("MINING_MACHINERY")
+		form:SetMessage("Good. Return here with the probe data for your reward. You have until " .. Format.Date(ad.due))
+		Game.player:AddEquip(probe_type, 1)
 		form:AddOption("Hang up.", -1)
 
 		return
+	elseif option == 2 then -- more info
+		form:SetMessage("Beats me.")
 	end
 
 	local stats = Game.player:GetStats()
 	if stats.freeCapacity > 0 then
 		form:AddOption("I'll do it.", 1)
+		form:AddOption("What are good planets?", 2)
 		form:AddOption("Hang up.", -1)
 	else
 		form:AddOption("I don't have cargo space right now.", -1)
@@ -84,41 +93,22 @@ function findSuitablePlanet(systems)
 end
 
 local makeAdvert = function(station)
-	--need to find: landable planet in an unexplored system
-	--reusing same planets is not a big problem
-	--we could also avoid this and let the player pick a promising system
-	--and value the data based on some criteria (that the player can figure out
-	--with experience)
-	local systems = Game.system:GetNearbySystems(max_dist, function(s) return s.population == 0 end)
-	if #systems == 0 then return end --unlikely
-
-	local path = findSuitablePlanet(systems)
-	if path == nil then return end
-
-	--~ local nearbysystems = Game.system:GetNearbySystems(max_dist, findSuitableSystem)
-	--~ if #nearbysystems == 0 then return end
-
-	--~ local nearbysystem = nearbysystems[Engine.rand:Integer(1,#nearbysystems)]
-	--~ local dist = path:GetStarSystem():DistanceTo(Game.system)
-
-	--~ local nearbystations = nearbysystem:GetStationPaths()
 	local location = path
-	local flavour = "WANTED. Someone to probe a ball of rock. Big rewards."
+	local flavour = "WANTED. Someone to probe interesting balls of rock. Big rewards."
 	local isfemale = Engine.rand:Integer(1) == 1
 	local client = NameGen.FullName(isfemale)
 	local due = Game.time + 15*24*60*60 --plenty of time
-	local reward = 5000
+	local reward = base_reward
 
 	local ad = {
 		station  = station,
 		flavour  = flavour,
 		client   = client,
-		location = path,
-		targetLocation = location,
+		location = station.path,
 		due      = due,
 		reward   = reward,
 		isfemale = isfemale,
-		faceseed = Engine.rand:Integer(),
+		faceseed = Engine.rand:Integer(), --would rather get some scientistic faces and backgrounds
 		desc     = flavour,
 	}
 
@@ -143,6 +133,7 @@ end
 
 local onShipDocked = function(ship, station)
 	if not ship:IsPlayer() then return end
+	--should have a chat with employer to determine reward
 	--check for success, or failure
 	--failure conditions:
 	--time limit exceeded
@@ -151,7 +142,7 @@ local onShipDocked = function(ship, station)
 		if mission.location == station.path then
 			if mission.status == 'COMPLETED' then
 				UI.ImportantMessage("That was excellent probing.", mission.client)
-				Game.player:AddMoney(mission.reward)
+				Game.player:AddMoney(mission.reward + mission.bonus)
 				removeMission(ref)
 			elseif mission.status == 'FAILED' or Game.time > mission.due then
 				UI.ImportantMessage("You failure. No money for you.", mission.client)
@@ -165,28 +156,28 @@ end
 -- jettisoning in space is not instant fail as cargo is recoverable
 local onDeploy = function(ship, cargo)
 	if not ship:IsPlayer() then return end
-	if cargo.type ~= 'MINING_MACHINERY' then return end
-	print(ship.label .. " dumped some " .. cargo.type)
+	if cargo.type ~= probe_type then return end
 	for ref,mission in pairs(missions) do
-		-- Correct location?
 		mission.status = 'COMPLETED'
-		mission.location = mission.clientLocation
 		Game.player:UpdateMission(ref, mission)
+		return
 	end
 end
 
 local onLanded = function(ship, body)
+	--unexplored systems only
+	if body.path:GetStarSystem().population > 0 then return end
+
 	for ref,mission in pairs(missions) do
 		print(mission.status,mission.location)
 		if mission.status == 'ACTIVE' then
-			--~ if mission.location:GetBodyName() == body.label then
-				--~ UI.Message("Geological probe deployed.")
-				--~ mission.status = 'COMPLETED'
-			--~ end
-			if body.label == 'Earth' then
+			--need probes
+			if ship:GetEquipCount('CARGO', probe_type) > 0 then
+				ship:RemoveEquip(probe_type, 1)
+				--would like to show more text here but it might not fit on screen right now
 				UI.Message("Geological probe deployed.")
 				mission.status = 'COMPLETED'
-				mission.location = mission.clientLocation
+				mission.bonus = mission.bonus + distance_bonus * body.path:DistanceTo(mission.location)
 				Game.player:UpdateMission(ref, mission)
 			end
 		end

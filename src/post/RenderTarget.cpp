@@ -49,7 +49,6 @@ void RenderTarget::BeginRTT()
 	glViewport(0, 0, m_w, m_h);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.f, 0.f, 0.f, 1.f);
-
 }
 
 void RenderTarget::EndRTT()
@@ -57,6 +56,52 @@ void RenderTarget::EndRTT()
 	//restore viewport and unbind fbo
 	glPopAttrib();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+/*
+ * Draw the texture on screen, w/h in screen percent.
+ * This is only for testing.
+ */
+void RenderTarget::Show(const float x, const float y,
+	const float w, const float h) const
+{
+	const int width = 100;
+	const int height = 100;
+
+	glPushAttrib(GL_ENABLE_BIT);
+	glDisable(GL_LIGHTING);
+	glDisable(GL_DEPTH_TEST);
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	glOrtho(0, width, height, 0, -1, 1);
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+
+	glActiveTexture(GL_TEXTURE0);
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, m_texture);
+
+	glLoadIdentity();
+
+	glBegin(GL_QUADS);
+	glTexCoord2f(0.f, 1.f);
+	 glVertex2f(x, y);
+	glTexCoord2f(0.f, 0.f);
+	 glVertex2f(x, y + h);
+	glTexCoord2f(1.f, 0.f);
+	 glVertex2f(x + w, y + h);
+	glTexCoord2f(1.f, 1.f);
+	 glVertex2f(x + w, y);
+	glEnd();
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+	glPopAttrib();
 }
 
 }

@@ -12,6 +12,8 @@ namespace Post {
 		~RenderTarget();
 		void BeginRTT();
 		void EndRTT();
+		GLuint GetTexture() const { return m_texture; }
+		void Show(float x=0.f, float y=0.f, float w=100.f, float h=100.f) const;
 	private:
 		int m_w;
 		int m_h;

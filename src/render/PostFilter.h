@@ -1,4 +1,5 @@
 #pragma once
+#include "RenderShader.h"
 
 namespace Render {
 

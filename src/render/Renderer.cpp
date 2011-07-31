@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include <SDL.h>
 
 namespace Render {
 

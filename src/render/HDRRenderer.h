@@ -20,7 +20,7 @@ public:
 	void SwapBuffers();
 private:
 	RenderTarget *m_target;
-	Post::Filter *m_exampleFilter;
+	RenderTarget *m_target2;
 };
 
 }

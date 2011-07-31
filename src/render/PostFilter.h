@@ -7,6 +7,7 @@ namespace Render {
 namespace Post {
 
 typedef RenderTarget* FilterSource;
+typedef RenderTarget* FilterTarget;
 
 /*
  * Performs a filter operation on Source, renders to Target
@@ -27,6 +28,17 @@ class Present : public Filter {
 public:
 	Present(FilterSource);
 	void Execute();
+};
+
+/*
+ * Colourize the source texture to a surprise colour
+ */
+class Tint : public Filter {
+public:
+	Tint(FilterSource, FilterTarget);
+	void Execute();
+private:
+	FilterTarget m_target;
 };
 
 }

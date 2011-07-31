@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdexcept>
-
 /*
  * Render to a FBO texture
  */
@@ -22,10 +20,3 @@ namespace Post {
 		GLuint m_texture;
 	};
 }
-
-class RenderException : public std::runtime_error
-{
-public:
-	RenderException(const std::string &what) : std::runtime_error(what.c_str()) { }
-	RenderException(const char *what) : std::runtime_error(what) { }
-};

@@ -162,6 +162,9 @@
     <ClCompile Include="..\..\src\render\HDRRenderer.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\render\PostFilter.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -324,6 +327,9 @@
       <Filter>src\render</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\render\HDRRenderer.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\render\PostFilter.h">
       <Filter>src\render</Filter>
     </ClInclude>
   </ItemGroup>

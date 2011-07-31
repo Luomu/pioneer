@@ -6,6 +6,8 @@ namespace Render {
 
 class RenderTarget;
 
+namespace Post { class Filter; }
+
 /*
  * Renders to a HDR render target
  */
@@ -18,6 +20,7 @@ public:
 	void SwapBuffers();
 private:
 	RenderTarget *m_target;
+	Post::Filter *m_exampleFilter;
 };
 
 }

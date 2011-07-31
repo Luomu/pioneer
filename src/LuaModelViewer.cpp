@@ -70,7 +70,7 @@ public:
 		m_showBoundingRadius = false;
 		Gui::Screen::AddBaseWidget(this, 0, 0);
 		SetTransparency(true);
-		m_renderer = new Render::HDRRenderer();
+		m_renderer = new Render::HDRRenderer(g_width, g_height);
 
 		m_trisReadout = new Gui::Label("");
 		Add(m_trisReadout, 500, 0);

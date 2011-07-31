@@ -190,6 +190,7 @@
     <ClCompile Include="..\..\src\Planet.cpp" />
     <ClCompile Include="..\..\src\Player.cpp" />
     <ClCompile Include="..\..\src\Polit.cpp" />
+    <ClCompile Include="..\..\src\post\RenderTarget.cpp" />
     <ClCompile Include="..\..\src\Projectile.cpp" />
     <ClCompile Include="..\..\src\Render.cpp" />
     <ClCompile Include="..\..\src\RenderShader.cpp" />
@@ -352,6 +353,7 @@
     <ClInclude Include="..\..\src\Planet.h" />
     <ClInclude Include="..\..\src\Player.h" />
     <ClInclude Include="..\..\src\Polit.h" />
+    <ClInclude Include="..\..\src\post\RenderTarget.h" />
     <ClInclude Include="..\..\src\Projectile.h" />
     <ClInclude Include="..\..\src\Quaternion.h" />
     <ClInclude Include="..\..\src\RefCounted.h" />

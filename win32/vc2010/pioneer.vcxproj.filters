@@ -16,6 +16,9 @@
     <Filter Include="src\gui">
       <UniqueIdentifier>{5f9ae661-2520-48e2-b510-4db78c61e4e3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\post">
+      <UniqueIdentifier>{ee4f3032-b4d3-475c-aadb-1dca00668e3b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\collider\BVHTree.cpp">
@@ -440,6 +443,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\gui\GuiGradient.cpp">
       <Filter>src\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\post\RenderTarget.cpp">
+      <Filter>src\post</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -928,6 +934,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\gui\GuiGradient.h">
       <Filter>src\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\post\RenderTarget.h">
+      <Filter>src\post</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

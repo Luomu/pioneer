@@ -25,8 +25,14 @@ RenderTarget::RenderTarget(int w, int h) :
 
 	glGenTextures(1, &m_texture);
 	glBindTexture(GL_TEXTURE_2D, m_texture);
-	glTexImage2D(GL_TEXTURE, 0, internalFormat, m_w, m_h, 0, format,
-		type, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_w, m_h, 0,
+		format, type, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+		GL_TEXTURE_2D, m_texture, 0);
 
 	const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (status != GL_FRAMEBUFFER_COMPLETE)
@@ -45,8 +51,8 @@ RenderTarget::~RenderTarget()
 void RenderTarget::BeginRTT()
 {
 	//save current viewport and bind fbo
-	glPushAttrib(GL_VIEWPORT_BIT);
 	glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+	glPushAttrib(GL_VIEWPORT_BIT);
 	glViewport(0, 0, m_w, m_h);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.f, 0.f, 0.f, 1.f);
@@ -68,6 +74,7 @@ void RenderTarget::Show(const float x, const float y,
 {
 	const int width = 100;
 	const int height = 100;
+	glColor4f(1.f, 1.f, 1.f, 1.f);
 
 	glPushAttrib(GL_ENABLE_BIT);
 	glDisable(GL_LIGHTING);

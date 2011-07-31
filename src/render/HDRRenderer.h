@@ -4,12 +4,15 @@
 
 namespace Render {
 
+class RenderTarget;
+
 /*
  * Renders to a HDR render target
  */
 class HDRRenderer : public Renderer {
 public:
-	HDRRenderer();
+	HDRRenderer(int w, int h);
+	~HDRRenderer();
 	void BeginFrame();
 	void EndFrame();
 	void SwapBuffers();

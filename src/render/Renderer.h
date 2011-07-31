@@ -4,16 +4,18 @@
 
 namespace Render {
 
-class RenderTarget;
-
 /*
  * Controls render targets and post processing
  */
 class Renderer {
 public:
+	Renderer(int w, int h);
 	virtual void BeginFrame() = 0;
 	virtual void EndFrame() = 0;
 	void SwapBuffers();
+protected:
+	int m_width;
+	int m_height;
 };
 
 class RenderException : public std::runtime_error

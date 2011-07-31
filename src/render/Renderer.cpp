@@ -1,16 +1,16 @@
 #include "Renderer.h"
 
-Renderer::BeginFrame()
+void Renderer::BeginFrame()
 {
 	//bind fbo
 }
 
-Renderer::EndFrame()
+void Renderer::EndFrame()
 {
 	//unbind fbo and do post
 }
 
-Renderer::SwapBuffers()
+void Renderer::SwapBuffers()
 {
 	SDL_GL_SwapBuffers();
 }

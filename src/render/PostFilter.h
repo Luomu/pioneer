@@ -14,10 +14,11 @@ typedef RenderTarget* FilterTarget;
  */
 class Filter {
 public:
-	Filter(FilterSource source);
+	Filter(FilterSource source, FilterTarget target);
 	virtual void Execute() = 0;
 protected:
 	FilterSource m_source;
+	FilterTarget m_target;
 };
 
 /*
@@ -37,8 +38,21 @@ class Tint : public Filter {
 public:
 	Tint(FilterSource, FilterTarget);
 	void Execute();
+};
+
+SHADER_CLASS_BEGIN(Blursh)
+	SHADER_UNIFORM_SAMPLER(tex)
+SHADER_CLASS_END()
+
+/*
+ * Blurs the source texture somewhat
+ */
+class Blur : public Filter {
+public:
+	Blur(FilterSource, FilterTarget);
+	void Execute();
 private:
-	FilterTarget m_target;
+	Blursh *m_shader;
 };
 
 }

@@ -21,6 +21,7 @@ public:
 private:
 	RenderTarget *m_target;
 	RenderTarget *m_target2;
+	Post::Filter *m_blurFilter;
 };
 
 }

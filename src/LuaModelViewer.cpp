@@ -3,6 +3,8 @@
 #include "collider/collider.h"
 #include "LmrModel.h"
 #include "Render.h"
+#include "render/Renderer.h"
+#include "render/HDRRenderer.h"
 
 static SDL_Surface *g_screen;
 static int g_width, g_height;
@@ -38,6 +40,8 @@ static LmrObjParams params = {
 };
 
 class Viewer: public Gui::Fixed {
+private:
+	Render::Renderer *m_renderer;
 public:
 	Gui::Adjustment *m_linthrust[3];
 	Gui::Adjustment *m_angthrust[3];
@@ -66,6 +70,7 @@ public:
 		m_showBoundingRadius = false;
 		Gui::Screen::AddBaseWidget(this, 0, 0);
 		SetTransparency(true);
+		m_renderer = new Render::HDRRenderer();
 
 		m_trisReadout = new Gui::Label("");
 		Add(m_trisReadout, 500, 0);
@@ -156,6 +161,10 @@ public:
 
 		ShowAll();
 		Show();
+	}
+
+	~Viewer() {
+		delete m_renderer;
 	}
 
 	void OnAnimChange(Gui::Adjustment *a, Gui::TextEntry *e) {
@@ -256,13 +265,13 @@ void Viewer::PickModel()
 		this->Hide();
 		f->ShowAll();
 		PollEvents();
-		Render::PrepareFrame();
+		m_renderer->BeginFrame();
 		glClearColor(0,0,0,0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		Render::PostProcess();
+		m_renderer->EndFrame();
 		Gui::Draw();
 		glError();
-		Render::SwapBuffers();
+		m_renderer->SwapBuffers();
 	}
 	Gui::Screen::RemoveBaseWidget(f);
 	delete f;
@@ -416,7 +425,7 @@ void Viewer::MainLoop()
 
 	for (;;) {
 		PollEvents();
-		Render::PrepareFrame();
+		m_renderer->BeginFrame();
 
 		if (g_keyState[SDLK_LSHIFT] || g_keyState[SDLK_RSHIFT]) {
 			if (g_keyState[SDLK_UP]) g_camorient = g_camorient * matrix4x4f::RotateXMatrix(g_frameTime);
@@ -510,11 +519,11 @@ void Viewer::MainLoop()
 			m_trisReadout->SetText(buf);
 		}
 		
-		Render::PostProcess();
+		m_renderer->EndFrame();
 		Gui::Draw();
 		
 		glError();
-		Render::SwapBuffers();
+		m_renderer->SwapBuffers();
 		numFrames++;
 		g_frameTime = (SDL_GetTicks() - lastTurd) * 0.001f;
 		lastTurd = SDL_GetTicks();

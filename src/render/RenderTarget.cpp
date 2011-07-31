@@ -1,7 +1,7 @@
 #include "RenderTarget.h"
 #include "Renderer.h"
 
-namespace Post {
+namespace Render {
 
 RenderTarget::RenderTarget(int w, int h) :
 	m_w(w),

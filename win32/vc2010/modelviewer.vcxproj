@@ -128,6 +128,9 @@
     <ClCompile Include="..\..\src\perlin.cpp" />
     <ClCompile Include="..\..\src\Render.cpp" />
     <ClCompile Include="..\..\src\RenderShader.cpp" />
+    <ClCompile Include="..\..\src\render\HDRRenderer.cpp" />
+    <ClCompile Include="..\..\src\render\Renderer.cpp" />
+    <ClCompile Include="..\..\src\render\RenderTarget.cpp" />
     <ClCompile Include="..\..\src\TextureFont.cpp" />
     <ClCompile Include="..\..\src\TextureManager.cpp" />
     <ClCompile Include="..\..\src\utils.cpp" />
@@ -183,6 +186,9 @@
     <ClInclude Include="..\..\src\perlin.h" />
     <ClInclude Include="..\..\src\Render.h" />
     <ClInclude Include="..\..\src\RenderShader.h" />
+    <ClInclude Include="..\..\src\render\HDRRenderer.h" />
+    <ClInclude Include="..\..\src\render\Renderer.h" />
+    <ClInclude Include="..\..\src\render\RenderTarget.h" />
     <ClInclude Include="..\..\src\TextureFont.h" />
     <ClInclude Include="..\..\src\TextureManager.h" />
     <ClInclude Include="..\..\src\utils.h" />

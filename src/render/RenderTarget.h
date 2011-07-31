@@ -3,7 +3,7 @@
 /*
  * Render to a FBO texture
  */
-namespace Post {
+namespace Render {
 	class RenderTarget {
 	public:
 		RenderTarget(int w, int h);

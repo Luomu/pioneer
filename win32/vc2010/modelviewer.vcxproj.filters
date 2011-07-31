@@ -16,6 +16,9 @@
     <Filter Include="src\gui">
       <UniqueIdentifier>{de900c24-ff02-4a99-a7fc-10d9ce21daf0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\render">
+      <UniqueIdentifier>{850ee06a-acae-4254-ad05-e49783e31a37}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\pch.cpp">
@@ -149,6 +152,15 @@
     </ClCompile>
     <ClCompile Include="..\..\src\TextureManager.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\render\Renderer.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\render\RenderTarget.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\render\HDRRenderer.cpp">
+      <Filter>src\render</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -304,6 +316,15 @@
     </ClInclude>
     <ClInclude Include="..\..\src\TextureManager.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\render\Renderer.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\render\RenderTarget.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\render\HDRRenderer.h">
+      <Filter>src\render</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

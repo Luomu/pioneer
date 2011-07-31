@@ -17,6 +17,7 @@ public:
 	Filter(FilterSource source, FilterTarget target);
 	virtual void Execute() = 0;
 protected:
+	void ScreenAlignedQuad();
 	FilterSource m_source;
 	FilterTarget m_target;
 };

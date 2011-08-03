@@ -453,6 +453,15 @@
     <ClCompile Include="..\..\src\render\RenderTarget.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\render\PostShader.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\render\HDRRenderer.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\render\PostFilter.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\collider\BVHTree.h">
@@ -948,6 +957,15 @@
       <Filter>src\render</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\render\RenderTarget.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\render\PostShader.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\render\HDRRenderer.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\render\PostFilter.h">
       <Filter>src\render</Filter>
     </ClInclude>
   </ItemGroup>

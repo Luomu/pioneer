@@ -1,5 +1,6 @@
 #include "PostFilter.h"
 #include "RenderTarget.h"
+#include "PostShader.h"
 
 namespace Render {
 namespace Post {
@@ -128,11 +129,21 @@ void Tint::Execute()
 	m_target->EndRTT();
 }
 
+class Blursh : public Render::Post::Shader {
+public:
+	Blursh(const std::string &v, const std::string &f) :
+	  Shader(v, f) { }
+	void set_tex(int i) {
+		const GLuint loc = glGetUniformLocation(m_program, "tex");
+		glUniform1i(loc, i);
+	}
+};
+
 Blur::Blur(FilterSource source, FilterTarget target) :
 	Filter(source, target)
 {
 	//init the shader
-	m_shader = new Blursh("blurShader");
+	m_shader = new Blursh("blurShader.vert.glsl", "blurShader.frag.glsl");
 }
 
 void Blur::Execute()
@@ -141,14 +152,11 @@ void Blur::Execute()
 
 	//bind shader & set tex
 	glActiveTexture(GL_TEXTURE0);
-	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, m_source->GetTexture());
-	glUseProgram(m_shader->GetProgram());
+	m_shader->Bind();
 	m_shader->set_tex(0);
-
 	ScreenAlignedQuad();
-
-	glUseProgram(0);
+	m_shader->Unbind();
 
 	m_target->EndRTT();
 }

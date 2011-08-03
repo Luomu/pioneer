@@ -18,9 +18,9 @@ public:
 	unsigned int GetProgram() const { return m_program; }
 protected:
 	virtual void InvalidateLocations();
+	unsigned int m_program;
 private:
 	void Compile();
-	unsigned int m_program;
 	std::string m_vertName;
 	std::string m_fragName;
 };

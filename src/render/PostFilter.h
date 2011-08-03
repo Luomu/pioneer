@@ -1,5 +1,4 @@
 #pragma once
-#include "RenderShader.h"
 
 namespace Render {
 
@@ -9,6 +8,8 @@ namespace Post {
 
 typedef RenderTarget* FilterSource;
 typedef RenderTarget* FilterTarget;
+
+class Blursh;
 
 /*
  * Performs a filter operation on Source, renders to Target
@@ -41,10 +42,6 @@ public:
 	Tint(FilterSource, FilterTarget);
 	void Execute();
 };
-
-SHADER_CLASS_BEGIN(Blursh)
-	SHADER_UNIFORM_SAMPLER(tex)
-SHADER_CLASS_END()
 
 /*
  * Blurs the source texture somewhat

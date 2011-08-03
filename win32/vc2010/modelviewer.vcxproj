@@ -130,6 +130,7 @@
     <ClCompile Include="..\..\src\RenderShader.cpp" />
     <ClCompile Include="..\..\src\render\HDRRenderer.cpp" />
     <ClCompile Include="..\..\src\render\PostFilter.cpp" />
+    <ClCompile Include="..\..\src\render\PostShader.cpp" />
     <ClCompile Include="..\..\src\render\Renderer.cpp" />
     <ClCompile Include="..\..\src\render\RenderTarget.cpp" />
     <ClCompile Include="..\..\src\TextureFont.cpp" />
@@ -189,6 +190,7 @@
     <ClInclude Include="..\..\src\RenderShader.h" />
     <ClInclude Include="..\..\src\render\HDRRenderer.h" />
     <ClInclude Include="..\..\src\render\PostFilter.h" />
+    <ClInclude Include="..\..\src\render\PostShader.h" />
     <ClInclude Include="..\..\src\render\Renderer.h" />
     <ClInclude Include="..\..\src\render\RenderTarget.h" />
     <ClInclude Include="..\..\src\TextureFont.h" />

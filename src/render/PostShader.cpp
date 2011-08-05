@@ -50,60 +50,70 @@ void Shader::InvalidateLocations()
 
 }
 
-static __attribute((malloc)) char *load_shader_source(const char *filename)
-{
-	FILE *f = fopen(filename, "rb");
-	if (!f)
-		return 0;
-	fseek(f, 0, SEEK_END);
-	size_t len = ftell(f);
-	fseek(f, 0, SEEK_SET);
-	char *buf = static_cast<char*>(malloc(sizeof(char) * (len+1)));
-	fread(buf, 1, len, f);
-	fclose(f);
-	buf[len] = 0;
-	return buf;
-}
+class ShaderSource {
+public:
+	ShaderSource(const std::string &filename, GLenum type) :
+		m_shader(0),
+		m_code(0)
+	{
+		m_code = load_shader_source(filename.c_str());
+		if (!m_code) throw RenderException("Could not load shader source");
+
+		std::vector<const char*> shader_src;
+
+		m_shader = glCreateShader(type);
+		shader_src.push_back(m_code);
+		glShaderSource(m_shader, shader_src.size(), &shader_src[0], 0);
+		glCompileShader(m_shader);
+		GLint status;
+		glGetShaderiv(m_shader, GL_COMPILE_STATUS, &status);
+		if (!status) throw ShaderException("Couldn't compile shader", m_shader);
+	}
+
+	~ShaderSource() {
+		glDeleteShader(m_shader);
+		free(m_code);
+	}
+
+	GLuint GetCompiledShader() const { return m_shader; }
+
+private:
+	static __attribute((malloc)) char *load_shader_source(const char *filename) {
+		FILE *f = fopen(filename, "rb");
+		if (!f)
+			return 0;
+		fseek(f, 0, SEEK_END);
+		size_t len = ftell(f);
+		fseek(f, 0, SEEK_SET);
+		char *buf = static_cast<char*>(malloc(sizeof(char) * (len+1)));
+		fread(buf, 1, len, f);
+		fclose(f);
+		buf[len] = 0;
+		return buf;
+	}
+
+	char *m_code;
+	GLuint m_shader;
+};
 
 void Shader::Compile()
 {
-	GLuint vs, ps = 0;
-	std::vector<const char*> shader_src;
 	const std::string path = PIONEER_DATA_DIR"/shaders/";
 
-	char *pscode = 0;
-	char *vscode = 0;
-
 	try {
-		vscode = load_shader_source((path + m_vertName).c_str());
-		pscode = load_shader_source((path + m_fragName).c_str());
-		if (!vscode || !pscode) throw RenderException("Could not load shader source");
-
-		vs = glCreateShader(GL_VERTEX_SHADER);
-		shader_src.push_back(vscode);
-		glShaderSource(vs, shader_src.size(), &shader_src[0], 0);
-		glCompileShader(vs);
-		GLint status;
-		glGetShaderiv(vs, GL_COMPILE_STATUS, &status);
-		if (!status) throw ShaderException("Couldn't compile vertex shader", vs);
-
-		shader_src.clear();
-		ps = glCreateShader(GL_FRAGMENT_SHADER);
-		shader_src.push_back(pscode);
-		glShaderSource(ps, shader_src.size(), &shader_src[0], 0);
-		glCompileShader(ps);
-		glGetShaderiv(ps, GL_COMPILE_STATUS, &status);
-		if (!status) throw ShaderException("Couldn't compile fragment shader", ps);
+		ShaderSource vs(path + m_vertName, GL_VERTEX_SHADER);
+		ShaderSource fs(path + m_fragName, GL_FRAGMENT_SHADER);
 
 		m_program = glCreateProgram();
-		glAttachShader(m_program, vs);
-		glAttachShader(m_program, ps);
+		glAttachShader(m_program, vs.GetCompiledShader());
+		glAttachShader(m_program, fs.GetCompiledShader());
 		glLinkProgram(m_program);
+		GLint status;
 		glGetProgramiv(m_program, GL_LINK_STATUS, &status);
 		if (!status) throw ShaderException("Couldn't link shader", m_program);
 
 	} catch(ShaderException &ex) {
-		//print the compile error, clean up and rethrow
+		//print the compile error, clean up, rethrow
 		int infologLength = 0;
 		char infoLog[1024];
 		if (glIsShader(ex.Obj()))
@@ -114,18 +124,11 @@ void Shader::Compile()
 		if (infologLength > 0)
 			fprintf(stderr, "%s: %s\n", ex.what(), infoLog);
 
-		glDeleteShader(vs);
-		glDeleteShader(ps);
 		glDeleteProgram(m_program);
 		m_program = 0;
-		free(pscode);
-		free(vscode);
 
 		throw;
 	}
-
-	free(pscode);
-	free(vscode);
 }
 
 }

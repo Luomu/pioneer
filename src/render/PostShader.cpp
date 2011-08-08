@@ -1,5 +1,7 @@
 #include "PostShader.h"
 #include "Renderer.h"
+#include "libs.h"
+#include <vector>
 
 namespace Render {
 namespace Post {

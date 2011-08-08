@@ -4,14 +4,15 @@ INCLUDES = -I$(srcdir)/..
 
 noinst_LIBRARIES = librender.a
 noinst_HEADERS = \
-	Renderer.h \
-	RenderTarget.h \
+	HDRRenderer.h \
 	PostFilter.h \
-	HDRRenderer.h
+	PostShader.h \
+	Renderer.h \
+	RenderTarget.h
 
 librender_a_SOURCES = \
-	Renderer.cpp \
-	RenderTarget.cpp \
+	HDRRenderer.cpp \
 	PostFilter.cpp \
-	HDRRenderer.cpp
-
+	PostShader.cpp \
+	Renderer.cpp \
+	RenderTarget.cpp

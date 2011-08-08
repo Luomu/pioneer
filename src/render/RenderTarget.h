@@ -13,6 +13,9 @@ namespace Render {
 		void EndRTT();
 		GLuint GetTexture() const { return m_texture; }
 		void Show(float x=0.f, float y=0.f, float w=100.f, float h=100.f) const;
+	protected:
+		RenderTarget(int w, int h, GLint format, GLint internalFormat,
+			GLenum type);
 	private:
 		int m_w;
 		int m_h;

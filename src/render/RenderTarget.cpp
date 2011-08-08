@@ -3,14 +3,17 @@
 
 namespace Render {
 
-RenderTarget::RenderTarget(int w, int h) :
+RenderTarget::RenderTarget(int w, int h)
+{
+	RenderTarget(w, h, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE);
+}
+
+//todo: depth component optional, also consider MRTs
+RenderTarget::RenderTarget(int w, int h, GLint format,
+	GLint internalFormat, GLenum type) :
 	m_w(w),
 	m_h(h)
 {
-	const GLint internalFormat = GL_RGBA;
-	const GLint format = GL_RGBA;
-	const GLenum type = GL_UNSIGNED_BYTE;
-
 	glGenFramebuffers(1, &m_fbo);
 	glGenRenderbuffers(1, &m_depth);
 

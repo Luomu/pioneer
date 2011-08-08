@@ -4,15 +4,19 @@
 
 namespace Render {
 
+class HDRRenderTarget : public RenderTarget {
+public:
+	HDRRenderTarget(int w, int h) :
+		RenderTarget(w, h, GL_RGB, GL_RGB16F, GL_HALF_FLOAT)
+	{ }
+};
+
 HDRRenderer::HDRRenderer(int w, int h) :
 	Renderer(w, h)
 {
 	//using FBOs like this is questionable. It would be better to shuffle attachments
 	//or just flip textures assuming the dimensions/formats are the same
-	m_target = new RenderTarget(w, h);
-	m_target2 = new RenderTarget(w, h);
-
-	m_blurFilter = new Post::Blur(m_target2, m_target);
+	m_target = new HDRRenderTarget(w, h);
 }
 
 HDRRenderer::~HDRRenderer()
@@ -29,12 +33,9 @@ void HDRRenderer::EndFrame()
 {
 	//todo: no need to construct the filter chain on every frame
 	m_target->EndRTT();
-	//m_target->Show(0.f, 0.f, 100.f, 100.f);
-	Post::Tint tint(m_target, m_target2);
-	tint.Execute();
-	m_blurFilter->Execute();
 	Post::Present present(m_target);
 	present.Execute();
+	//~ m_target->Show(0.f, 0.f, 30.f, 30.f);
 }
 
 }

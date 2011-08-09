@@ -17,7 +17,7 @@ public:
 	/*FilterSource bloom, FilterSource luminance,*/
 	Compose(FilterSource source, FilterTarget target) :
 		ShaderFilter(source, target,
-			"postprocessCompose.vert.glsl", "postprocessCompose.frag.glsl") {
+			"hdr/compose.vert", "hdr/compose.frag") {
 
 	}
 	//could render directly to fbo0

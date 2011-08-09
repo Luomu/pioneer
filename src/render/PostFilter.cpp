@@ -56,6 +56,38 @@ void Filter::ScreenAlignedQuad()
 	glPopAttrib();
 }
 
+ShaderFilter::ShaderFilter(FilterSource source, FilterTarget target,
+	const std::string &vert, const std::string &frag) :
+	Filter(source, target)
+{
+	m_shader = new Post::Shader(vert, frag);
+}
+
+ShaderFilter::~ShaderFilter()
+{
+	delete m_shader;
+}
+
+void ShaderFilter::Execute()
+{
+	m_target->BeginRTT();
+	//todo: texture class
+	m_shader->Bind();
+	SetUniforms();
+	//needs to be viewport and screen coordinates for
+	//rectangle textures
+	ScreenAlignedQuad();
+	m_shader->Unbind();
+	m_target->EndRTT();
+}
+
+//Set uniforms for already bound shader
+void ShaderFilter::SetUniforms()
+{
+	glBindTexture(GL_TEXTURE_2D, m_source->GetTexture());
+
+}
+
 Present::Present(FilterSource source) :
 	Filter(source, 0)
 {

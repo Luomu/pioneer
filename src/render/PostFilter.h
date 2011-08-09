@@ -9,6 +9,7 @@ namespace Post {
 typedef RenderTarget* FilterSource;
 typedef RenderTarget* FilterTarget;
 
+class Shader;
 class Blursh;
 
 /*
@@ -19,9 +20,20 @@ public:
 	Filter(FilterSource source, FilterTarget target);
 	virtual void Execute() = 0;
 protected:
-	void ScreenAlignedQuad();
+	virtual void ScreenAlignedQuad();
 	FilterSource m_source;
 	FilterTarget m_target;
+};
+
+class ShaderFilter : public Filter {
+public:
+	ShaderFilter(FilterSource source, FilterTarget target,
+		const std::string &vert, const std::string &frag);
+	~ShaderFilter();
+	void Execute();
+protected:
+	virtual void SetUniforms();
+	Shader *m_shader;
 };
 
 /*

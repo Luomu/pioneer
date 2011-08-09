@@ -3,6 +3,7 @@
 #include "PostFilter.h"
 #include "PostShader.h"
 #include <GL/glew.h>
+#include "Texture.h"
 
 namespace Render {
 
@@ -36,7 +37,7 @@ protected:
 		//poop
 		GLuint loc = glGetUniformLocation(m_shader->GetProgram(), "fboTex");
 		//glBindTexture(GL_TEXTURE_RECTANGLE, m_source->GetTexture());
-		glBindTexture(GL_TEXTURE_2D, m_source->GetTexture());
+		m_source->GetTexture()->Bind();
 		glUniform1i(loc, 0);
 		//texture 0: fbotex
 		//texture 1: bloomtex

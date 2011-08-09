@@ -1,6 +1,7 @@
 #include "PostFilter.h"
 #include "RenderTarget.h"
 #include "PostShader.h"
+#include "Texture.h"
 
 namespace Render {
 namespace Post {
@@ -84,8 +85,7 @@ void ShaderFilter::Execute()
 //Set uniforms for already bound shader
 void ShaderFilter::SetUniforms()
 {
-	glBindTexture(GL_TEXTURE_2D, m_source->GetTexture());
-
+	m_source->GetTexture()->Bind();
 }
 
 Present::Present(FilterSource source) :
@@ -118,7 +118,7 @@ void Present::Execute()
 
 	glActiveTexture(GL_TEXTURE0);
 	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, m_source->GetTexture());
+	m_source->GetTexture()->Bind();
 
 	glLoadIdentity();
 
@@ -154,7 +154,7 @@ void Tint::Execute()
 	glColor4f(1.f, 1.f, 0.f, 1.f); //the surprise is yellow
 	glActiveTexture(GL_TEXTURE0);
 	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, m_source->GetTexture());
+	m_source->GetTexture()->Bind();
 
 	ScreenAlignedQuad();
 
@@ -184,7 +184,7 @@ void Blur::Execute()
 
 	//bind shader & set tex
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, m_source->GetTexture());
+	m_source->GetTexture()->Bind();
 	m_shader->Bind();
 	m_shader->set_tex(0);
 	ScreenAlignedQuad();

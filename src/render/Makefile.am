@@ -8,11 +8,13 @@ noinst_HEADERS = \
 	PostFilter.h \
 	PostShader.h \
 	Renderer.h \
-	RenderTarget.h
+	RenderTarget.h \
+	Texture.h
 
 librender_a_SOURCES = \
 	HDRRenderer.cpp \
 	PostFilter.cpp \
 	PostShader.cpp \
 	Renderer.cpp \
-	RenderTarget.cpp
+	RenderTarget.cpp \
+	Texture.cpp

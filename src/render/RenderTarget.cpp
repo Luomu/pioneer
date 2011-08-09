@@ -1,5 +1,6 @@
 #include "RenderTarget.h"
 #include "Renderer.h"
+#include "Texture.h"
 
 namespace Render {
 
@@ -26,16 +27,9 @@ RenderTarget::RenderTarget(int w, int h, GLint format,
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
 		GL_RENDERBUFFER, m_depth);
 
-	glGenTextures(1, &m_texture);
-	glBindTexture(GL_TEXTURE_2D, m_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_w, m_h, 0,
-		format, type, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	m_texture = new Render::Texture(w, h, format, internalFormat, type);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-		GL_TEXTURE_2D, m_texture, 0);
+		GL_TEXTURE_2D, m_texture->GetGLTexture(), 0);
 
 	const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (status != GL_FRAMEBUFFER_COMPLETE)
@@ -46,7 +40,7 @@ RenderTarget::RenderTarget(int w, int h, GLint format,
 
 RenderTarget::~RenderTarget()
 {
-	glDeleteTextures(1, &m_texture);
+	delete m_texture;
 	glDeleteFramebuffers(1, &m_fbo);
 	glDeleteRenderbuffers(1, &m_depth);
 }
@@ -66,6 +60,11 @@ void RenderTarget::EndRTT()
 	//restore viewport and unbind fbo
 	glPopAttrib();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+Texture* RenderTarget::GetTexture() const
+{
+	return m_texture;
 }
 
 /*
@@ -92,7 +91,7 @@ void RenderTarget::Show(const float x, const float y,
 
 	glActiveTexture(GL_TEXTURE0);
 	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, m_texture);
+	m_texture->Bind();
 
 	glLoadIdentity();
 

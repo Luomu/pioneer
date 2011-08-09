@@ -1,17 +1,19 @@
 #pragma once
 #include <GL/glew.h>
 
-/*
- * Render to a FBO texture
- */
 namespace Render {
+	class Texture;
+
+	/*
+	 * Render to a FBO texture
+	 */
 	class RenderTarget {
 	public:
 		RenderTarget(int w, int h);
 		~RenderTarget();
 		void BeginRTT();
 		void EndRTT();
-		GLuint GetTexture() const { return m_texture; }
+		Texture* GetTexture() const;
 		void Show(float x=0.f, float y=0.f, float w=100.f, float h=100.f) const;
 	protected:
 		RenderTarget(int w, int h, GLint format, GLint internalFormat,
@@ -21,6 +23,6 @@ namespace Render {
 		int m_h;
 		GLuint m_fbo;
 		GLuint m_depth;
-		GLuint m_texture;
+		Texture *m_texture;
 	};
 }

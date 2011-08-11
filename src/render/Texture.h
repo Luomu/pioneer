@@ -14,9 +14,14 @@ namespace Render {
 		virtual void Unbind();
 		unsigned int GetGLTexture() const { return m_texture; }
 	protected:
+		/*
+		 * Called just before glTexImage.
+		 * Set filtering etc. here
+		 */
 		virtual void SetParameters();
 		unsigned int m_texture;
 		int m_w;
 		int m_h;
+		bool doMipmaps;
 	};
 }

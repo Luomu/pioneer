@@ -69,7 +69,15 @@ public:
 	LuminanceRenderTarget(int w, int h) :
 		RenderTarget(w, h, GL_RGB, GL_RGB16F, GL_FLOAT)
 		{ }
-	//need to set texture parameters!
+
+protected:
+	void SetParameters() {
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		doMipmaps = true;
+	}
 };
 
 class HDRRenderTarget : public RenderTarget {

@@ -6,13 +6,16 @@ namespace Render {
 Texture::Texture(int w, int h, GLint format,
 	GLint internalFormat, GLenum type) :
 	m_w(w),
-	m_h(h)
+	m_h(h),
+	doMipmaps(false)
 {
 	glGenTextures(1, &m_texture);
 	glBindTexture(GL_TEXTURE_2D, m_texture);
+	SetParameters();
 	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0,
 		format, type, 0);
-	SetParameters();
+	if(doMipmaps)
+		glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 Texture::~Texture()

@@ -9,9 +9,6 @@ class RenderTarget;
 
 namespace Post {
 	class Filter;
-	namespace ClassicHDR {
-		class Compose;
-	}
 }
 
 /*

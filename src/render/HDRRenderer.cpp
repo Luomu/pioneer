@@ -10,6 +10,21 @@ namespace Render {
 namespace Post {
 namespace ClassicHDR {
 
+// downscale scene to 128x128 texture
+// and extract average luminance
+class Luminance : public ShaderFilter {
+public:
+	Luminance(FilterSource source) :
+		ShaderFilter(source, 0,
+			"hdr/compose.vert", "hdr/luminance.frag") {
+
+	}
+
+	void Execute() {
+		//rectangle?
+	}
+};
+
 class Compose : public ShaderFilter {
 public:
 	//needs: FilterSource bloom
@@ -48,6 +63,14 @@ protected:
 
 } //namespace ClassicHDR
 } //namespace Post
+
+class LuminanceRenderTarget : public RenderTarget {
+public:
+	LuminanceRenderTarget(int w, int h) :
+		RenderTarget(w, h, GL_RGB, GL_RGB16F, GL_FLOAT)
+		{ }
+	//need to set texture parameters!
+};
 
 class HDRRenderTarget : public RenderTarget {
 public:

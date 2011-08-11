@@ -63,13 +63,13 @@ HDRRenderer::HDRRenderer(int w, int h) :
 	//or just flip textures assuming the dimensions/formats are the same
 	m_target = new HDRRenderTarget(w, h);
 	//build filter chain here
-	m_composeFilter = new Post::ClassicHDR::Compose(m_target, 0);
+	m_filters.push_back(new Post::ClassicHDR::Compose(m_target, 0));
 }
 
 HDRRenderer::~HDRRenderer()
 {
 	delete m_target;
-	delete m_composeFilter;
+	while (!m_filters.empty()) delete m_filters.back(), m_filters.pop_back();
 }
 
 void HDRRenderer::BeginFrame()
@@ -80,11 +80,19 @@ void HDRRenderer::BeginFrame()
 void HDRRenderer::EndFrame()
 {
 	m_target->EndRTT();
-	m_composeFilter->Execute();
+	for(std::vector<Post::Filter*>::iterator it = m_filters.begin();
+		it != m_filters.end(); ++it) {
+		(*it)->Execute();
+	}
 
 	//Post::Present present(m_target);
 	//present.Execute();
 	//~ m_target->Show(0.f, 0.f, 30.f, 30.f);
+}
+
+void HDRRenderer::ReloadShaders()
+{
+
 }
 
 }

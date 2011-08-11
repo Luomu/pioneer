@@ -109,6 +109,13 @@ public:
 			Add(b, 10, 90);
 			Add(new Gui::Label("[shift-b] Visualize bounding radius"), 30, 90);
 		}
+		{
+			Gui::Button *b = new Gui::SolidButton();
+			b->SetShortcut(SDLK_p, KMOD_NONE);
+			b->onClick.connect(sigc::mem_fun(*this, &Viewer::OnClickReloadShaders));
+			Add(b, 10, 90);
+			Add(new Gui::Label("[Shift-r] Reload shaders"), 30, 90);
+		}
 #if 0
 		{
 			Gui::Button *b = new Gui::SolidButton();
@@ -206,6 +213,10 @@ public:
 
 	void OnToggleBoundingRadius() {
 		m_showBoundingRadius = !m_showBoundingRadius;
+	}
+
+	void OnClickReloadShaders() {
+		m_renderer->ReloadShaders();
 	}
 
 	void MainLoop() __attribute((noreturn));

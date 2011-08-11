@@ -12,6 +12,7 @@ public:
 	Renderer(int w, int h);
 	virtual void BeginFrame() = 0;
 	virtual void EndFrame() = 0;
+	virtual void ReloadShaders() { }
 	void SwapBuffers();
 protected:
 	int m_width;

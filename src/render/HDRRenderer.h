@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include "Renderer.h"
 
 namespace Render {
@@ -33,12 +34,10 @@ public:
 	~HDRRenderer();
 	void BeginFrame();
 	void EndFrame();
-	void SwapBuffers();
+	void ReloadShaders();
 private:
 	RenderTarget *m_target;
-	//todo: just treat as generic filters, no need to define each here
-	//assuming chain is constructed correctly
-	Post::ClassicHDR::Compose *m_composeFilter;
+	std::vector<Post::Filter*> m_filters;
 };
 
 }

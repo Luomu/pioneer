@@ -168,6 +168,9 @@
     <ClCompile Include="..\..\src\render\PostShader.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\render\Texture.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -336,6 +339,9 @@
       <Filter>src\render</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\render\PostShader.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\render\Texture.h">
       <Filter>src\render</Filter>
     </ClInclude>
   </ItemGroup>

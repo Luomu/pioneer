@@ -21,6 +21,7 @@ class Filter {
 public:
 	Filter(FilterSource source, FilterTarget target);
 	virtual void Execute() = 0;
+	virtual void Reload() { } //for reloading shaders - might not be final
 protected:
 	virtual void ScreenAlignedQuad();
 	FilterSource m_source;
@@ -33,6 +34,7 @@ public:
 		const std::string &vert, const std::string &frag);
 	~ShaderFilter();
 	void Execute();
+	void Reload();
 protected:
 	virtual void SetUniforms();
 	Shader *m_shader;

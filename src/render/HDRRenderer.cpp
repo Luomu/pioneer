@@ -92,7 +92,10 @@ void HDRRenderer::EndFrame()
 
 void HDRRenderer::ReloadShaders()
 {
-
+	for(std::vector<Post::Filter*>::iterator it = m_filters.begin();
+		it != m_filters.end(); ++it) {
+		(*it)->Reload();
+	}
 }
 
 }

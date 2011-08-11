@@ -111,7 +111,7 @@ public:
 		}
 		{
 			Gui::Button *b = new Gui::SolidButton();
-			b->SetShortcut(SDLK_p, KMOD_NONE);
+			b->SetShortcut(SDLK_r, KMOD_LSHIFT);
 			b->onClick.connect(sigc::mem_fun(*this, &Viewer::OnClickReloadShaders));
 			Add(b, 10, 90);
 			Add(new Gui::Label("[Shift-r] Reload shaders"), 30, 90);

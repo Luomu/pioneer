@@ -88,6 +88,11 @@ void ShaderFilter::SetUniforms()
 	m_source->GetTexture()->Bind();
 }
 
+void ShaderFilter::Reload()
+{
+	m_shader->Recompile();
+}
+
 Present::Present(FilterSource source) :
 	Filter(source, 0)
 {

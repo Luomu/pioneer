@@ -6,6 +6,7 @@ namespace Render {
 
 /*
  * Controls render targets and post processing
+ * Will probably also hold a list of all shaders so they can be easily recompiled
  */
 class Renderer {
 public:

@@ -14,8 +14,9 @@ namespace Render {
 		virtual void Unbind();
 		unsigned int GetGLTexture() const { return m_texture; }
 	protected:
-		void SetParameters();
-	private:
+		virtual void SetParameters();
 		unsigned int m_texture;
+		int m_w;
+		int m_h;
 	};
 }

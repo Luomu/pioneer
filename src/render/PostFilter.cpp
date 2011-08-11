@@ -85,7 +85,8 @@ void ShaderFilter::Execute()
 //Set uniforms for already bound shader
 void ShaderFilter::SetUniforms()
 {
-	m_source->GetTexture()->Bind();
+	m_source->Bind();
+	//set default uniform
 }
 
 void ShaderFilter::Reload()
@@ -123,7 +124,7 @@ void Present::Execute()
 
 	glActiveTexture(GL_TEXTURE0);
 	glEnable(GL_TEXTURE_2D);
-	m_source->GetTexture()->Bind();
+	m_source->Bind();
 
 	glLoadIdentity();
 
@@ -159,7 +160,7 @@ void Tint::Execute()
 	glColor4f(1.f, 1.f, 0.f, 1.f); //the surprise is yellow
 	glActiveTexture(GL_TEXTURE0);
 	glEnable(GL_TEXTURE_2D);
-	m_source->GetTexture()->Bind();
+	m_source->Bind();
 
 	ScreenAlignedQuad();
 
@@ -189,7 +190,7 @@ void Blur::Execute()
 
 	//bind shader & set tex
 	glActiveTexture(GL_TEXTURE0);
-	m_source->GetTexture()->Bind();
+	m_source->Bind();
 	m_shader->Bind();
 	m_shader->set_tex(0);
 	ScreenAlignedQuad();

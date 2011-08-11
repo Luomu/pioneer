@@ -52,7 +52,7 @@ protected:
 		//poop
 		GLuint loc = glGetUniformLocation(m_shader->GetProgram(), "fboTex");
 		//glBindTexture(GL_TEXTURE_RECTANGLE, m_source->GetTexture());
-		m_source->GetTexture()->Bind();
+		m_source->Bind();
 		glUniform1i(loc, 0);
 		//texture 0: fbotex
 		//texture 1: bloomtex

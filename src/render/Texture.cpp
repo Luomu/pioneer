@@ -4,7 +4,9 @@
 namespace Render {
 
 Texture::Texture(int w, int h, GLint format,
-	GLint internalFormat, GLenum type)
+	GLint internalFormat, GLenum type) :
+	m_w(w),
+	m_h(h)
 {
 	glGenTextures(1, &m_texture);
 	glBindTexture(GL_TEXTURE_2D, m_texture);

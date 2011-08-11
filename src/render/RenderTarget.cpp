@@ -4,16 +4,10 @@
 
 namespace Render {
 
-RenderTarget::RenderTarget(int w, int h)
-{
-	RenderTarget(w, h, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE);
-}
-
 //todo: depth component optional, also consider MRTs
 RenderTarget::RenderTarget(int w, int h, GLint format,
 	GLint internalFormat, GLenum type) :
-	m_w(w),
-	m_h(h)
+	Texture(w, h, format, internalFormat, type)
 {
 	glGenFramebuffers(1, &m_fbo);
 	glGenRenderbuffers(1, &m_depth);
@@ -27,9 +21,8 @@ RenderTarget::RenderTarget(int w, int h, GLint format,
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
 		GL_RENDERBUFFER, m_depth);
 
-	m_texture = new Render::Texture(w, h, format, internalFormat, type);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-		GL_TEXTURE_2D, m_texture->GetGLTexture(), 0);
+		GL_TEXTURE_2D, m_texture, 0);
 
 	const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (status != GL_FRAMEBUFFER_COMPLETE)
@@ -40,7 +33,6 @@ RenderTarget::RenderTarget(int w, int h, GLint format,
 
 RenderTarget::~RenderTarget()
 {
-	delete m_texture;
 	glDeleteFramebuffers(1, &m_fbo);
 	glDeleteRenderbuffers(1, &m_depth);
 }
@@ -62,17 +54,8 @@ void RenderTarget::EndRTT()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-Texture* RenderTarget::GetTexture() const
-{
-	return m_texture;
-}
-
-/*
- * Draw the texture on screen, w/h in screen percent.
- * This is only for testing.
- */
 void RenderTarget::Show(const float x, const float y,
-	const float w, const float h) const
+	const float w, const float h)
 {
 	const int width = 100;
 	const int height = 100;
@@ -91,7 +74,7 @@ void RenderTarget::Show(const float x, const float y,
 
 	glActiveTexture(GL_TEXTURE0);
 	glEnable(GL_TEXTURE_2D);
-	m_texture->Bind();
+	Texture::Bind();
 
 	glLoadIdentity();
 

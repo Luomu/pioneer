@@ -10,18 +10,12 @@ namespace Render {
 namespace Post {
 namespace ClassicHDR {
 
-// downscale scene to 128x128 texture
-// and extract average luminance
 class Luminance : public ShaderFilter {
 public:
-	Luminance(FilterSource source) :
-		ShaderFilter(source, 0,
+	Luminance(FilterSource source, FilterTarget target) :
+		ShaderFilter(source, target,
 			"hdr/compose.vert", "hdr/luminance.frag") {
 
-	}
-
-	void Execute() {
-		//rectangle?
 	}
 };
 
@@ -30,7 +24,8 @@ public:
 	//needs: FilterSource bloom
 	//maybe: FilterSource luminance for avglum + middlegrey
 	/*FilterSource bloom, FilterSource luminance,*/
-	Compose(FilterSource source, FilterTarget target) :
+	Compose(FilterSource source, LuminanceRenderTarget *luminance,
+		FilterTarget target) :
 		ShaderFilter(source, target,
 			"hdr/compose.vert", "hdr/compose.frag") {
 
@@ -59,6 +54,9 @@ protected:
 		//avglum
 		//middlegrey
 	}
+
+private:
+	LuminanceRenderTarget *m_luminance;
 };
 
 } //namespace ClassicHDR
@@ -67,8 +65,23 @@ protected:
 class LuminanceRenderTarget : public RenderTarget {
 public:
 	LuminanceRenderTarget(int w, int h) :
-		RenderTarget(w, h, GL_RGB, GL_RGB16F, GL_FLOAT)
-		{ }
+		RenderTarget(w, h, GL_RGB, GL_RGB16F, GL_FLOAT),
+		midGrey(0.f)
+	{ }
+
+	void EndRTT() {
+		RenderTarget::EndRTT();
+		Bind();
+		glGenerateMipmap(GL_TEXTURE_2D);
+		//extract average luminance & calculate middle grey
+		glGetTexImage(GL_TEXTURE_2D, 7, GL_RGB, GL_FLOAT, avgLum);
+		Unbind();
+		avgLum[0] = std::max(float(exp(avgLum[0])), 0.03f);
+		midGrey = 1.03f - 2.0f/(2.0f+log10(avgLum[0] + 1.0f));
+	}
+
+	float GetAverageLuminance() const { return avgLum[0]; }
+	float GetMiddleGrey() const { return midGrey; }
 
 protected:
 	void SetParameters() {
@@ -78,6 +91,10 @@ protected:
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		doMipmaps = true;
 	}
+
+private:
+	float avgLum[4];
+	float midGrey;
 };
 
 class HDRRenderTarget : public RenderTarget {
@@ -90,16 +107,21 @@ public:
 HDRRenderer::HDRRenderer(int w, int h) :
 	Renderer(w, h)
 {
+	using namespace Post::ClassicHDR;
 	//using FBOs like this is questionable. It would be better to shuffle attachments
 	//or just flip textures assuming the dimensions/formats are the same
 	m_target = new HDRRenderTarget(w, h);
+	m_luminanceTarget = new LuminanceRenderTarget(128, 128);
+
 	//build filter chain here
-	m_filters.push_back(new Post::ClassicHDR::Compose(m_target, 0));
+	m_filters.push_back(new Luminance(m_target, m_luminanceTarget));
+	m_filters.push_back(new Compose(m_target, m_luminanceTarget, 0));
 }
 
 HDRRenderer::~HDRRenderer()
 {
 	delete m_target;
+	delete m_luminanceTarget;
 	while (!m_filters.empty()) delete m_filters.back(), m_filters.pop_back();
 }
 

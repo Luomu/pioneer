@@ -33,7 +33,7 @@ public:
 	ShaderFilter(FilterSource source, FilterTarget target,
 		const std::string &vert, const std::string &frag);
 	~ShaderFilter();
-	void Execute();
+	virtual void Execute();
 	void Reload();
 protected:
 	virtual void SetUniforms();

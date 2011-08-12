@@ -6,6 +6,7 @@
 namespace Render {
 
 class RenderTarget;
+class LuminanceRenderTarget;
 
 namespace Post {
 	class Filter;
@@ -34,6 +35,7 @@ public:
 	void ReloadShaders();
 private:
 	RenderTarget *m_target;
+	LuminanceRenderTarget *m_luminanceTarget;
 	std::vector<Post::Filter*> m_filters;
 };
 

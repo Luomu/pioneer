@@ -72,11 +72,8 @@ ShaderFilter::~ShaderFilter()
 void ShaderFilter::Execute()
 {
 	m_target->BeginRTT();
-	//todo: texture class
 	m_shader->Bind();
 	SetUniforms();
-	//needs to be viewport and screen coordinates for
-	//rectangle textures
 	ScreenAlignedQuad();
 	m_shader->Unbind();
 	m_target->EndRTT();
@@ -85,8 +82,9 @@ void ShaderFilter::Execute()
 //Set uniforms for already bound shader
 void ShaderFilter::SetUniforms()
 {
+	GLuint loc = glGetUniformLocation(m_shader->GetProgram(), "texture0");
 	m_source->Bind();
-	//set default uniform
+	glUniform1i(loc, 0);
 }
 
 void ShaderFilter::Reload()

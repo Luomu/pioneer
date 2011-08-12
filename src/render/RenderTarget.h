@@ -10,8 +10,8 @@ namespace Render {
 		RenderTarget(int w, int h, GLint format, GLint internalFormat,
 			GLenum type);
 		~RenderTarget();
-		void BeginRTT();
-		void EndRTT();
+		virtual void BeginRTT();
+		virtual void EndRTT();
 
 		/*
 		 * Draw the texture on screen, w/h in screen percent.

@@ -1,9 +1,9 @@
-#include "HDRRenderer.h"
-#include "RenderTarget.h"
+#include "libs.h"
 #include "PostFilter.h"
 #include "PostShader.h"
-#include <GL/glew.h>
+#include "RenderTarget.h"
 #include "Texture.h"
+#include "HDRRenderer.h"
 
 namespace Render {
 

@@ -7,61 +7,6 @@
 
 namespace Render {
 
-namespace Post {
-namespace ClassicHDR {
-
-class Luminance : public ShaderFilter {
-public:
-	Luminance(FilterSource source, FilterTarget target) :
-		ShaderFilter(source, target,
-			"hdr/compose.vert", "hdr/luminance.frag") {
-
-	}
-};
-
-class Compose : public ShaderFilter {
-public:
-	//needs: FilterSource bloom
-	//maybe: FilterSource luminance for avglum + middlegrey
-	/*FilterSource bloom, FilterSource luminance,*/
-	Compose(FilterSource source, LuminanceRenderTarget *luminance,
-		FilterTarget target) :
-		ShaderFilter(source, target,
-			"hdr/compose.vert", "hdr/compose.frag") {
-
-	}
-	//could render directly to fbo0
-	void Execute() {
-		//m_target->BeginRTT();
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		m_shader->Bind();
-		SetUniforms();
-		ScreenAlignedQuad();//  using viewport
-		m_shader->Unbind();
-		glBindTexture(GL_TEXTURE_2D, 0);
-		//m_target->EndRTT();
-	}
-
-protected:
-	void SetUniforms() {
-		//poop
-		GLuint loc = glGetUniformLocation(m_shader->GetProgram(), "fboTex");
-		//glBindTexture(GL_TEXTURE_RECTANGLE, m_source->GetTexture());
-		m_source->Bind();
-		glUniform1i(loc, 0);
-		//texture 0: fbotex
-		//texture 1: bloomtex
-		//avglum
-		//middlegrey
-	}
-
-private:
-	LuminanceRenderTarget *m_luminance;
-};
-
-} //namespace ClassicHDR
-} //namespace Post
-
 class LuminanceRenderTarget : public RenderTarget {
 public:
 	LuminanceRenderTarget(int w, int h) :
@@ -97,6 +42,101 @@ private:
 	float midGrey;
 };
 
+namespace ClassicHDR {
+namespace Shaders {
+
+/*
+ * Final shader of ClassicHDR
+ * Inputs: scene texture, bloom texture,
+ * average luminance, middle grey
+ */
+class Compose : public Post::Shader {
+public:
+	Compose(const std::string &v, const std::string &f) :
+		Shader(v, f) { }
+	void SetSceneTexture(int i) {
+		if (!loc_sceneTexture)
+			loc_sceneTexture = glGetUniformLocation(m_program, "sceneTexture");
+		glUniform1i(loc_sceneTexture, i);
+	}
+	void SetBloomTexture(int i) {
+		if (!loc_bloomTexture)
+			loc_bloomTexture = glGetUniformLocation(m_program, "bloomTexture");
+		glUniform1i(loc_bloomTexture, i);
+	}
+	void SetAverageLuminance(float f) {
+		if (!loc_avgLum)
+			loc_avgLum = glGetUniformLocation(m_program, "avgLum");
+		glUniform1f(loc_avgLum, f);
+	}
+	void SetMiddleGrey(float f) {
+		if (!loc_middleGrey)
+			loc_middleGrey = glGetUniformLocation(m_program, "middleGrey");
+		glUniform1f(loc_avgLum, f);
+	}
+protected:
+	virtual void InvalidateLocations() {
+		loc_sceneTexture = 0;
+		loc_bloomTexture = 0;
+		loc_avgLum = 0;
+		loc_middleGrey = 0;
+	}
+private:
+	GLuint loc_sceneTexture;
+	GLuint loc_bloomTexture;
+	GLuint loc_avgLum;
+	GLuint loc_middleGrey;
+};
+
+} //namespace Shaders
+
+namespace Filters {
+
+class Luminance : public Post::ShaderFilter {
+public:
+	Luminance(Post::FilterSource source, Post::FilterTarget target) :
+		ShaderFilter(source, target,
+			"hdr/compose.vert", "hdr/luminance.frag") {
+
+	}
+};
+
+class Compose : public Post::ShaderFilter {
+public:
+	Compose(Post::FilterSource source, LuminanceRenderTarget *luminance,
+		Post::FilterTarget target) :
+		ShaderFilter(source, target, new Shaders::Compose("hdr/compose.vert", "hdr/compose.frag")),
+		m_luminance(luminance)
+	{	}
+
+	//could render directly to fbo0
+	void Execute() {
+		//m_target->BeginRTT();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		m_shader->Bind();
+		SetUniforms();
+		ScreenAlignedQuad();//  using viewport
+		m_shader->Unbind();
+		glBindTexture(GL_TEXTURE_2D, 0);
+		//m_target->EndRTT();
+	}
+
+protected:
+	void SetUniforms() {
+		m_source->Bind();
+		Shaders::Compose *shader = reinterpret_cast<Shaders::Compose*>(m_shader);
+		shader->SetSceneTexture(0);
+		shader->SetAverageLuminance(m_luminance->GetAverageLuminance());
+		shader->SetMiddleGrey(m_luminance->GetMiddleGrey());
+	}
+
+private:
+	LuminanceRenderTarget *m_luminance;
+};
+
+} //namespace Filters
+} //namespace ClassicHDR
+
 class HDRRenderTarget : public RenderTarget {
 public:
 	HDRRenderTarget(int w, int h) :
@@ -107,15 +147,15 @@ public:
 HDRRenderer::HDRRenderer(int w, int h) :
 	Renderer(w, h)
 {
-	using namespace Post::ClassicHDR;
+	using namespace ClassicHDR;
 	//using FBOs like this is questionable. It would be better to shuffle attachments
 	//or just flip textures assuming the dimensions/formats are the same
 	m_target = new HDRRenderTarget(w, h);
 	m_luminanceTarget = new LuminanceRenderTarget(128, 128);
 
 	//build filter chain here
-	m_filters.push_back(new Luminance(m_target, m_luminanceTarget));
-	m_filters.push_back(new Compose(m_target, m_luminanceTarget, 0));
+	m_filters.push_back(new Filters::Luminance(m_target, m_luminanceTarget));
+	m_filters.push_back(new Filters::Compose(m_target, m_luminanceTarget, 0));
 }
 
 HDRRenderer::~HDRRenderer()

@@ -64,6 +64,13 @@ ShaderFilter::ShaderFilter(FilterSource source, FilterTarget target,
 	m_shader = new Post::Shader(vert, frag);
 }
 
+ShaderFilter::ShaderFilter(FilterSource source, FilterTarget target,
+	Post::Shader *shader) :
+	Filter(source, target)
+{
+	m_shader = shader;
+}
+
 ShaderFilter::~ShaderFilter()
 {
 	delete m_shader;

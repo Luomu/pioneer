@@ -28,8 +28,13 @@ protected:
 	FilterTarget m_target;
 };
 
+/*
+ * GLSL-based filter
+ */
 class ShaderFilter : public Filter {
 public:
+	ShaderFilter(FilterSource source, FilterTarget target,
+		Post::Shader *Shader);
 	ShaderFilter(FilterSource source, FilterTarget target,
 		const std::string &vert, const std::string &frag);
 	~ShaderFilter();

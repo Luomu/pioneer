@@ -94,7 +94,7 @@ void Init(int screen_width, int screen_height, int ui_width, int ui_height)
 
 void MainLoopIteration()
 {
-	Render::PrepareFrame();
+	//Render::PrepareFrame();
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glMatrixMode(GL_MODELVIEW);
@@ -113,9 +113,9 @@ void MainLoopIteration()
 
 	SDL_ShowCursor(1);
 	SDL_WM_GrabInput(SDL_GRAB_OFF);
-	Render::PostProcess();
+	//Render::PostProcess();
 	Gui::Draw();
-	Render::SwapBuffers();
+	//Render::SwapBuffers();
 }
 
 namespace Theme {

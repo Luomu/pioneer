@@ -61,6 +61,7 @@
 #include "Background.h"
 #include "Lang.h"
 #include "Lang.h"
+#include "render/HDRRenderer.h"
 
 float Pi::gameTickAlpha;
 int Pi::timeAccelIdx = 1;
@@ -120,6 +121,7 @@ MTRand Pi::rng;
 double Pi::gameTime;
 float Pi::frameTime;
 GLUquadric *Pi::gluQuadric;
+Render::Renderer *Pi::m_renderer;
 #if DEVKEYS
 bool Pi::showDebugInfo;
 #endif
@@ -166,8 +168,8 @@ int Pi::CombatRating(int kills)
 static void draw_progress(float progress)
 {
 	float w, h;
-	Render::PrepareFrame();
-	Render::PostProcess();
+	//Render::PrepareFrame();
+	//Render::PostProcess();
 	Gui::Screen::EnterOrtho();
 	glClearColor(0,0,0,0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -176,7 +178,7 @@ static void draw_progress(float progress)
 	glColor3f(1.0f,1.0f,1.0f);
 	Gui::Screen::RenderString(msg, 0.5f*(Gui::Screen::GetWidth()-w), 0.5f*(Gui::Screen::GetHeight()-h));
 	Gui::Screen::LeaveOrtho();
-	Render::SwapBuffers();
+	//Render::SwapBuffers();
 }
 
 static void LuaInit()
@@ -352,7 +354,9 @@ void Pi::Init()
 	if (!GLEW_ARB_vertex_buffer_object) {
 		Error("OpenGL extension ARB_vertex_buffer_object not supported. Pioneer can not run on your graphics card.");
 	}
+	//constructs some shaders so I left it on
 	Render::Init(width, height);
+	m_renderer = new Render::HDRRenderer(width, height);
 	draw_progress(0.1f);
 
 	Galaxy::Init();
@@ -783,7 +787,7 @@ void Pi::TombStoneLoop()
 	cpan->HideAll();
 	currentView->HideAll();
 	do {
-		Render::PrepareFrame();
+		//Render::PrepareFrame();
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		float fracH = 1.0 / Pi::GetScrAspect();
@@ -797,9 +801,9 @@ void Pi::TombStoneLoop()
 		Pi::SetMouseGrab(false);
 
 		draw_tombstone(_time);
-		Render::PostProcess();
+		//Render::PostProcess();
 		Gui::Draw();
-		Render::SwapBuffers();
+		//Render::SwapBuffers();
 		
 		Pi::frameTime = 0.001*(SDL_GetTicks() - last_time);
 		_time += Pi::frameTime;
@@ -899,6 +903,8 @@ void Pi::UninitGame()
 		delete Pi::player;
 		Pi::player = 0;
 	}
+
+	delete m_renderer;
 }
 
 void Pi::Start()
@@ -947,7 +953,7 @@ void Pi::Start()
 	do {
 		Pi::HandleEvents();
 
-		Render::PrepareFrame();
+		//Render::PrepareFrame();
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		float fracH = 1.0 / Pi::GetScrAspect();
@@ -960,9 +966,9 @@ void Pi::Start()
 		Pi::SetMouseGrab(false);
 
 		draw_intro(starfield, milkyway, _time);
-		Render::PostProcess();
+		//Render::PostProcess();
 		Gui::Draw();
-		Render::SwapBuffers();
+		//Render::SwapBuffers();
 		
 		Pi::frameTime = 0.001*(SDL_GetTicks() - last_time);
 		_time += Pi::frameTime;
@@ -1160,7 +1166,9 @@ void Pi::MainLoop()
             Pi::luaTimer.Tick();
 		frame_stat++;
 
-		Render::PrepareFrame();
+		//Render::PrepareFrame();
+		m_renderer->BeginFrame();
+
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		
@@ -1179,7 +1187,9 @@ void Pi::MainLoop()
 
 		SetMouseGrab(Pi::MouseButtonState(3));
 
-		Render::PostProcess();
+		//Render::PostProcess();
+		m_renderer->EndFrame();
+
 		Gui::Draw();
 
 #if DEVKEYS
@@ -1194,7 +1204,9 @@ void Pi::MainLoop()
 #endif
 
 		glError();
-		Render::SwapBuffers();
+		//Render::SwapBuffers();
+		m_renderer->SwapBuffers();
+
 		//if (glGetError()) printf ("GL: %s\n", gluErrorString (glGetError ()));
 		
 		int timeAccel = Pi::requestedTimeAccelIdx;

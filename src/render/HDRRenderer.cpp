@@ -53,7 +53,13 @@ namespace Shaders {
 class Compose : public Post::Shader {
 public:
 	Compose(const std::string &v, const std::string &f) :
-		Shader(v, f) { }
+		Shader(v, f),
+		loc_sceneTexture(0),
+		loc_bloomTexture(0),
+		loc_avgLum(0),
+		loc_middleGrey(0) {
+
+	}
 	void SetSceneTexture(int i) {
 		if (!loc_sceneTexture)
 			loc_sceneTexture = glGetUniformLocation(m_program, "sceneTexture");
@@ -64,15 +70,15 @@ public:
 			loc_bloomTexture = glGetUniformLocation(m_program, "bloomTexture");
 		glUniform1i(loc_bloomTexture, i);
 	}
-	void SetAverageLuminance(float f) {
+	void SetAverageLuminance(float foo) {
 		if (!loc_avgLum)
 			loc_avgLum = glGetUniformLocation(m_program, "avgLum");
-		glUniform1f(loc_avgLum, f);
+		glUniform1f(loc_avgLum, foo);
 	}
-	void SetMiddleGrey(float f) {
+	void SetMiddleGrey(float foo) {
 		if (!loc_middleGrey)
 			loc_middleGrey = glGetUniformLocation(m_program, "middleGrey");
-		glUniform1f(loc_avgLum, f);
+		glUniform1f(loc_middleGrey, foo);
 	}
 protected:
 	virtual void InvalidateLocations() {
@@ -94,7 +100,7 @@ namespace Filters {
 
 class Luminance : public Post::ShaderFilter {
 public:
-	Luminance(Post::FilterSource source, Post::FilterTarget target) :
+	Luminance(Post::FilterSource source, LuminanceRenderTarget *target) :
 		ShaderFilter(source, target,
 			"hdr/compose.vert", "hdr/luminance.frag") {
 
@@ -148,14 +154,19 @@ HDRRenderer::HDRRenderer(int w, int h) :
 	Renderer(w, h)
 {
 	using namespace ClassicHDR;
-	//using FBOs like this is questionable. It would be better to shuffle attachments
-	//or just flip textures assuming the dimensions/formats are the same
-	m_target = new HDRRenderTarget(w, h);
-	m_luminanceTarget = new LuminanceRenderTarget(128, 128);
+	try {
+		//using FBOs like this is questionable. It would be better to shuffle attachments
+		//or just flip textures assuming the dimensions/formats are the same
+		m_target = new HDRRenderTarget(w, h);
+		m_luminanceTarget = new LuminanceRenderTarget(128, 128);
 
-	//build filter chain here
-	m_filters.push_back(new Filters::Luminance(m_target, m_luminanceTarget));
-	m_filters.push_back(new Filters::Compose(m_target, m_luminanceTarget, 0));
+		//build filter chain here
+		m_filters.push_back(new Filters::Luminance(m_target, m_luminanceTarget));
+		m_filters.push_back(new Filters::Compose(m_target, m_luminanceTarget, 0));
+	} catch (RenderException &ex) {
+		fprintf(stderr, "Render init fail: %s, aborting\n", ex.what());
+		exit(1);
+	}
 }
 
 HDRRenderer::~HDRRenderer()
@@ -180,7 +191,7 @@ void HDRRenderer::EndFrame()
 
 	//Post::Present present(m_target);
 	//present.Execute();
-	//~ m_target->Show(0.f, 0.f, 30.f, 30.f);
+	m_luminanceTarget->Show(0.f, 0.f, 30.f, 30.f);
 }
 
 void HDRRenderer::ReloadShaders()

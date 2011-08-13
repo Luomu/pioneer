@@ -56,9 +56,9 @@ public:
 		Shader(v, f),
 		loc_sceneTexture(0),
 		loc_bloomTexture(0),
-		loc_avgLum(0),
-		loc_middleGrey(0) {
-
+		loc_avgLum(0)
+	{
+		middleGrey = AddUniform("middleGrey");
 	}
 	void SetSceneTexture(int i) {
 		if (!loc_sceneTexture)
@@ -75,23 +75,18 @@ public:
 			loc_avgLum = glGetUniformLocation(m_program, "avgLum");
 		glUniform1f(loc_avgLum, foo);
 	}
-	void SetMiddleGrey(float foo) {
-		if (!loc_middleGrey)
-			loc_middleGrey = glGetUniformLocation(m_program, "middleGrey");
-		glUniform1f(loc_middleGrey, foo);
-	}
+	Uniform *middleGrey;
+
 protected:
 	virtual void InvalidateLocations() {
 		loc_sceneTexture = 0;
 		loc_bloomTexture = 0;
 		loc_avgLum = 0;
-		loc_middleGrey = 0;
 	}
 private:
 	GLuint loc_sceneTexture;
 	GLuint loc_bloomTexture;
 	GLuint loc_avgLum;
-	GLuint loc_middleGrey;
 };
 
 } //namespace Shaders
@@ -133,7 +128,8 @@ protected:
 		Shaders::Compose *shader = reinterpret_cast<Shaders::Compose*>(m_shader);
 		shader->SetSceneTexture(0);
 		shader->SetAverageLuminance(m_luminance->GetAverageLuminance());
-		shader->SetMiddleGrey(m_luminance->GetMiddleGrey());
+		//shader->SetMiddleGrey(m_luminance->GetMiddleGrey());
+		shader->middleGrey->Set(m_luminance->GetMiddleGrey());
 	}
 
 private:

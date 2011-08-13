@@ -27,6 +27,7 @@ Shader::Shader(const std::string &vname, const std::string &fname) :
 Shader::~Shader()
 {
 	glDeleteProgram(m_program);
+	while (!m_uniforms.empty()) delete m_uniforms.back(), m_uniforms.pop_back();
 }
 
 void Shader::Bind()
@@ -44,6 +45,10 @@ void Shader::Recompile()
 {
 	glDeleteProgram(m_program);
 	InvalidateLocations();
+	std::vector<Uniform*>::const_iterator it = m_uniforms.begin();
+	for(; it != m_uniforms.end(); ++it) {
+		(*it)->InvalidateLocation();
+	}
 	Compile();
 }
 
@@ -133,5 +138,34 @@ void Shader::Compile()
 	}
 }
 
+Uniform* Shader::AddUniform(const std::string &name)
+{
+	Uniform *uf = new Uniform(name);
+	uf->m_parent = this;
+	m_uniforms.push_back(uf);
+	return uf;
 }
+
+} //namespace Post
+
+Uniform::Uniform(const std::string &name) :
+	m_name(name),
+	m_location(0),
+	m_parent(0)
+{
+
 }
+
+void Uniform::InvalidateLocation()
+{
+	m_location = 0;
+}
+
+void Uniform::Set(float f)
+{
+	//if (m_location)
+	m_location = glGetUniformLocation(m_parent->GetProgram(), m_name.c_str());
+	glUniform1f(m_location, f);
+}
+
+} //namespace Render

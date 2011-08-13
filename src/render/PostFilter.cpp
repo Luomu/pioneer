@@ -78,12 +78,16 @@ ShaderFilter::~ShaderFilter()
 
 void ShaderFilter::Execute()
 {
-	m_target->BeginRTT();
+	if (m_target)
+		m_target->BeginRTT();
+	else
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	m_shader->Bind();
 	SetUniforms();
 	ScreenAlignedQuad();
 	m_shader->Unbind();
-	m_target->EndRTT();
+	if (m_target)
+		m_target->EndRTT();
 }
 
 //Set uniforms for already bound shader

@@ -161,11 +161,20 @@ void Uniform::InvalidateLocation()
 	m_location = 0;
 }
 
+GLuint Uniform::GetLocation()
+{
+	m_location = glGetUniformLocation(m_parent->GetProgram(), m_name.c_str());
+	return m_location;
+}
+
 void Uniform::Set(float f)
 {
-	//if (m_location)
-	m_location = glGetUniformLocation(m_parent->GetProgram(), m_name.c_str());
-	glUniform1f(m_location, f);
+	glUniform1f(GetLocation(), f);
+}
+
+void Uniform::Set(int i)
+{
+	glUniform1i(GetLocation(), i);
 }
 
 } //namespace Render

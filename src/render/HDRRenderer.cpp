@@ -54,39 +54,27 @@ class Compose : public Post::Shader {
 public:
 	Compose(const std::string &v, const std::string &f) :
 		Shader(v, f),
-		loc_sceneTexture(0),
-		loc_bloomTexture(0),
-		loc_avgLum(0)
+		loc_bloomTexture(0)
 	{
+		sceneTexture = AddUniform("sceneTexture");
+		averageLuminance = AddUniform("avgLum");
 		middleGrey = AddUniform("middleGrey");
-	}
-	void SetSceneTexture(int i) {
-		if (!loc_sceneTexture)
-			loc_sceneTexture = glGetUniformLocation(m_program, "sceneTexture");
-		glUniform1i(loc_sceneTexture, i);
 	}
 	void SetBloomTexture(int i) {
 		if (!loc_bloomTexture)
 			loc_bloomTexture = glGetUniformLocation(m_program, "bloomTexture");
 		glUniform1i(loc_bloomTexture, i);
 	}
-	void SetAverageLuminance(float foo) {
-		if (!loc_avgLum)
-			loc_avgLum = glGetUniformLocation(m_program, "avgLum");
-		glUniform1f(loc_avgLum, foo);
-	}
+	Uniform *sceneTexture;
 	Uniform *middleGrey;
+	Uniform *averageLuminance;
 
 protected:
 	virtual void InvalidateLocations() {
-		loc_sceneTexture = 0;
 		loc_bloomTexture = 0;
-		loc_avgLum = 0;
 	}
 private:
-	GLuint loc_sceneTexture;
 	GLuint loc_bloomTexture;
-	GLuint loc_avgLum;
 };
 
 } //namespace Shaders
@@ -110,25 +98,12 @@ public:
 		m_luminance(luminance)
 	{	}
 
-	//could render directly to fbo0
-	void Execute() {
-		//m_target->BeginRTT();
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		m_shader->Bind();
-		SetUniforms();
-		ScreenAlignedQuad();//  using viewport
-		m_shader->Unbind();
-		glBindTexture(GL_TEXTURE_2D, 0);
-		//m_target->EndRTT();
-	}
-
 protected:
 	void SetUniforms() {
 		m_source->Bind();
 		Shaders::Compose *shader = reinterpret_cast<Shaders::Compose*>(m_shader);
-		shader->SetSceneTexture(0);
-		shader->SetAverageLuminance(m_luminance->GetAverageLuminance());
-		//shader->SetMiddleGrey(m_luminance->GetMiddleGrey());
+		shader->sceneTexture->Set(0);
+		shader->averageLuminance->Set(m_luminance->GetAverageLuminance());
 		shader->middleGrey->Set(m_luminance->GetMiddleGrey());
 	}
 

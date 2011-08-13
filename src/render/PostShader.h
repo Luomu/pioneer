@@ -34,6 +34,7 @@ class Uniform {
 public:
 	Uniform(const std::string&);
 	void Set(float);
+	void Set(int);
 	// call this if shader is recompiled to make sure uniform location stays correct
 	void InvalidateLocation();
 private:
@@ -41,6 +42,7 @@ private:
 	unsigned int  m_location;
 	std::string   m_name;
 	friend class  Post::Shader;
+	unsigned int  GetLocation();
 };
 
 } //namespace Render

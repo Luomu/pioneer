@@ -178,7 +178,7 @@ static void draw_progress(float progress)
 	glColor3f(1.0f,1.0f,1.0f);
 	Gui::Screen::RenderString(msg, 0.5f*(Gui::Screen::GetWidth()-w), 0.5f*(Gui::Screen::GetHeight()-h));
 	Gui::Screen::LeaveOrtho();
-	//Render::SwapBuffers();
+	Render::SwapBuffers();
 }
 
 static void LuaInit()
@@ -472,6 +472,8 @@ void Pi::InitOpenGL()
 
 void Pi::Quit()
 {
+	delete m_renderer;
+
 	SDL_Quit();
 	exit(0);
 }
@@ -788,6 +790,8 @@ void Pi::TombStoneLoop()
 	currentView->HideAll();
 	do {
 		//Render::PrepareFrame();
+		m_renderer->BeginFrame();
+
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		float fracH = 1.0 / Pi::GetScrAspect();
@@ -802,8 +806,11 @@ void Pi::TombStoneLoop()
 
 		draw_tombstone(_time);
 		//Render::PostProcess();
+		m_renderer->EndFrame();
+
 		Gui::Draw();
 		//Render::SwapBuffers();
+		m_renderer->SwapBuffers();
 		
 		Pi::frameTime = 0.001*(SDL_GetTicks() - last_time);
 		_time += Pi::frameTime;
@@ -903,8 +910,6 @@ void Pi::UninitGame()
 		delete Pi::player;
 		Pi::player = 0;
 	}
-
-	delete m_renderer;
 }
 
 void Pi::Start()
@@ -954,6 +959,8 @@ void Pi::Start()
 		Pi::HandleEvents();
 
 		//Render::PrepareFrame();
+		m_renderer->BeginFrame();
+
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		float fracH = 1.0 / Pi::GetScrAspect();
@@ -967,8 +974,11 @@ void Pi::Start()
 
 		draw_intro(starfield, milkyway, _time);
 		//Render::PostProcess();
+		m_renderer->EndFrame();
+
 		Gui::Draw();
 		//Render::SwapBuffers();
+		m_renderer->SwapBuffers();
 		
 		Pi::frameTime = 0.001*(SDL_GetTicks() - last_time);
 		_time += Pi::frameTime;

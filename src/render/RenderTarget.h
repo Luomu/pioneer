@@ -7,18 +7,19 @@ namespace Render {
 	 */
 	class RenderTarget : public Texture {
 	public:
+		RenderTarget(int w, int h);
 		RenderTarget(int w, int h, GLint format, GLint internalFormat,
 			GLenum type);
 		~RenderTarget();
 		virtual void BeginRTT();
 		virtual void EndRTT();
 
+	protected:
 		/*
-		 * Draw the texture on screen, w/h in screen percent.
-		 * This is only for testing.
+		 * Throws an RenderException if FBO is incomplete.
+		 * Must be bound before checking.
 		 */
-		void Show(float x=0.f, float y=0.f, float w=100.f, float h=100.f); //move this to Texture?
-	private:
+		virtual void CheckCompleteness() const;
 		GLuint m_fbo;
 		GLuint m_depth;
 	};

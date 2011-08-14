@@ -10,9 +10,23 @@ namespace Render {
 class LuminanceRenderTarget : public RenderTarget {
 public:
 	LuminanceRenderTarget(int w, int h) :
-		RenderTarget(w, h, GL_RGB, GL_RGB16F, GL_FLOAT),
+		RenderTarget(w, h),
 		midGrey(0.f)
-	{ }
+	{
+		glGenFramebuffers(1, &m_fbo);
+		glGenTextures(1, &m_texture);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+		glBindTexture(GL_TEXTURE_2D, m_texture);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F_ARB, m_w, m_h, 0, GL_RGB, GL_FLOAT, NULL);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_texture, 0);
+		CheckCompleteness();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
 
 	void EndRTT() {
 		RenderTarget::EndRTT();

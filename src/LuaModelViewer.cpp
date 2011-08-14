@@ -143,7 +143,21 @@ public:
 				v->SetAdjustment(m_angthrust[i]);
 				Add(v, float(100 + i*25), Gui::Screen::GetHeight()-120.0f);
 			}
-			
+			//some rendering controls
+			Gui::Fixed *box = new Gui::Fixed(32.f, 120.f);
+			Add(box, 225.f, Gui::Screen::GetHeight()-120.f);
+			Gui::Adjustment *biasAdj = new Gui::Adjustment();
+			biasAdj->SetValue(1.0);
+			Gui::VScrollBar *v = new Gui::VScrollBar();
+			v->SetAdjustment(biasAdj);
+			box->Add(v, 0, 42.f);
+			Gui::TextEntry *biasText = new Gui::TextEntry();
+			m_animEntry[0] = biasText;
+			box->Add(biasText, 0, 16.0f);
+			biasAdj->onValueChanged.connect(sigc::bind(sigc::mem_fun(
+				this, &Viewer::OnAnimChange), biasAdj, biasText));
+			OnAnimChange(biasAdj, biasText);
+#if 0
 			Add(new Gui::Label("Animations (0 gear, 1-4 are time - ignore them comrade)"),
 					200, Gui::Screen::GetHeight()-140.0f);
 			for (int i=0; i<LMR_ARG_MAX; i++) {
@@ -164,6 +178,7 @@ public:
 				m_anim[i]->onValueChanged.connect(sigc::bind(sigc::mem_fun(this, &Viewer::OnAnimChange), m_anim[i], m_animEntry[i]));
 				OnAnimChange(m_anim[i], m_animEntry[i]);
 			}
+#endif
 		}
 
 		ShowAll();
@@ -176,7 +191,7 @@ public:
 
 	void OnAnimChange(Gui::Adjustment *a, Gui::TextEntry *e) {
 		char buf[128];
-		snprintf(buf, sizeof(buf), "%.2f", a->GetValue());
+		snprintf(buf, sizeof(buf), "%.2f", a->GetValue() * 7.0);
 		e->SetText(buf);
 	}
 
@@ -293,9 +308,13 @@ void Viewer::SetSbreParams()
 {
 	float gameTime = SDL_GetTicks() * 0.001f;
 
+#if 0
 	for (int i=0; i<LMR_ARG_MAX; i++) {
 		params.argDoubles[i] = GetAnimValue(i);
 	}
+#endif
+	Render::HDRRenderer *renderer = reinterpret_cast<Render::HDRRenderer*>(m_renderer);
+	renderer->SetLuminanceBias(GetAnimValue(0));
 
 	params.argDoubles[1] = gameTime;
 	params.argDoubles[2] = gameTime / 60;

@@ -33,6 +33,8 @@ public:
 	void BeginFrame();
 	void EndFrame();
 	void ReloadShaders();
+
+	void  SetLuminanceBias(float b);
 private:
 	RenderTarget *m_target;
 	LuminanceRenderTarget *m_luminanceTarget;

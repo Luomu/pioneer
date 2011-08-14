@@ -98,6 +98,11 @@ void ShaderFilter::SetUniforms()
 	glUniform1i(loc, 0);
 }
 
+void ShaderFilter::CleanUp()
+{
+	m_source->Unbind();
+}
+
 void ShaderFilter::Reload()
 {
 	m_shader->Recompile();

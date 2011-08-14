@@ -42,6 +42,7 @@ public:
 	void Reload();
 protected:
 	virtual void SetUniforms();
+	virtual void CleanUp();
 	Shader *m_shader;
 };
 

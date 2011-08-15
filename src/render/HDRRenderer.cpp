@@ -29,7 +29,7 @@ public:
 	}
 
 	float GetLuminanceBias() const  { return m_luminanceBias; }
-	float SetLuminanceBias(float b) { m_luminanceBias = b;    }
+	void SetLuminanceBias(float b)  { m_luminanceBias = b;    }
 
 private:
 	float m_luminanceBias;

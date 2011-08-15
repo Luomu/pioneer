@@ -72,6 +72,7 @@ void Texture::Show(const float x, const float y,
 	glActiveTexture(GL_TEXTURE0);
 	glEnable(GL_TEXTURE_2D);
 	Texture::Bind();
+	glTexEnvf(GL_TEXTURE_FILTER_CONTROL, GL_TEXTURE_LOD_BIAS, 100.f);
 
 	glLoadIdentity();
 

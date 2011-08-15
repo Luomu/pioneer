@@ -64,7 +64,7 @@ void main(void)
 	vec3 col = vec3(texture2D(sceneTexture, texCoord));
 #if 1
 	col = calcExposedColor(col, avgLuminance);
-	col = toneMapReinhard(col);
+	col = toneMapReinhardAlternative(col);
 #else
 	float avgLum = avgLuminance;
 	float middleGrey = 1.8;

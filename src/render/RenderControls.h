@@ -23,7 +23,7 @@ public:
 	Controls();
 	void GetSizeRequested(float size[2]);
 	vec2i m_requestedSize;
-	static HdrParams* RenderParams();
+	static HdrParams& RenderParams();
 private:
 	Gui::TextEntry* AddParameter(const std::string&);
 	Gui::TextEntry *m_exposureKey;

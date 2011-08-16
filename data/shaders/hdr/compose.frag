@@ -26,7 +26,7 @@ float getAvgLuminance()
 //approximates luminance from an RGB value
 float calcLuminance(vec3 color)
 {
-	return max(dot(color, vec3(0.299, 0.587, 0.114)), 0.0001f);
+	return max(dot(color, vec3(0.299, 0.587, 0.114)), 0.0001);
 }
 
 //exposure calculation
@@ -35,7 +35,7 @@ vec3 calcExposedColor(vec3 color, float avgLuminance)
 	avgLuminance = max(avgLuminance, 0.001);
 	float exposure = 0.0;
 	float keyValue = key; //0.18
-	//~ float keyValue = 1.03 - (2.0 / (2.0 + log10(avgLuminance + 1.0)));
+	keyValue += 1.03 - (2.0 / (2.0 + log10(avgLuminance + 1.0)));
 	float linearExposure = (keyValue / avgLuminance);
 	exposure = log2(max(linearExposure, 0.0001));
 	return exp2(exposure) * color;
@@ -90,10 +90,14 @@ void main(void)
 	vec3 col = vec3(texture2D(sceneTexture, texCoord));
 #if 1
 	col = calcExposedColor(col, avgLuminance);
-	col = toneMapFilmicALU(col);
+	col =
+		toneMapReinhardAlternative(col);
+		//~ toneMapReinhard(col);
+		//~ toneMapDragoLogarithmic(col);
+		//~ toneMapFilmicALU(col);
 #else
 	float avgLum = avgLuminance;
-	float middleGrey = 1.8;
+	float middleGrey = 0.18;
 	// This is the reinhard tonemapping algorithm, i think...
 	//convert to CIE XYZ color space
 	float X,Y,Z,x,y;

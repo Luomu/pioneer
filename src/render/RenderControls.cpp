@@ -34,14 +34,14 @@ void Controls::OnChangeParameters()
 {
 	const float lumb = atof(m_luminanceBias->GetText().c_str());
 	const float key  =  atof(m_exposureKey->GetText().c_str());
-	RenderParams()->luminanceBias = lumb;
-	RenderParams()->key = key;
+	RenderParams().luminanceBias = lumb;
+	RenderParams().key = key;
 }
 
-HdrParams* Controls::RenderParams()
+HdrParams& Controls::RenderParams()
 {
 	static HdrParams *params = new HdrParams;
-	return params;
+	return *(params);
 }
 
 } //namespace Render

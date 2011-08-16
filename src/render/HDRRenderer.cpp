@@ -111,11 +111,11 @@ protected:
 		shader->sceneTexture->Set(0);
 		glActiveTexture(GL_TEXTURE1);
 		m_luminance->Bind();
-		Render::HdrParams *p = Render::Controls::RenderParams();
+		Render::HdrParams &p = Render::Controls::RenderParams();
 		shader->luminanceTexture->Set(1);
 		//m_luminance->GetLuminanceBias()
-		shader->luminanceBias->Set(p->luminanceBias);
-		shader->key->Set(p->key);
+		shader->luminanceBias->Set(p.luminanceBias);
+		shader->key->Set(p.key);
 		//~ shader->averageLuminance->Set(m_luminance->GetAverageLuminance());
 		//~ shader->middleGrey->Set(m_luminance->GetMiddleGrey());
 	}

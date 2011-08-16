@@ -131,6 +131,7 @@
     <ClCompile Include="..\..\src\render\HDRRenderer.cpp" />
     <ClCompile Include="..\..\src\render\PostFilter.cpp" />
     <ClCompile Include="..\..\src\render\PostShader.cpp" />
+    <ClCompile Include="..\..\src\render\RenderControls.cpp" />
     <ClCompile Include="..\..\src\render\Renderer.cpp" />
     <ClCompile Include="..\..\src\render\RenderTarget.cpp" />
     <ClCompile Include="..\..\src\render\Texture.cpp" />
@@ -192,12 +193,14 @@
     <ClInclude Include="..\..\src\render\HDRRenderer.h" />
     <ClInclude Include="..\..\src\render\PostFilter.h" />
     <ClInclude Include="..\..\src\render\PostShader.h" />
+    <ClInclude Include="..\..\src\render\RenderControls.h" />
     <ClInclude Include="..\..\src\render\Renderer.h" />
     <ClInclude Include="..\..\src\render\RenderTarget.h" />
     <ClInclude Include="..\..\src\render\Texture.h" />
     <ClInclude Include="..\..\src\TextureFont.h" />
     <ClInclude Include="..\..\src\TextureManager.h" />
     <ClInclude Include="..\..\src\utils.h" />
+    <ClInclude Include="..\..\src\vector2.h" />
     <ClInclude Include="..\..\src\vector3.h" />
     <ClInclude Include="..\..\src\VectorFont.h" />
     <ClInclude Include="..\src\pch.h" />

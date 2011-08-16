@@ -6,9 +6,11 @@
 namespace Render {
 
 struct HdrParams {
+	float key;
 	float luminanceBias;
 	HdrParams() :
-		luminanceBias(0.5f)
+		key(1.f),
+		luminanceBias(5.f)
 	{ }
 };
 
@@ -23,8 +25,11 @@ public:
 	vec2i m_requestedSize;
 	static HdrParams* RenderParams();
 private:
-	Gui::TextEntry *m_luminanceSaturation;
+	Gui::TextEntry* AddParameter(const std::string&);
+	Gui::TextEntry *m_exposureKey;
+	Gui::TextEntry *m_luminanceBias;
 	void OnChangeParameters();
+	Gui::VBox *vbox;
 };
 
 }

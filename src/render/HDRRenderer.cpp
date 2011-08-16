@@ -71,12 +71,14 @@ public:
 		sceneTexture     = AddUniform("sceneTexture");
 		luminanceTexture = AddUniform("luminanceTexture");
 		luminanceBias    = AddUniform("luminanceBias");
+		key              = AddUniform("key");
 		//~ averageLuminance = AddUniform("avgLum");
 		//~ middleGrey = AddUniform("middleGrey");
 	}
 	Uniform *sceneTexture;
 	Uniform *luminanceTexture;
 	Uniform *luminanceBias;
+	Uniform *key;
 	//~ Uniform *middleGrey;
 	//~ Uniform *averageLuminance;
 };
@@ -112,9 +114,8 @@ protected:
 		Render::HdrParams *p = Render::Controls::RenderParams();
 		shader->luminanceTexture->Set(1);
 		//m_luminance->GetLuminanceBias()
-		const float lumb = p->luminanceBias;
-		printf("Oh yeah %.2f\n", lumb);
-		shader->luminanceBias->Set(lumb);
+		shader->luminanceBias->Set(p->luminanceBias);
+		shader->key->Set(p->key);
 		//~ shader->averageLuminance->Set(m_luminance->GetAverageLuminance());
 		//~ shader->middleGrey->Set(m_luminance->GetMiddleGrey());
 	}

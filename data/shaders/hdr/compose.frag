@@ -3,6 +3,7 @@
 uniform sampler2D sceneTexture;
 uniform sampler2D luminanceTexture;
 uniform float     luminanceBias;
+uniform float     key;
 //~ uniform float avgLum;
 //~ uniform float middleGrey;
 
@@ -33,7 +34,7 @@ vec3 calcExposedColor(vec3 color, float avgLuminance)
 {
 	avgLuminance = max(avgLuminance, 0.001);
 	float exposure = 0.0;
-	float keyValue = 0.75;
+	float keyValue = key; //0.18
 	//~ float keyValue = 1.03 - (2.0 / (2.0 + log10(avgLuminance + 1.0)));
 	float linearExposure = (keyValue / avgLuminance);
 	exposure = log2(max(linearExposure, 0.0001));

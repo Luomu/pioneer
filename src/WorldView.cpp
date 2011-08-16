@@ -14,6 +14,7 @@
 #include "perlin.h"
 #include "SectorView.h"
 #include "Lang.h"
+#include "render/RenderControls.h"
 
 const double WorldView::PICK_OBJECT_RECT_SIZE = 20.0;
 static const Color s_hudTextColor(0.0f,1.0f,0.0f,0.8f);
@@ -155,6 +156,9 @@ WorldView::WorldView(): View(),
 		Pi::onPlayerChangeFlightControlState.connect(sigc::mem_fun(this, &WorldView::OnPlayerChangeFlightControlState));
 	m_onMouseButtonDown =
 		Pi::onMouseButtonDown.connect(sigc::mem_fun(this, &WorldView::MouseButtonDown));
+
+	m_renderControls = new Render::Controls();
+	Add(m_renderControls, 500, 5);
 }
 
 WorldView::~WorldView()

@@ -3,6 +3,7 @@
 #include "PostShader.h"
 #include "RenderTarget.h"
 #include "Texture.h"
+#include "RenderControls.h"
 #include "HDRRenderer.h"
 
 namespace Render {
@@ -108,8 +109,12 @@ protected:
 		shader->sceneTexture->Set(0);
 		glActiveTexture(GL_TEXTURE1);
 		m_luminance->Bind();
+		Render::HdrParams *p = Render::Controls::RenderParams();
 		shader->luminanceTexture->Set(1);
-		shader->luminanceBias->Set(m_luminance->GetLuminanceBias());
+		//m_luminance->GetLuminanceBias()
+		const float lumb = p->luminanceBias;
+		printf("Oh yeah %.2f\n", lumb);
+		shader->luminanceBias->Set(lumb);
 		//~ shader->averageLuminance->Set(m_luminance->GetAverageLuminance());
 		//~ shader->middleGrey->Set(m_luminance->GetMiddleGrey());
 	}

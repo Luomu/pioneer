@@ -8,6 +8,7 @@ noinst_HEADERS = \
 	PostFilter.h \
 	PostShader.h \
 	Renderer.h \
+	RenderControls.h \
 	RenderTarget.h \
 	Texture.h
 
@@ -16,5 +17,6 @@ librender_a_SOURCES = \
 	PostFilter.cpp \
 	PostShader.cpp \
 	Renderer.cpp \
+	RenderControls.cpp \
 	RenderTarget.cpp \
 	Texture.cpp

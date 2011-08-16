@@ -12,6 +12,7 @@ class Body;
 class Frame;
 class LabelSet;
 class Ship;
+namespace Render { class Controls; }
 
 class WorldView: public View {
 public:
@@ -107,6 +108,8 @@ private:
 	vector3d m_targLeadPos;
 	bool m_navVelocityIndicatorOnscreen;
 	int m_navVelocityIndicatorPos[2];
+
+	Render::Controls *m_renderControls;
 };
 
 #endif /* _WORLDVIEW_H */

@@ -4,11 +4,10 @@ uniform sampler2D sceneTexture;
 uniform sampler2D luminanceTexture;
 uniform float     luminanceBias;
 uniform float     key;
+uniform float     luminanceSaturation;
+uniform float     whiteLevel;
 //~ uniform float avgLum;
 //~ uniform float middleGrey;
-
-const float LuminanceSaturation = 1.0;
-const float WhiteLevel = 1.0;
 
 varying vec2 texCoord;
 
@@ -35,7 +34,7 @@ vec3 calcExposedColor(vec3 color, float avgLuminance)
 	avgLuminance = max(avgLuminance, 0.001);
 	float exposure = 0.0;
 	float keyValue = key; //0.18
-	keyValue += 1.03 - (2.0 / (2.0 + log10(avgLuminance + 1.0)));
+	keyValue += 1.03 - (2.0 / (2.0 + log10(avgLuminance + 1.0))); //middleGrey
 	float linearExposure = (keyValue / avgLuminance);
 	exposure = log2(max(linearExposure, 0.0001));
 	return exp2(exposure) * color;
@@ -55,48 +54,37 @@ vec3 toneMapDragoLogarithmic(vec3 color)
 	float Bias = 0.5;
 	float pixelLuminance = calcLuminance(color);    
     float toneMappedLuminance = log10(1.0 + pixelLuminance);
-	toneMappedLuminance /= log10(1.0 + WhiteLevel);
-	toneMappedLuminance /= log10(2.0 + 8.0 * ((pixelLuminance / WhiteLevel) * log10(Bias) / log10(0.5)));
-	return toneMappedLuminance * pow(color / pixelLuminance, vec3(LuminanceSaturation)); 
+	toneMappedLuminance /= log10(1.0 + whiteLevel);
+	toneMappedLuminance /= log10(2.0 + 8.0 * ((pixelLuminance / whiteLevel) * log10(Bias) / log10(0.5)));
+	return toneMappedLuminance * pow(color / pixelLuminance, vec3(luminanceSaturation)); 
 }
 
 vec3 toneMapExponential(vec3 color)
 {
 	float pixelLuminance = calcLuminance(color);  
-	float toneMappedLuminance = 1.0 - exp(-pixelLuminance / WhiteLevel);
-	return toneMappedLuminance * pow(color / pixelLuminance, vec3(LuminanceSaturation));
+	float toneMappedLuminance = 1.0 - exp(-pixelLuminance / whiteLevel);
+	return toneMappedLuminance * pow(color / pixelLuminance, vec3(luminanceSaturation));
 }
 
 vec3 toneMapReinhard(vec3 color)
 {
 	float pixelLuminance = calcLuminance(color);
 	float toneMappedLuminance = pixelLuminance / (pixelLuminance + 1.0);
-	return toneMappedLuminance * pow(color / pixelLuminance, vec3(LuminanceSaturation));
+	return toneMappedLuminance * pow(color / pixelLuminance, vec3(luminanceSaturation));
 }
 
 vec3 toneMapReinhardAlternative(vec3 color)
 {
 	float pixelLuminance = calcLuminance(color);
 	float toneMappedLuminance = pixelLuminance
-		* (1.0f + pixelLuminance / (WhiteLevel * WhiteLevel))
+		* (1.0f + pixelLuminance / (whiteLevel * whiteLevel))
 		/ (1.0f + pixelLuminance);
-	return toneMappedLuminance * pow(color / pixelLuminance, vec3(LuminanceSaturation));
+	return toneMappedLuminance * pow(color / pixelLuminance, vec3(luminanceSaturation));
 }
 
-void main(void)
+//pioneer original
+vec3 toneMapReinhardOriginal(vec3 col, float avgLum)
 {
-
-	float avgLuminance = getAvgLuminance();
-	vec3 col = vec3(texture2D(sceneTexture, texCoord));
-#if 1
-	col = calcExposedColor(col, avgLuminance);
-	col =
-		toneMapReinhardAlternative(col);
-		//~ toneMapReinhard(col);
-		//~ toneMapDragoLogarithmic(col);
-		//~ toneMapFilmicALU(col);
-#else
-	float avgLum = avgLuminance;
 	float middleGrey = 0.18;
 	// This is the reinhard tonemapping algorithm, i think...
 	//convert to CIE XYZ color space
@@ -116,6 +104,23 @@ void main(void)
 	col.r =  3.2405 *X - 1.5371*Y - 0.4985*Z;
 	col.g = -0.9693 *X + 1.8760*Y + 0.0416*Z;
 	col.b =  0.0556 *X - 0.2040*Y + 1.0572*Z;
-#endif
+
+	return col;
+}
+
+void main(void)
+{
+
+	float avgLuminance = getAvgLuminance();
+	vec3 col = vec3(texture2D(sceneTexture, texCoord));
+
+	col = calcExposedColor(col, avgLuminance);
+	col =
+		toneMapReinhardOriginal(col, avgLuminance);
+		//~ toneMapReinhardAlternative(col);
+		//~ toneMapReinhard(col);
+		//~ toneMapDragoLogarithmic(col);
+		//~ toneMapFilmicALU(col);
+
 	gl_FragColor = vec4(col.r, col.g, col.b, 1.0);
 }

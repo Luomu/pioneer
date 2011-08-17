@@ -465,6 +465,9 @@
     <ClCompile Include="..\..\src\render\Texture.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\render\RenderControls.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\collider\BVHTree.h">
@@ -972,6 +975,9 @@
       <Filter>src\render</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\render\Texture.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\render\RenderControls.h">
       <Filter>src\render</Filter>
     </ClInclude>
   </ItemGroup>

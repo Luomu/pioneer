@@ -2,15 +2,24 @@
 
 #include "gui/Gui.h"
 #include "vector2.h"
+#include <map>
 
 namespace Render {
 
+/*
+ * Bunch of HDR parameters. All parameters do not make
+ * sense with all tone mapping operators.
+ */
 struct HdrParams {
 	float key;
 	float luminanceBias;
+	float luminanceSaturation;
+	float whiteLevel;
 	HdrParams() :
 		key(1.f),
-		luminanceBias(5.f)
+		luminanceBias(5.f),
+		luminanceSaturation(1.f),
+		whiteLevel(1.f)
 	{ }
 };
 
@@ -25,10 +34,10 @@ public:
 	vec2i m_requestedSize;
 	static HdrParams& RenderParams();
 private:
-	Gui::TextEntry* AddParameter(const std::string&);
-	Gui::TextEntry *m_exposureKey;
-	Gui::TextEntry *m_luminanceBias;
+	std::map<std::string, Gui::TextEntry*> m_entries;
+	Gui::TextEntry* AddParameter(const std::string&, float);
 	void OnChangeParameters();
+	float GetFloat(const std::string&);
 	Gui::VBox *vbox;
 };
 

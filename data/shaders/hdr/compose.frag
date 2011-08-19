@@ -31,6 +31,7 @@ float calcLuminance(vec3 color)
 //exposure calculation
 vec3 calcExposedColor(vec3 color, float avgLuminance)
 {
+	//note auto key is boosted at the moment -- not correct
 	avgLuminance = max(avgLuminance, 0.001);
 	float exposure = 0.0;
 	float keyValue = key; //0.18
@@ -116,11 +117,11 @@ void main(void)
 
 	col = calcExposedColor(col, avgLuminance);
 	col =
-		toneMapReinhardOriginal(col, avgLuminance);
+		//~ toneMapReinhardOriginal(col, avgLuminance);
 		//~ toneMapReinhardAlternative(col);
 		//~ toneMapReinhard(col);
 		//~ toneMapDragoLogarithmic(col);
-		//~ toneMapFilmicALU(col);
+		toneMapFilmicALU(col);
 
 	gl_FragColor = vec4(col.r, col.g, col.b, 1.0);
 }

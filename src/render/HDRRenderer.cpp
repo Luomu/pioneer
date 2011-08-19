@@ -68,10 +68,12 @@ public:
 	Compose(const std::string &v, const std::string &f) :
 		Shader(v, f)
 	{
-		sceneTexture     = AddUniform("sceneTexture");
-		luminanceTexture = AddUniform("luminanceTexture");
-		luminanceBias    = AddUniform("luminanceBias");
-		key              = AddUniform("key");
+		sceneTexture        = AddUniform("sceneTexture");
+		luminanceTexture    = AddUniform("luminanceTexture");
+		luminanceBias       = AddUniform("luminanceBias");
+		key                 = AddUniform("key");
+		luminanceSaturation = AddUniform("luminanceSaturation");
+		whiteLevel          = AddUniform("whiteLevel");
 		//~ averageLuminance = AddUniform("avgLum");
 		//~ middleGrey = AddUniform("middleGrey");
 	}
@@ -79,6 +81,8 @@ public:
 	Uniform *luminanceTexture;
 	Uniform *luminanceBias;
 	Uniform *key;
+	Uniform *luminanceSaturation;
+	Uniform *whiteLevel;
 	//~ Uniform *middleGrey;
 	//~ Uniform *averageLuminance;
 };
@@ -116,6 +120,8 @@ protected:
 		//m_luminance->GetLuminanceBias()
 		shader->luminanceBias->Set(p.luminanceBias);
 		shader->key->Set(p.key);
+		shader->luminanceSaturation->Set(p.luminanceSaturation);
+		shader->whiteLevel->Set(p.whiteLevel);
 		//~ shader->averageLuminance->Set(m_luminance->GetAverageLuminance());
 		//~ shader->middleGrey->Set(m_luminance->GetMiddleGrey());
 	}
@@ -181,8 +187,8 @@ void HDRRenderer::EndFrame()
 
 	//Post::Present present(m_target);
 	//present.Execute();
-	glTexEnvf(GL_TEXTURE_FILTER_CONTROL, GL_TEXTURE_LOD_BIAS, m_luminanceTarget->GetLuminanceBias());
-	m_luminanceTarget->Show(0.f, 0.f, 30.f, 30.f);
+	m_luminanceTarget->biasHack = m_luminanceTarget->GetLuminanceBias();
+	m_luminanceTarget->Show(0.f, 0.f, 20.f, 20.f);
 	glTexEnvf(GL_TEXTURE_FILTER_CONTROL, GL_TEXTURE_LOD_BIAS, 0.f);
 }
 

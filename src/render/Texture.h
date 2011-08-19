@@ -19,7 +19,7 @@ namespace Render {
 		 * This is only for testing.
 		 */
 		void Show(float x=0.f, float y=0.f, float w=100.f, float h=100.f);
-
+		float biasHack;
 	protected:
 		/*
 		 * Called just before glTexImage.

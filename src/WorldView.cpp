@@ -158,7 +158,7 @@ WorldView::WorldView(): View(),
 		Pi::onMouseButtonDown.connect(sigc::mem_fun(this, &WorldView::MouseButtonDown));
 
 	m_renderControls = new Render::Controls();
-	Add(m_renderControls, 500, 5);
+	Add(m_renderControls, 650, 5);
 }
 
 WorldView::~WorldView()

@@ -17,9 +17,9 @@ struct HdrParams {
 	float whiteLevel;
 	HdrParams() :
 		key(1.f),
-		luminanceBias(5.f),
+		luminanceBias(5.f), //mipmap bias
 		luminanceSaturation(1.f),
-		whiteLevel(1.f)
+		whiteLevel(0.75f) //tweaked for drago logarithmic
 	{ }
 };
 

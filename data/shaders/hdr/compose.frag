@@ -31,13 +31,15 @@ float calcLuminance(vec3 color)
 //exposure calculation
 vec3 calcExposedColor(vec3 color, float avgLuminance)
 {
-	//note auto key is boosted at the moment -- not correct
 	avgLuminance = max(avgLuminance, 0.001);
 	float exposure = 0.0;
 	float keyValue = key; //0.18
-	keyValue += 1.03 - (2.0 / (2.0 + log10(avgLuminance + 1.0))); //middleGrey
+
+	keyValue = 1.03 - (2.0 / (2.0 + log10(avgLuminance + 1.0))); //middleGrey
+
 	float linearExposure = (keyValue / avgLuminance);
 	exposure = log2(max(linearExposure, 0.0001));
+
 	return exp2(exposure) * color;
 }
 
@@ -45,24 +47,29 @@ vec3 toneMapFilmicALU(vec3 color)
 {
     color = max(vec3(0.0), color - 0.004);
     color = (color * (6.2 * color + 0.5)) / (color * (6.2 * color + 1.7)+ 0.06);
-
-    // result has 1/2.2 baked in
     return pow(color, vec3(2.2));
+}
+
+vec3 toneMapLogarithmic(vec3 color)
+{
+   float pixelLuminance = calcLuminance(color);
+   float toneMappedLuminance = log10(1 + pixelLuminance) / log10(1 + whiteLevel);
+   return toneMappedLuminance * pow(color / pixelLuminance, vec3(luminanceSaturation));
 }
 
 vec3 toneMapDragoLogarithmic(vec3 color)
 {
 	float Bias = 0.5;
-	float pixelLuminance = calcLuminance(color);    
+	float pixelLuminance = calcLuminance(color);
     float toneMappedLuminance = log10(1.0 + pixelLuminance);
 	toneMappedLuminance /= log10(1.0 + whiteLevel);
 	toneMappedLuminance /= log10(2.0 + 8.0 * ((pixelLuminance / whiteLevel) * log10(Bias) / log10(0.5)));
-	return toneMappedLuminance * pow(color / pixelLuminance, vec3(luminanceSaturation)); 
+	return toneMappedLuminance * pow(color / pixelLuminance, vec3(luminanceSaturation));
 }
 
 vec3 toneMapExponential(vec3 color)
 {
-	float pixelLuminance = calcLuminance(color);  
+	float pixelLuminance = calcLuminance(color);
 	float toneMappedLuminance = 1.0 - exp(-pixelLuminance / whiteLevel);
 	return toneMappedLuminance * pow(color / pixelLuminance, vec3(luminanceSaturation));
 }
@@ -117,11 +124,12 @@ void main(void)
 
 	col = calcExposedColor(col, avgLuminance);
 	col =
+		//toneMapLogarithmic(col);
 		//~ toneMapReinhardOriginal(col, avgLuminance);
 		//~ toneMapReinhardAlternative(col);
 		//~ toneMapReinhard(col);
-		//~ toneMapDragoLogarithmic(col);
-		toneMapFilmicALU(col);
+		toneMapDragoLogarithmic(col);
+		//~ toneMapFilmicALU(col);
 
 	gl_FragColor = vec4(col.r, col.g, col.b, 1.0);
 }

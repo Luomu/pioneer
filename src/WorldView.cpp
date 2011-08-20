@@ -317,8 +317,10 @@ static void position_system_lights(Frame *camFrame, Frame *frame, int &lightNum)
 		lightPos[2] = float(lpos.z);
 		lightPos[3] = 0;
 
+		//lights here
 		const float *col = StarSystem::starRealColors[body->type];
-		float lightCol[4] = { col[0]*2.0, col[1]*2.0, col[2]*2.0, 0 };
+		float lightCol[4] = { col[0]*5.0, col[1]*5.0, col[2]*5.0, 0 };
+		//float lightCol[4] = { 1.f, 1.f, 1.f, 1.f };
 		float ambCol[4] = { 0,0,0,0 };
 
 		glLightfv(light, GL_POSITION, lightPos);

@@ -19,6 +19,9 @@
     <Filter Include="src\render">
       <UniqueIdentifier>{d9c0c67d-08a9-40e3-a726-2441396eae67}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\rocket">
+      <UniqueIdentifier>{7599ff24-a0dd-483a-9c91-ae5a7cc0dd41}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\collider\BVHTree.cpp">
@@ -464,6 +467,18 @@
     </ClCompile>
     <ClCompile Include="..\..\src\TerrainBody.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rocket\RocketFaceElement.cpp">
+      <Filter>src\rocket</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rocket\RocketManager.cpp">
+      <Filter>src\rocket</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rocket\RocketShipSpinnerElement.cpp">
+      <Filter>src\rocket</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rocket\RocketStash.cpp">
+      <Filter>src\rocket</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -970,6 +985,18 @@
     </ClInclude>
     <ClInclude Include="..\..\src\TerrainBody.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\rocket\RocketFaceElement.h">
+      <Filter>src\rocket</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\rocket\RocketManager.h">
+      <Filter>src\rocket</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\rocket\RocketShipSpinnerElement.h">
+      <Filter>src\rocket</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\rocket\RocketStash.h">
+      <Filter>src\rocket</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

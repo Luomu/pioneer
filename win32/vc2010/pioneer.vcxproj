@@ -115,7 +115,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../../src;../../win32/src;../../win32/include;../../contrib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../src;../../win32/src;../../win32/include;../../contrib;../../contrib/rocket/include</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
       <FloatingPointModel>Fast</FloatingPointModel>
@@ -127,7 +127,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>lua.lib;shlwapi.lib;libogg_static_vc2010_release.lib;libvorbis_static_vc2010_release.lib;libvorbisfile_static_vc2010_release.lib;sdl.lib;sdlmain.lib;opengl32.lib;glu32.lib;SDL_image.lib;freetype2312MT.lib;glew32.lib;sigc-vc2010-2_2_8.lib;libpng15.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua.lib;shlwapi.lib;libogg_static_vc2010_release.lib;libvorbis_static_vc2010_release.lib;libvorbisfile_static_vc2010_release.lib;sdl.lib;sdlmain.lib;opengl32.lib;glu32.lib;SDL_image.lib;freetype2312MT.lib;glew32.lib;sigc-vc2010-2_2_8.lib;libpng15.lib;RocketCore.lib;RocketControls.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../../win32/lib;$(SolutionDir)$(Configuration)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -240,6 +240,10 @@
     <ClCompile Include="..\..\src\render\RenderShader.cpp" />
     <ClCompile Include="..\..\src\render\RenderTarget.cpp" />
     <ClCompile Include="..\..\src\render\RenderTexture.cpp" />
+    <ClCompile Include="..\..\src\rocket\RocketFaceElement.cpp" />
+    <ClCompile Include="..\..\src\rocket\RocketManager.cpp" />
+    <ClCompile Include="..\..\src\rocket\RocketShipSpinnerElement.cpp" />
+    <ClCompile Include="..\..\src\rocket\RocketStash.cpp" />
     <ClCompile Include="..\..\src\Sector.cpp" />
     <ClCompile Include="..\..\src\SectorView.cpp" />
     <ClCompile Include="..\..\src\Serializer.cpp" />
@@ -412,6 +416,10 @@
     <ClInclude Include="..\..\src\render\RenderShader.h" />
     <ClInclude Include="..\..\src\render\RenderTarget.h" />
     <ClInclude Include="..\..\src\render\RenderTexture.h" />
+    <ClInclude Include="..\..\src\rocket\RocketFaceElement.h" />
+    <ClInclude Include="..\..\src\rocket\RocketManager.h" />
+    <ClInclude Include="..\..\src\rocket\RocketShipSpinnerElement.h" />
+    <ClInclude Include="..\..\src\rocket\RocketStash.h" />
     <ClInclude Include="..\..\src\Sector.h" />
     <ClInclude Include="..\..\src\SectorView.h" />
     <ClInclude Include="..\..\src\Serializer.h" />

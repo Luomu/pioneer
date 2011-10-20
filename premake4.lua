@@ -1,3 +1,12 @@
+--to generate the solutions under build/ do: premake4.exe vs2010
+--to do:
+--modelviewer project
+--project for terrain...
+--project for rocket...
+--debug build
+--optimization flags
+--if the projects are put under version control, should
+--pregenerate some UUIDs for projects so they don't change on every regen
 solution "Pioneer"
 	configurations { "Release" }
 	location "build" --out of source build
@@ -5,16 +14,9 @@ solution "Pioneer"
 	includedirs {
 		"win32/include",
 		"win32/src", --yes really
-		"c:/users/Kimmo/git/pioneer/src"
 	}
 	libdirs {
 		"win32/lib"
-	}
-	--common files
-	files {
-		--"src/utils.h",
-		--"src/StringF.*",
-		--"win32/src/win32-dirent.*"
 	}
 	--common links
 	links {
@@ -25,7 +27,8 @@ solution "Pioneer"
 		"SDL_image",
 		"libpng15",
 		"Shlwapi", --PathFileExists
-		"freetype2312MT"
+		"freetype2312MT",
+		"sigc-vc2010-2_2_8"
 	}
 	--common defines
 	defines {
@@ -33,18 +36,17 @@ solution "Pioneer"
 		"_CRT_SECURE_NO_WARNINGS" --C4996 sscanf deprecation warning
 	}
 
-	--time for subprojects, the order here does not matter but build order
-	--is controlled by links directives
-	--the libs are static as SharedLib would require extra declspec dllexport stuff for each
+	--Time for projects, the order here does not matter, build order
+	--is controlled by links directives.
+	--the libs are static, as SharedLib would require extra declspec dllexport stuff for each.
 	--project for collider
-	--depends on libGui (just for error screen?) so I hacked that out
 	project "libCollider"
 		kind "StaticLib"
 		files {
 			"src/collider/*.h",
 			"src/collider/*.cpp",
 			"src/utils.*",
-			"src/StringF.*",			
+			"src/StringF.*",
 			"win32/src/win32-dirent.*",
 		}
 
@@ -58,6 +60,9 @@ solution "Pioneer"
 			"src/StringF.*",
 			"win32/src/win32-dirent.*",
 		}
+		includedirs {
+			"src" --for #include "libs.h"
+		}
 
 	--project for gui
 	project "libGui"
@@ -66,14 +71,40 @@ solution "Pioneer"
 			"src/gui/*.h",
 			"src/gui/*.cpp",
 			"src/TextureFont.*"
-		}		
+		}
 		links {
 			"libRender"
 		}
+		includedirs {
+			"src" --for #include "libs.h"
+		}
 
-	--project for terrain...
-	--project for rocket...
-	
+	project "libLua"
+		kind "StaticLib"
+		--language should be c+cpp? works anyway
+		files {
+			"contrib/lua/*.h",
+			"contrib/lua/*.c",
+			excludes {
+				"contrib/lua/lua.c", --lua interpreter
+				"contrib/lua/luac.c" --lua compiler
+			}
+		}
+
+	project "libOOLua"
+		kind "StaticLib"
+		includedirs {
+			"contrib" --for lua/
+		}
+		files {
+			"contrib/oolua/*.h",
+			"contrib/oolua/*.c",
+			"contrib/oolua/*.cpp"
+		}
+		links {
+			"libLua"
+		}
+
 	--main app project
 	project "Pioneer"
 		kind "ConsoleApp"
@@ -83,13 +114,18 @@ solution "Pioneer"
 		files {
 			"src/*.h",
 			"src/*.cpp",
-			excludes { "src/test*" }
+			excludes {
+				"src/test*",
+				"src/LuaModelViewer.cpp"
+			}
 		}
 		links {
 			"libCollider",
 			"libRender",
 			"libGui",
+			"libLua",
+			"libOOLua",
 			"libvorbis",
-			"libvorbisfile"
-			"libLua
+			"libvorbisfile",
+			"sdlmain"
 		}

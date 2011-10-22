@@ -1,8 +1,6 @@
 --to generate the solutions under build/ do: premake4.exe vs2010
 --to do:
---modelviewer project
 --project for terrain...
---project for rocket...
 --debug build
 --optimization flags
 --if the projects are put under version control, should
@@ -105,11 +103,66 @@ solution "Pioneer"
 			"libLua"
 		}
 
+	--libRocketCore
+	project "libRocketCore"
+		uuid "84323C27-5CB7-4674-8C15-6EC46F5502DC"
+		kind "StaticLib"
+		includedirs {
+			"contrib/rocket/include"
+		}
+		files {
+			"contrib/rocket/src/Core/*.h",
+			"contrib/rocket/src/Core/*.cpp"
+		}
+		defines {
+			"STATIC_LIB"
+		}
+
+	--libRocketControls
+	project "libRocketControls"
+		uuid "9DACCB4D-8218-48F5-8246-084C6BC75A8E"
+		kind "StaticLib"
+		includedirs {
+			"contrib/rocket/include"
+		}
+		files {
+			"contrib/rocket/src/Controls/*.h",
+			"contrib/rocket/src/Controls/*.cpp"
+		}
+		links {
+			"libRocketCore"
+		}
+		defines {
+			"STATIC_LIB"
+		}
+
+	--libRocket
+	project "libRocket"
+		uuid "BAB7E196-5E1D-4A0D-9905-5272D738726C"
+		kind "StaticLib"
+		includedirs {
+			"contrib/rocket/include",
+			"src",
+			"contrib"
+		}
+		files {
+			"src/rocket/*.h",
+			"src/rocket/*.cpp"
+		}
+		links {
+			"libRocketCore",
+			"libRocketControls"
+		}
+		defines {
+			"STATIC_LIB"
+		}
+
 	--main app project
 	project "Pioneer"
 		kind "ConsoleApp"
 		includedirs {
-			"contrib"
+			"contrib",
+			"contrib/rocket/include",
 		}
 		files {
 			"src/*.h",
@@ -123,11 +176,14 @@ solution "Pioneer"
 			"libCollider",
 			"libRender",
 			"libGui",
+			"libRocket",
+			"libRocketCore",
+			"libRocketControls",
 			"libLua",
 			"libOOLua",
 			"libvorbis",
 			"libvorbisfile",
-			"sdlmain"
+			"sdlmain",
 		}
 
 	project "Modelviewer"
@@ -151,6 +207,9 @@ solution "Pioneer"
 			"libCollider",
 			"libRender",
 			"libGui",
+			"libRocket",
+			"libRocketCore",
+			"libRocketControls",
 			"libLua",
-			"sdlmain"
+			"sdlmain",
 		}

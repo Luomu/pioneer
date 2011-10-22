@@ -129,3 +129,28 @@ solution "Pioneer"
 			"libvorbisfile",
 			"sdlmain"
 		}
+
+	project "Modelviewer"
+		kind "ConsoleApp"
+		includedirs {
+			"contrib"
+		}
+		files {
+			"src/LuaModelViewer.cpp",
+			"src/LmrModel.*",
+			"src/VectorFont.*",
+			"src/FontManager.*",
+			"src/FontConfig.*",
+			"src/IniConfig.*",
+			"src/LuaUtils.*",
+			"src/MyLuaMathTypes.*",
+			"src/perlin.*",
+			"src/TextureManager.*"
+		}
+		links {
+			"libCollider",
+			"libRender",
+			"libGui",
+			"libLua",
+			"sdlmain"
+		}

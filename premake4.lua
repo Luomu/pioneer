@@ -147,7 +147,7 @@ solution "Pioneer"
 		}
 		files {
 			"src/rocket/*.h",
-			"src/rocket/*.cpp"
+			"src/rocket/*.cpp",
 		}
 		links {
 			"libRocketCore",
@@ -190,22 +190,16 @@ solution "Pioneer"
 		uuid "A077B8D0-FCAC-11E0-BE50-0800200C9A66"
 		kind "ConsoleApp"
 		includedirs {
-			"contrib"
+			"contrib",
+			"contrib/rocket/include",
 		}
 		files {
-			"src/LuaModelViewer.cpp",
-			"src/LmrModel.*",
-			"src/VectorFont.*",
-			"src/FontManager.*",
-			"src/FontConfig.*",
-			"src/IniConfig.*",
-			"src/LuaConstants.*",
-			"src/ShipType.*",
-			"src/LuaUtils.*",
-			"src/Lang.*",
-			"src/MyLuaMathTypes.*",
-			"src/perlin.*",
-			"src/TextureManager.*"
+			"src/*.h",
+			"src/*.cpp",
+			excludes {
+				"src/test*",
+				"src/main.cpp"
+			}
 		}
 		links {
 			"libCollider",
@@ -215,5 +209,8 @@ solution "Pioneer"
 			"libRocketCore",
 			"libRocketControls",
 			"libLua",
+			"libOOLua",
+			"libvorbis",
+			"libvorbisfile",
 			"sdlmain",
 		}

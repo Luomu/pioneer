@@ -245,6 +245,7 @@
     <ClCompile Include="..\..\src\render\RenderTexture.cpp" />
     <ClCompile Include="..\..\src\Sector.cpp" />
     <ClCompile Include="..\..\src\SectorView.cpp" />
+    <ClCompile Include="..\..\src\Sensor.cpp" />
     <ClCompile Include="..\..\src\Serializer.cpp" />
     <ClCompile Include="..\..\src\Sfx.cpp" />
     <ClCompile Include="..\..\src\Ship-AI.cpp" />
@@ -421,6 +422,7 @@
     <ClInclude Include="..\..\src\render\RenderTexture.h" />
     <ClInclude Include="..\..\src\Sector.h" />
     <ClInclude Include="..\..\src\SectorView.h" />
+    <ClInclude Include="..\..\src\Sensor.h" />
     <ClInclude Include="..\..\src\Serializer.h" />
     <ClInclude Include="..\..\src\Sfx.h" />
     <ClInclude Include="..\..\src\Ship.h" />

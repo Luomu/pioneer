@@ -477,6 +477,9 @@
     <ClCompile Include="..\src\Gamma.cpp">
       <Filter>win32\src</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\Sensor.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\collider\BVHTree.h">
@@ -994,6 +997,9 @@
     </ClInclude>
     <ClInclude Include="..\src\Gamma.h">
       <Filter>win32\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Sensor.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

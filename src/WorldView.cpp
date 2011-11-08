@@ -15,6 +15,7 @@
 #include "SectorView.h"
 #include "Lang.h"
 #include "StringF.h"
+#include "Sensor.h"
 
 const double WorldView::PICK_OBJECT_RECT_SIZE = 20.0;
 static const Color s_hudTextColor(0.0f,1.0f,0.0f,0.8f);
@@ -1066,16 +1067,16 @@ void WorldView::UpdateProjectedObjects()
 	// determine projected positions and update labels
 	m_bodyLabels->Clear();
 	m_projectedPos.clear();
-	for(std::list<Body*>::iterator i = Space::bodies.begin(); i != Space::bodies.end(); ++i) {
-		Body *b = *i;
+	std::vector<Contact>& contactList = Pi::player->GetSensor()->GetContacts();
+	for (Sensor::ContactIterator i = contactList.begin(); i != contactList.end(); ++i) {
+		Body *b = i->GetBody();
+		if (!b) continue;
 
 		vector3d pos = b->GetInterpolatedPositionRelTo(cam_frame);
 		if ((pos.z < -1.0) && project_to_screen(pos, pos, frustum, guiSize)) {
-
 			// only show labels on large or nearby bodies
-			if (b->IsType(Object::PLANET) || b->IsType(Object::STAR) || b->IsType(Object::SPACESTATION) || Pi::player->GetPositionRelTo(b).LengthSqr() < 1000000.0*1000000.0)
-				m_bodyLabels->Add((*i)->GetLabel(), sigc::bind(sigc::mem_fun(this, &WorldView::SelectBody), *i, true), float(pos.x), float(pos.y));
-
+			//if (b->IsType(Object::PLANET) || b->IsType(Object::STAR) || b->IsType(Object::SPACESTATION) || Pi::player->GetPositionRelTo(b).LengthSqr() < 1000000.0*1000000.0)
+			m_bodyLabels->Add(b->GetLabel(), sigc::bind(sigc::mem_fun(this, &WorldView::SelectBody), b, true), float(pos.x), float(pos.y));
 			m_projectedPos[b] = pos;
 		}
 	}

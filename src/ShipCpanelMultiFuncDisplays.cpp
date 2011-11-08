@@ -11,6 +11,7 @@
 #include "Lang.h"
 #include "StringF.h"
 #include "KeyBindings.h"
+#include "Sensor.h"
 
 #define SCANNER_RANGE_MAX	100000.0f
 #define SCANNER_RANGE_MIN	1000.0f
@@ -139,7 +140,7 @@ void ScannerWidget::Draw()
 	Gui::Screen::GetCoords2Pixels(c2p);
 	
 	// draw objects below player (and below scanner)
-	if (!m_contacts.empty()) DrawBlobs(true);
+	DrawBlobs(true);
 
 	// disc
 	glEnable(GL_BLEND);
@@ -171,7 +172,7 @@ void ScannerWidget::Draw()
 	glDisable(GL_BLEND);
 
 	// objects above
-	if (!m_contacts.empty()) DrawBlobs(false);
+	DrawBlobs(false);
 
 	Widget::EndClipping();
 	glLineWidth(1.0f);
@@ -180,7 +181,7 @@ void ScannerWidget::Draw()
 
 void ScannerWidget::Update()
 {
-	m_contacts.clear();
+	//m_contacts.clear();
 
 	if (Pi::player->m_equipment.Get(Equip::SLOT_SCANNER) != Equip::SCANNER) {
 		m_mode = SCANNER_MODE_AUTO;
@@ -191,6 +192,7 @@ void ScannerWidget::Update()
 	enum { RANGE_MAX, RANGE_FAR_OTHER, RANGE_NAV, RANGE_FAR_SHIP, RANGE_COMBAT } range_type = RANGE_MAX;
 	float combat_dist = 0, far_ship_dist = 0, nav_dist = 0, far_other_dist = 0;
 
+#if 0
 	// collect the bodies to be displayed, and if AUTO, distances
 	for (Space::bodiesIter_t i = Space::bodies.begin(); i != Space::bodies.end(); ++i) {
 		if ((*i) == Pi::player) continue;
@@ -257,6 +259,7 @@ void ScannerWidget::Update()
 
 		m_contacts.push_back(c);
 	}
+#endif
 
 	if (KeyBindings::increaseScanRange.IsActive()) {
 		if (m_mode == SCANNER_MODE_AUTO) {
@@ -304,12 +307,18 @@ void ScannerWidget::Update()
 
 void ScannerWidget::DrawBlobs(bool below)
 {
-	for (std::list<Contact>::iterator i = m_contacts.begin(); i != m_contacts.end(); ++i) {
+	//for (std::list<Contact>::iterator i = m_contacts.begin(); i != m_contacts.end(); ++i) {
+	std::vector<Contact> &contactList = Pi::player->GetSensor()->GetContacts();
+	for (Sensor::ContactIterator i = contactList.begin(); i != contactList.end(); ++i) {
 		ScannerBlobWeight weight = WEIGHT_LIGHT;
+		Body *body = i->GetBody();
+		const Object::Type type = body->GetType();
+		const bool isSpecial = false;
+		const vector3d relpos = body->GetPositionRelTo(Pi::player);
 
-		switch (i->type) {
+		switch (type) {
 			case Object::SHIP:
-				if (i->isSpecial)
+				if (isSpecial)
 					glColor3fv(scannerCombatTargetColour);
 				else
 					glColor3fv(scannerShipColour);
@@ -317,14 +326,14 @@ void ScannerWidget::DrawBlobs(bool below)
 				break;
 
 			case Object::MISSILE:
-				if (i->isSpecial)
+				if (isSpecial)
 					glColor3fv(scannerPlayerMissileColour);
 				else
 					glColor3fv(scannerMissileColour);
 				break;
 
 			case Object::SPACESTATION:
-				if (i->isSpecial)
+				if (isSpecial)
 					glColor3fv(scannerNavTargetColour);
 				else
 					glColor3fv(scannerStationColour);
@@ -332,14 +341,14 @@ void ScannerWidget::DrawBlobs(bool below)
 				break;
 
 			case Object::CARGOBODY:
-				if (i->isSpecial)
+				if (isSpecial)
 					glColor3fv(scannerNavTargetColour);
 				else
 					glColor3fv(scannerCargoColour);
 				break;
 
 			case Object::HYPERSPACECLOUD:
-				if (i->isSpecial)
+				if (isSpecial)
 					glColor3fv(scannerNavTargetColour);
 				else
 					glColor3fv(scannerCloudColour);
@@ -360,7 +369,7 @@ void ScannerWidget::DrawBlobs(bool below)
 
 		matrix4x4d rot;
 		Pi::player->GetRotMatrix(rot);
-		vector3d pos = rot.InverseOf() * i->pos;
+		vector3d pos = rot.InverseOf() * relpos;
 
 		if ((pos.y > 0) && (below)) continue;
 		if ((pos.y < 0) && (!below)) continue;

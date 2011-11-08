@@ -73,12 +73,12 @@ private:
 
 	sigc::connection m_toggleScanModeConnection;
 
-	struct Contact {
+	/*struct Contact {
 		Object::Type type;
 		vector3d pos;
 		bool isSpecial;
 	};
-	std::list<Contact> m_contacts;
+	std::list<Contact> m_contacts;*/
 
 	enum ScannerMode { SCANNER_MODE_AUTO, SCANNER_MODE_MANUAL };
 	ScannerMode m_mode;

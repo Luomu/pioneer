@@ -8,6 +8,16 @@ Contact::Contact(Body *b) :
 {
 }
 
+bool Contact::IsNavTarget() const
+{
+	return m_body == Pi::player->GetNavTarget() ? true : false;
+}
+
+bool Contact::IsCombatTarget() const
+{
+	return m_body == Pi::player->GetCombatTarget() ? true : false;
+}
+
 Contact::~Contact()
 {
 }

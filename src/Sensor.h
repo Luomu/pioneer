@@ -11,10 +11,22 @@ class Body;
 
 class Contact {
 public:
+	enum IFF {
+		PLAYER,
+		FRIENDLY,
+		HOSTILE,
+		NEUTRAL,
+		UNKNOWN
+	};
+
 	Contact(Body *b);
 	virtual ~Contact();
 
 	Body *GetBody() const { return m_body; }
+	IFF GetIFF() const { return UNKNOWN; }
+	float GetDistance() const { return 0.f; }
+	bool IsNavTarget() const;
+	bool IsCombatTarget() const;
 
 private:
 	Body *m_body;

@@ -94,6 +94,7 @@ noinst_HEADERS = \
 	RefList.h \
 	Sector.h \
 	SectorView.h \
+	Sensor.h \
 	Serializer.h \
 	StationAdvertForm.h \
 	StationBulletinBoardForm.h \
@@ -217,6 +218,7 @@ pioneer_SOURCES	= \
 	Projectile.cpp \
 	Sector.cpp \
 	SectorView.cpp \
+	Sensor.cpp \
 	Serializer.cpp \
 	StationAdvertForm.cpp \
 	StationBulletinBoardForm.cpp \

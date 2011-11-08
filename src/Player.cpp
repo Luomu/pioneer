@@ -9,6 +9,7 @@
 #include "ShipCpanel.h"
 #include "KeyBindings.h"
 #include "Lang.h"
+#include "Sensor.h"
 
 Player::Player(ShipType::Type shipType): Ship(shipType)
 {
@@ -21,12 +22,14 @@ Player::Player(ShipType::Type shipType): Ship(shipType)
 	UpdateMass();
 
 	m_accumTorque = vector3d(0,0,0);
+	m_sensor = new Sensor();
 }
 
 Player::~Player()
 {
 	assert(this == Pi::player);
 	Pi::player = 0;
+	if (m_sensor) delete m_sensor;
 }
 
 void Player::Save(Serializer::Writer &wr)
@@ -121,6 +124,8 @@ void Player::StaticUpdate(const float timeStep)
 	matrix4x4d m;
 
 	Ship::StaticUpdate(timeStep);		// also calls autopilot AI
+
+	GetSensor()->Update(timeStep);
 
 	if (GetFlightState() == Ship::FLYING) {
 		switch (m_flightControlState) {

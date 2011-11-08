@@ -192,38 +192,47 @@ void ScannerWidget::Update()
 	enum { RANGE_MAX, RANGE_FAR_OTHER, RANGE_NAV, RANGE_FAR_SHIP, RANGE_COMBAT } range_type = RANGE_MAX;
 	float combat_dist = 0, far_ship_dist = 0, nav_dist = 0, far_other_dist = 0;
 
+	// Need to go over contacts again to determine scanner widget range
+	std::vector<Contact> &contactList = Pi::player->GetSensor()->GetContacts();
+	Sensor::ContactIterator i;
+	for (i = contactList.begin(); i != contactList.end(); ++i) {
 #if 0
 	// collect the bodies to be displayed, and if AUTO, distances
 	for (Space::bodiesIter_t i = Space::bodies.begin(); i != Space::bodies.end(); ++i) {
 		if ((*i) == Pi::player) continue;
 
 		float dist = float((*i)->GetPositionRelTo(Pi::player).Length());
+#endif
+		const float dist = i->GetDistance();
 		if (dist > SCANNER_RANGE_MAX) continue;
 
-		Contact c;
-		c.type = (*i)->GetType();
-		c.pos = (*i)->GetPositionRelTo(Pi::player);
-		c.isSpecial = false;
+		const Object::Type type = i->GetBody()->GetType();
+		Body *b = i->GetBody();
+		//Contact c;
+		//c.type = (*i)->GetType();
+		//c.pos = (*i)->GetPositionRelTo(Pi::player);
+		//c.isSpecial = false;
 
-		switch ((*i)->GetType()) {
-
+		switch (type) {
+#if 0
 			case Object::MISSILE:
 				// player's own missiles are ignored for range calc but still shown
+
 				if (static_cast<Missile*>(*i)->GetOwner() == Pi::player) {
 					c.isSpecial = true;
 					break;
 				}
 
 				// fall through
-
+#endif
 			case Object::SHIP: {
-				Ship *s = static_cast<Ship*>(*i);
+				Ship *s = static_cast<Ship*>(b);
 				if (s->GetFlightState() != Ship::FLYING && s->GetFlightState() != Ship::LANDED)
 					continue;
 
 				if (m_mode == SCANNER_MODE_AUTO && range_type != RANGE_COMBAT) {
-					if ((*i) == Pi::player->GetCombatTarget()) {
-						c.isSpecial = true;
+					if (i->IsCombatTarget()) {
+						//c.isSpecial = true;
 						combat_dist = dist;
 						range_type = RANGE_COMBAT;
 					}
@@ -241,8 +250,8 @@ void ScannerWidget::Update()
 
 				// XXX could maybe add orbital stations
 				if (m_mode == SCANNER_MODE_AUTO && range_type != RANGE_NAV && range_type != RANGE_COMBAT) {
-					if ((*i) == Pi::player->GetNavTarget()) {
-						c.isSpecial = true;
+					if (i->IsNavTarget()) {
+						//c.isSpecial = true;
 						nav_dist = dist;
 						range_type = RANGE_NAV;
 					}
@@ -256,10 +265,8 @@ void ScannerWidget::Update()
 			default:
 				continue;
 		}
-
-		m_contacts.push_back(c);
+		//m_contacts.push_back(c);
 	}
-#endif
 
 	if (KeyBindings::increaseScanRange.IsActive()) {
 		if (m_mode == SCANNER_MODE_AUTO) {

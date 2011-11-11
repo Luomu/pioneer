@@ -10,6 +10,7 @@
 #include "KeyBindings.h"
 #include "Lang.h"
 #include "ui/UIManager.h"
+#include "Sensor.h"
 
 Player::Player(ShipType::Type shipType): Ship(shipType)
 {
@@ -28,12 +29,15 @@ Player::Player(ShipType::Type shipType): Ship(shipType)
 	Pi::uiManager->SetStashItem("player.money", format_money(GetMoney()));
 
 	GetFlavour()->UIStashUpdate("player.ship");
+
+	m_sensor = new Sensor();
 }
 
 Player::~Player()
 {
 	assert(this == Pi::player);
 	Pi::player = 0;
+	delete m_sensor;
 }
 
 void Player::Save(Serializer::Writer &wr)
@@ -158,6 +162,9 @@ void Player::StaticUpdate(const float timeStep)
 	matrix4x4d m;
 
 	Ship::StaticUpdate(timeStep);		// also calls autopilot AI
+
+	// Update subsystems
+	GetSensor()->Update(timeStep);
 
 	if (GetFlightState() == Ship::FLYING) {
 		switch (m_flightControlState) {

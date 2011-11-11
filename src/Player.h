@@ -9,6 +9,8 @@
 #include "HyperspaceCloud.h"
 #include "MarketAgent.h"
 
+class Sensor;
+
 struct Mission : RefItem<Mission> {
 	enum MissionState { // <enum scope='Mission' name=MissionStatus>
 		ACTIVE,
@@ -75,6 +77,10 @@ public:
 	bool CanSell(Equip::Type t, bool verbose) const;
 	bool DoesSell(Equip::Type t) const { return true; }
 	Sint64 GetPrice(Equip::Type t) const;
+
+	// Systems access
+	Sensor *GetSensor() const { return m_sensor; }
+
 protected:
 	virtual void Save(Serializer::Writer &wr);
 	virtual void Load(Serializer::Reader &rd);
@@ -97,6 +103,9 @@ private:
 	Body* m_combatTarget;
 
 	int m_combatTargetIndex, m_navTargetIndex; // deserialisation
+
+	// Systems
+	Sensor *m_sensor;
 };
 
 #endif /* _PLAYER_H */

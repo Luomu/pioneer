@@ -68,6 +68,7 @@
 #include "CameraElement.h"
 #include "FaceElement.h"
 #include "ShipSpinnerElement.h"
+#include "ScannerElement.h"
 
 float Pi::gameTickAlpha;
 int Pi::timeAccelIdx = 1;
@@ -455,6 +456,7 @@ void Pi::Init()
 	uiManager->RegisterCustomElement<CameraElement>("camera");
 	uiManager->RegisterCustomElement<FaceElement>("face");
 	uiManager->RegisterCustomElement<ShipSpinnerElement>("ship");
+	uiManager->RegisterCustomElement<ScannerElement>("scanner");
 
 	// Gui::Init shouldn't initialise any VBOs, since we haven't tested
 	// that the capability exists. (Gui does not use VBOs so far)

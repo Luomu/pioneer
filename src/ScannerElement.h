@@ -6,8 +6,10 @@
 
 /*
  * Classic scanner, rocket version
+ * Default projection angle is 30
+ * 0 is from side and 90 is top down
+ * <scanner angle=90 />
  */
-
 class ScannerElement : public Rocket::Core::Element {
 public:
 	ScannerElement(const Rocket::Core::String &tag);

@@ -5,7 +5,7 @@
 
 ScannerElement::ScannerElement(const Rocket::Core::String &tag) :
 	Rocket::Core::Element(tag),
-	m_angle(0.f)
+	m_angle(30.f)
 {
 	// create circle model
 	const float circle = float(2 * M_PI);
@@ -65,6 +65,7 @@ void ScannerElement::AddCircle(const Rocket::Core::Vector2f &center,
 
 void ScannerElement::AddBlob(const vector3d &pos)
 {
+	//immediate mode bleargh
 	glLineWidth(2.f);
 	glPointSize(6.f);
 
@@ -85,20 +86,19 @@ void ScannerElement::AddBlobs(const Rocket::Core::Vector2f &center,
 {
 	glPushMatrix();
 	glTranslatef(center.x, center.y, 0.f);
-	glScalef(size.x/2.f, size.y/2.f, 1.f/2.f);
+	glScalef(size.x/2.f, -size.y/2.f, -1.f/2.f);
 	glRotatef(m_angle, 1.f, 0.f, 0.f);
 
 	const double maxrange = 10000.0;
 	const double scale = 1.0/maxrange;
-	const matrix4x4d flipMatrix = matrix4x4d::RotateMatrix(M_PI, 0.0, 0.0, 1.0);
-	if (Pi::player) { //don't rely on this...
+	if (Pi::player) {
 		matrix4x4d rot;
 		Pi::player->GetRotMatrix(rot);
 		Sensor::ContactList &clist = Pi::player->GetSensor()->GetContacts();
 		for (Sensor::ContactIterator i = clist.begin(); i != clist.end(); ++i) {
 			vector3d pos = i->GetBody()->GetPositionRelTo(Pi::player);
 			if (pos.Length() > maxrange) continue;
-			AddBlob(pos * rot);
+			AddBlob(scale * rot.InverseOf() * pos);
 		}
 	}
 

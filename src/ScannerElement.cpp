@@ -146,17 +146,6 @@ void ScannerElement::OnRender()
 
 	AddSpokes();
 
-	//debug blobs
-	glColor3f(0.f, 0.f, 1.f);
-	//top
-	AddBlob(vector3d(0.f, 1.f, 0.f));
-	//bottom
-	glColor3f(1.f, 0.f, 0.f);
-	AddBlob(vector3d(0.f, -1.f, 0.f));
-	//northeast top
-	glColor3f(1.f, 1.f, 0.f);
-	AddBlob(vector3d(0.75f, 1.f, 0.75f));
-
 	glPopMatrix();
 }
 

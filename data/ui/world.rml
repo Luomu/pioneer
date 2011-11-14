@@ -1,6 +1,32 @@
 <rml>
 	<head>
+		<style>
+			scanner {
+				width: 300px;
+				height: 300px;
+			}
+			/*#topdown {
+				display: block;
+				position: absolute;
+				width: 300px;
+				height: 300px;
+				top: 0px;
+				left: 0px;
+			}*/
+			
+			/*#tilted {
+				top: 0px;
+				right: 0px;
+				display: block;
+				width: 300px;
+				height: 300px;
+				position: absolute;
+			}*/
+		</style>
 	</head>
 	<body>
+		<scanner id="topdown" angle="0" />
+		<scanner id="tilted"  angle="30" />
+		<scanner id="side"    angle="90" />
 	</body>
 </rml>

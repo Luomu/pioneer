@@ -1,5 +1,6 @@
 #include "Object.h"
 #include "Space.h"
+#include "Player.h"
 #include "Pi.h"
 #include "Sensor.h"
 
@@ -37,6 +38,14 @@ void Sensor::Update(const float timeStep)
 
 void Sensor::CollectContacts()
 {
+	// Gather knowledge of following bodies:
+	// Stellar & planetary bodies: always
+	// Space stations: always
+	// Cities: when within range
+	// Ships & missiles: when within range
+	// Script-pinned targets: always
+	//
+	// It is up to the visual widgets what and how to present the contacts
 	m_contacts.clear();
 
 	for (Space::bodiesIter_t i = Space::bodies.begin(); i != Space::bodies.end(); ++i) {
@@ -49,6 +58,8 @@ void Sensor::CollectContacts()
 
 		switch ((*i)->GetType()) {
 			case Object::SHIP:
+				break;
+			case Object::SPACESTATION:
 				break;
 			case Object::STAR:
 			case Object::PLANET:

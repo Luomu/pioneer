@@ -122,11 +122,10 @@ void ScannerElement::OnRender()
 	const Rocket::Core::Vector2f center(top.x + GetClientWidth()/2.f,
 										top.y + GetClientHeight()/2.f);
 	{
-		//glDisable(GL_DEPTH_TEST);
 		glEnable(GL_DEPTH_TEST);
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		glOrtho(0, 1024, 768, 0, 0, 10000); //bad
+		glOrtho(0, GetContext()->GetDimensions().x, GetContext()->GetDimensions().y, 0, -1, 100);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		glTranslatef(0.f, 0.f, -10.f);

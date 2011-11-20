@@ -26,6 +26,7 @@ void PresentOperator::Execute()
 	glTranslatef(0.f, 0.f, -1.f);
 
 	//bind source texture
+	glEnable(GL_TEXTURE_2D);
 	m_source->GetTexture(0)->Bind();
 
 	//quad
@@ -35,10 +36,19 @@ void PresentOperator::Execute()
 		x + w, y + h, 0.f,
 		x,     y + h, 0.f
 	};
-	glColor3f(0.f, 1.f, 0.f);
+	const GLfloat texcoords[] = {
+		0.f, 0.f,
+		1.f, 0.f,
+		1.f, 1.f,
+		0.f, 1.f,
+	};
+	glColor3f(1.f, 1.f, 1.f);
 	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY); 
 	glVertexPointer(3, GL_FLOAT, 0, vertices);
+	glTexCoordPointer(2, GL_FLOAT, 0, texcoords);
 	glDrawArrays(GL_QUADS, 0, 4);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
 
 	glMatrixMode(GL_PROJECTION);

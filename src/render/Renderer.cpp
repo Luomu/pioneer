@@ -50,9 +50,10 @@ private:
 	GLuint m_depth;
 };
 
-PostProcessingRenderer::PostProcessingRenderer()
+PostProcessingRenderer::PostProcessingRenderer(int width, int height) :
+	Renderer(width, height)
 {
-	m_sceneTarget = new PPSceneTarget(1024, 768, GL_RGB, GL_RGB, GL_FLOAT);
+	m_sceneTarget = new PPSceneTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT);
 }
 
 PostProcessingRenderer::~PostProcessingRenderer()

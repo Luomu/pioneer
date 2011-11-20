@@ -7,14 +7,20 @@ namespace Render {
 
 	class Renderer {
 	public:
+		Renderer(int w, int h) :
+			m_width(w),
+			m_height(h) { }
 		virtual void BeginFrame() { };
 		virtual void EndFrame() { };
 		virtual void SwapBuffers();
+	protected:
+		int m_width;
+		int m_height;
 	};
 
 	class PostProcessingRenderer : public Renderer {
 	public:
-		PostProcessingRenderer();
+		PostProcessingRenderer(int width, int height);
 		virtual ~PostProcessingRenderer();
 		virtual void BeginFrame();
 		virtual void EndFrame();

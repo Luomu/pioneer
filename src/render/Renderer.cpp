@@ -2,6 +2,7 @@
 #include "libs.h"
 #include "RenderFilter.h"
 #include "RenderTarget.h"
+#include "RenderGLSLFilter.h"
 
 namespace Render {
 
@@ -54,11 +55,14 @@ PostProcessingRenderer::PostProcessingRenderer(int width, int height) :
 	Renderer(width, height)
 {
 	m_sceneTarget = new PPSceneTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT);
+	m_exampleFilter = new GLSLFilter("ExampleFilter",
+		new RenderTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT));
 }
 
 PostProcessingRenderer::~PostProcessingRenderer()
 {
 	delete m_sceneTarget;
+	delete m_exampleFilter;
 }
 
 void PostProcessingRenderer::BeginFrame()
@@ -74,14 +78,13 @@ void PostProcessingRenderer::EndFrame()
 
 void PostProcessingRenderer::PostProcess()
 {
-	//simple passthrough
-
 	//scene has already been rendered to main rendertarget, grab texture
 	Source acquireColourBuffer(m_sceneTarget); //basic Source op will do here now
-
+	m_exampleFilter->SetSource(&acquireColourBuffer);
+	m_exampleFilter->Execute();
 	//present it on screen
 	PresentOperator pop;
-	pop.SetSource(&acquireColourBuffer);
+	pop.SetSource(m_exampleFilter);
 	pop.Execute();
 }
 

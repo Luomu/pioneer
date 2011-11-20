@@ -4,6 +4,7 @@
 namespace Render {
 
 	class RenderTarget;
+	class GLSLFilter;
 
 	class Renderer {
 	public:
@@ -28,6 +29,7 @@ namespace Render {
 	protected:
 		void PostProcess();
 		RenderTarget *m_sceneTarget;
+		GLSLFilter *m_exampleFilter;
 	};
 
 }

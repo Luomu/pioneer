@@ -1061,11 +1061,14 @@ void Pi::UninitGame()
 	StarSystem::ShrinkCache();
 }
 
-
+#include "render/Renderer.h"
 void Pi::Start()
 {
 	Background::Starfield *starfield = new Background::Starfield();
 	Background::MilkyWay *milkyway = new Background::MilkyWay();
+
+	Render::PostProcessingRenderer *renderer = new Render::PostProcessingRenderer(
+		Pi::scrWidth, Pi::scrHeight);
 
 	Gui::Fixed *splash = new Gui::Fixed(float(Gui::Screen::GetWidth()), float(Gui::Screen::GetHeight()));
 	Gui::Screen::AddBaseWidget(splash, 0, 0);
@@ -1108,7 +1111,8 @@ void Pi::Start()
 	do {
 		Pi::HandleEvents();
 
-		Render::PrepareFrame();
+		//Render::PrepareFrame();
+		renderer->BeginFrame();
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		float fracH = 1.0f / Pi::GetScrAspect();
@@ -1121,9 +1125,10 @@ void Pi::Start()
 		Pi::SetMouseGrab(false);
 
 		draw_intro(starfield, milkyway, _time);
-		Render::PostProcess();
+		//Render::PostProcess();
+		renderer->EndFrame();
 		Gui::Draw();
-		Render::SwapBuffers();
+		renderer->SwapBuffers();
 		
 		Pi::frameTime = 0.001f*(SDL_GetTicks() - last_time);
 		_time += Pi::frameTime;

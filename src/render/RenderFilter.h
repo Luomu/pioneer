@@ -40,6 +40,7 @@ namespace Render {
 
 	protected:
 		Source *m_source;
+		void DoQuad(float x, float y, float w, float h);
 	};
 
 	/* Filter operator */

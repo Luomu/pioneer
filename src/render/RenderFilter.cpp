@@ -29,6 +29,18 @@ void PresentOperator::Execute()
 	glEnable(GL_TEXTURE_2D);
 	m_source->GetTexture(0)->Bind();
 
+	DoQuad(x, y, w, h);
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+	glPopAttrib();
+}
+
+void Sink::DoQuad(const float x, const float y, const float w, const float h)
+{
 	//quad
 	const GLfloat vertices[] = {
 		x,     y,     0.f,
@@ -50,13 +62,6 @@ void PresentOperator::Execute()
 	glDrawArrays(GL_QUADS, 0, 4);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
-
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-	glMatrixMode(GL_MODELVIEW);
-	glPopMatrix();
-
-	glPopAttrib();
 }
 
 } // namespace Render

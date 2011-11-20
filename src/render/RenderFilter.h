@@ -16,11 +16,14 @@ namespace Render {
 	 */
 	class Source {
 	public:
-		Source() { }
+		Source(Texture *t) { AddTexture(t); }
 		virtual ~Source() { }
 		void AddTexture(Texture *t) {
 			m_textures.push_back(t);
 		}
+
+	public:
+		Texture *GetTexture(int i) const { return m_textures[0]; }
 
 	protected:
 		std::vector<Texture*> m_textures;
@@ -42,8 +45,14 @@ namespace Render {
 	/* Filter operator */
 	class Filter : public Sink, public Source {
 	public:
-		Filter() { }
+		Filter(Texture *t) : Source(t) { }
 		virtual ~Filter() { }
+	};
+
+	/* Render to screen */
+	class PresentOperator : public Sink {
+	public:
+		void Execute();
 	};
 }
 

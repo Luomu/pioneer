@@ -46,7 +46,7 @@ namespace Render {
 	/* Filter operator */
 	class Filter : public Sink, public Source {
 	public:
-		Filter(Texture *t) : Source(t) { }
+		Filter(Texture *target) : Source(target) { }
 		virtual ~Filter() { }
 	};
 

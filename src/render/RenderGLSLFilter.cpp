@@ -12,12 +12,13 @@ SHADER_CLASS_END()
 GLSLFilter::GLSLFilter(const std::string &progname, RenderTarget *rt) :
 	Filter(rt)
 {
-	m_program = new GLSLFilterProgram("ExampleFilter", "#version 120");
+	m_program = new GLSLFilterProgram(progname.c_str(), "#version 120\n");
 }
 
 GLSLFilter::~GLSLFilter()
 {
 	delete m_program;
+	delete m_textures[0];
 }
 
 void GLSLFilter::Execute()

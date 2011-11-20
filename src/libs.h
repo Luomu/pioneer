@@ -23,6 +23,19 @@
 #ifdef _WIN32
 #	include <malloc.h>
 
+//disable or promote (to level 4) a bunch of warnings we can do nothing about
+//C4250: 'TerrainGenerator<HeightFractal,ColorFractal>' : inherits
+//'TerrainColorFractal<ColorFractal>::TerrainColorFractal<ColorFractal>::GetColor' via dominance
+#pragma warning(disable : 4250)
+//C4305: 'initializing' : truncation from 'double' to 'float'
+#pragma warning(4 : 4305)
+//C4244: 'argument' : conversion from 'double' to 'GLfloat', possible loss of data
+#pragma warning(4 : 4244)
+//C4146: unary minus operator applied to unsigned type, result still unsigned	(fixed.h:126)
+#pragma warning(4 : 4146)
+//C4800: forcing value to bool (performance warning)
+#pragma warning(4 : 4800)
+
 #	ifndef __MINGW32__
 #		define alloca _alloca
 #		define strncasecmp _strnicmp

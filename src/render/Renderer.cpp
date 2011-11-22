@@ -100,7 +100,7 @@ void PostProcessingRenderer::PostProcess()
 
 	//present it on screen
 	PresentOperator pop;
-	pop.SetSource(m_exampleFilter2);
+	pop.SetSource(m_exampleFilter);
 	pop.Execute();
 }
 

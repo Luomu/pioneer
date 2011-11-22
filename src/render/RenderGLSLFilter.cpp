@@ -2,11 +2,13 @@
 #include "RenderShader.h"
 #include "RenderTarget.h"
 #include "Render.h"
+#include "RenderTexture.h"
 
 namespace Render {
 
 SHADER_CLASS_BEGIN(GLSLFilterProgram)
-	SHADER_UNIFORM_SAMPLER(fboTex)
+	SHADER_UNIFORM_SAMPLER(texture0)
+	SHADER_UNIFORM_SAMPLER(texture1)
 SHADER_CLASS_END()
 
 GLSLFilter::GLSLFilter(const std::string &progname, RenderTarget *rt) :
@@ -19,6 +21,12 @@ GLSLFilter::~GLSLFilter()
 {
 	delete m_program;
 	delete m_textures[0];
+}
+
+void GLSLFilter::SetProgramParameters()
+{
+	m_source->GetTexture(0)->Bind();
+	m_program->set_texture0(0);
 }
 
 void GLSLFilter::Execute()
@@ -44,11 +52,11 @@ void GLSLFilter::Execute()
 
 	Render::State::UseProgram(m_program);
 
-	//bind source texture
-	m_source->GetTexture(0)->Bind();
-	m_program->set_fboTex(0);
+	SetProgramParameters();
 
 	DoQuad(x, y, w, h);
+
+	glActiveTexture(GL_TEXTURE0);
 
 	Render::State::UseProgram(0);
 
@@ -59,6 +67,20 @@ void GLSLFilter::Execute()
 
 	glPopAttrib();
 	static_cast<RenderTarget*>(m_textures[0])->EndRTT();
+}
+
+ColorLUTFilter::ColorLUTFilter(const std::string &progName, RenderTarget *t) : GLSLFilter(progName, t)
+{
+	m_lut.Load(PIONEER_DATA_DIR"/textures/colortable.png");
+}
+
+void ColorLUTFilter::SetProgramParameters()
+{
+	m_source->GetTexture(0)->Bind();
+	m_program->set_texture0(0);
+	glActiveTexture(GL_TEXTURE1);
+	m_lut.Bind();
+	m_program->set_texture1(1);
 }
 
 }

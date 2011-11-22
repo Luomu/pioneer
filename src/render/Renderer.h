@@ -5,6 +5,7 @@ namespace Render {
 
 	class RenderTarget;
 	class GLSLFilter;
+	class ColorLUTFilter;
 
 	class Renderer {
 	public:
@@ -30,6 +31,8 @@ namespace Render {
 		void PostProcess();
 		RenderTarget *m_sceneTarget;
 		GLSLFilter *m_exampleFilter;
+		GLSLFilter *m_exampleFilter2;
+		ColorLUTFilter *m_exampleFilter3;
 	};
 
 }

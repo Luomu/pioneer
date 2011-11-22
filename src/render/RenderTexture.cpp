@@ -84,4 +84,23 @@ void Texture::Show(const float x, const float y,
 	glPopAttrib();
 }
 
+void Texture::Load(const std::string &filename)
+{
+	if (m_texture > 0)
+		glDeleteTextures(1, &m_texture);
+
+	SDL_Surface *s = IMG_Load(filename.c_str());
+	glGenTextures (1, &m_texture);
+	Bind();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	m_w = s->w;
+	m_h = s->h;
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_w, m_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, s->pixels);
+	Unbind();
+	SDL_FreeSurface(s);
+}
+
 }

@@ -21,6 +21,10 @@ namespace Render {
 		 * This is only for testing.
 		 */
 		void Show(float x=0.f, float y=0.f, float w=100.f, float h=100.f);
+		/*
+		 * Load a texture from disk
+		 */
+		void Load(const std::string &filename);
 	protected:
 		int m_w;
 		int m_h;

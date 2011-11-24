@@ -21,7 +21,7 @@ GLSLFilter::~GLSLFilter()
 void GLSLFilter::SetProgramParameters()
 {
 	m_source->GetTexture(0)->Bind();
-	m_program->SetUniform1i("texture0", 0);
+	m_program->SetUniform1i("fboTex", 0);
 }
 
 void GLSLFilter::Execute()

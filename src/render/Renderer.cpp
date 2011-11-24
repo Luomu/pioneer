@@ -55,11 +55,11 @@ PostProcessingRenderer::PostProcessingRenderer(int width, int height) :
 	Renderer(width, height)
 {
 	m_sceneTarget = new PPSceneTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT);
-	m_exampleFilter = new GLSLFilter("ExampleFilter",
+	m_exampleFilter = new GLSLFilter("ExampleFilter.vert", "ExampleFilter.frag",
 		new RenderTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT));
-	m_exampleFilter2 = new GLSLFilter("ExampleFilter",
+	m_exampleFilter2 = new GLSLFilter("ExampleFilter.vert", "ExampleFilter.frag",
 		new RenderTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT));
-	m_exampleFilter3 = new ColorLUTFilter("ExampleFilterLUT",
+	m_exampleFilter3 = new ColorLUTFilter(
 		new RenderTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT));
 }
 
@@ -100,7 +100,7 @@ void PostProcessingRenderer::PostProcess()
 
 	//present it on screen
 	PresentOperator pop;
-	pop.SetSource(m_exampleFilter);
+	pop.SetSource(m_exampleFilter2);
 	pop.Execute();
 }
 

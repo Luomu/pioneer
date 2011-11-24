@@ -1,3 +1,4 @@
+#version 120
 uniform sampler2D fboTex;
 
 varying vec2 texCoord;

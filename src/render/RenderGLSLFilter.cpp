@@ -6,15 +6,10 @@
 
 namespace Render {
 
-SHADER_CLASS_BEGIN(GLSLFilterProgram)
-	SHADER_UNIFORM_SAMPLER(texture0)
-	SHADER_UNIFORM_SAMPLER(texture1)
-SHADER_CLASS_END()
-
-GLSLFilter::GLSLFilter(const std::string &progname, RenderTarget *rt) :
+GLSLFilter::GLSLFilter(const std::string &vertname, const std::string &fragname, RenderTarget *rt) :
 	Filter(rt)
 {
-	m_program = new GLSLFilterProgram(progname.c_str(), "#version 120\n");
+	m_program = new Post::Program(vertname, fragname);
 }
 
 GLSLFilter::~GLSLFilter()
@@ -26,7 +21,7 @@ GLSLFilter::~GLSLFilter()
 void GLSLFilter::SetProgramParameters()
 {
 	m_source->GetTexture(0)->Bind();
-	m_program->set_texture0(0);
+	m_program->SetUniform1i("texture0", 0);
 }
 
 void GLSLFilter::Execute()
@@ -50,7 +45,7 @@ void GLSLFilter::Execute()
 	glLoadIdentity();
 	glTranslatef(0.f, 0.f, -1.f);
 
-	Render::State::UseProgram(m_program);
+	m_program->Use();
 
 	SetProgramParameters();
 
@@ -58,7 +53,7 @@ void GLSLFilter::Execute()
 
 	glActiveTexture(GL_TEXTURE0);
 
-	Render::State::UseProgram(0);
+	m_program->Unuse();
 
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
@@ -69,7 +64,8 @@ void GLSLFilter::Execute()
 	static_cast<RenderTarget*>(m_textures[0])->EndRTT();
 }
 
-ColorLUTFilter::ColorLUTFilter(const std::string &progName, RenderTarget *t) : GLSLFilter(progName, t)
+ColorLUTFilter::ColorLUTFilter(RenderTarget *t) :
+	GLSLFilter("ExampleFilter.vert", "ExampleFilterLUT.frag", t)
 {
 	m_lut.Load(PIONEER_DATA_DIR"/textures/colortable.png");
 }
@@ -77,10 +73,10 @@ ColorLUTFilter::ColorLUTFilter(const std::string &progName, RenderTarget *t) : G
 void ColorLUTFilter::SetProgramParameters()
 {
 	m_source->GetTexture(0)->Bind();
-	m_program->set_texture0(0);
+	m_program->SetUniform1i("texture0", 0);
 	glActiveTexture(GL_TEXTURE1);
 	m_lut.Bind();
-	m_program->set_texture1(1);
+	m_program->SetUniform1i("texture1", 1);
 }
 
 }

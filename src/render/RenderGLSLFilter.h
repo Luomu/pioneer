@@ -3,12 +3,12 @@
 
 #include "RenderFilter.h"
 #include "RenderTexture.h"
+#include "RenderPostProgram.h"
 
 /* GLSL program filter */
 namespace Render {
 
 	class RenderTarget;
-	class GLSLFilterProgram;
 
 	/*
 	 * Basic filter that operates on single texture and
@@ -16,17 +16,17 @@ namespace Render {
 	 */
 	class GLSLFilter : public Filter {
 	public:
-		GLSLFilter(const std::string &progName, RenderTarget *target);
+		GLSLFilter(const std::string &vertname, const std::string &fragname, RenderTarget *target);
 		virtual ~GLSLFilter();
 		virtual void Execute();
 	protected:
 		virtual void SetProgramParameters();
-		GLSLFilterProgram *m_program;
+		Post::Program *m_program;
 	};
 
 	class ColorLUTFilter : public GLSLFilter {
 	public:
-		ColorLUTFilter(const std::string &progName, RenderTarget *t);
+		ColorLUTFilter(RenderTarget *t);
 
 	protected:
 		virtual void SetProgramParameters();

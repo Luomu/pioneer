@@ -67,6 +67,7 @@ void GLSLFilter::Execute()
 ColorLUTFilter::ColorLUTFilter(RenderTarget *t) :
 	GLSLFilter("ExampleFilter.vert", "ExampleFilterLUT.frag", t)
 {
+	m_lut.SetFilterMode(Texture::NEAREST);
 	m_lut.Load(PIONEER_DATA_DIR"/textures/colortable.png");
 }
 
@@ -77,6 +78,28 @@ void ColorLUTFilter::SetProgramParameters()
 	glActiveTexture(GL_TEXTURE1);
 	m_lut.Bind();
 	m_program->SetUniform1i("texture1", 1);
+}
+
+MultiBlurFilter::MultiBlurFilter(RenderTarget *finalTarget) :
+	Filter(finalTarget)
+{
+	m_filter1 = new GLSLFilter("ExampleFilter.vert", "ExampleFilterBlur.frag",
+		new RenderTarget(finalTarget->Width(), finalTarget->Height(), GL_RGB, GL_RGB, GL_FLOAT));
+	m_filter2 = new GLSLFilter("ExampleFilter.vert", "ExampleFilterBlur.frag", finalTarget);
+}
+
+MultiBlurFilter::~MultiBlurFilter()
+{
+	delete m_filter1;
+	delete m_filter2;
+}
+
+void MultiBlurFilter::Execute()
+{
+	m_filter1->SetSource(m_source);
+	m_filter1->Execute();
+	m_filter2->SetSource(m_filter1);
+	m_filter2->Execute();
 }
 
 }

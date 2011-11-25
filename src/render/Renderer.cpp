@@ -55,20 +55,17 @@ PostProcessingRenderer::PostProcessingRenderer(int width, int height) :
 	Renderer(width, height)
 {
 	m_sceneTarget = new PPSceneTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT);
-	m_exampleFilter = new GLSLFilter("ExampleFilter.vert", "ExampleFilter.frag",
+	m_colorFilter    = new ColorLUTFilter(
 		new RenderTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT));
-	m_exampleFilter2 = new GLSLFilter("ExampleFilter.vert", "ExampleFilter.frag",
-		new RenderTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT));
-	m_exampleFilter3 = new ColorLUTFilter(
+	m_blurFilter     = new MultiBlurFilter(
 		new RenderTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT));
 }
 
 PostProcessingRenderer::~PostProcessingRenderer()
 {
 	delete m_sceneTarget;
-	delete m_exampleFilter;
-	delete m_exampleFilter2;
-	delete m_exampleFilter3;
+	delete m_colorFilter;
+	delete m_blurFilter;
 }
 
 void PostProcessingRenderer::BeginFrame()
@@ -86,21 +83,15 @@ void PostProcessingRenderer::PostProcess()
 {
 	//scene has already been rendered to main rendertarget, grab texture
 	Source acquireColourBuffer(m_sceneTarget); //basic Source op will do here now
-	m_exampleFilter3->SetSource(&acquireColourBuffer);
-	m_exampleFilter3->Execute();
+	m_colorFilter->SetSource(&acquireColourBuffer);
+	m_colorFilter->Execute();
 
-	m_exampleFilter2->SetSource(m_exampleFilter3);
-	m_exampleFilter2->Execute();
-
-	m_exampleFilter->SetSource(m_exampleFilter2);
-	m_exampleFilter->Execute();
-
-	m_exampleFilter2->SetSource(m_exampleFilter);
-	m_exampleFilter2->Execute();
+	m_blurFilter->SetSource(m_colorFilter);
+	m_blurFilter->Execute();
 
 	//present it on screen
 	PresentOperator pop;
-	pop.SetSource(m_exampleFilter2);
+	pop.SetSource(m_blurFilter);
 	pop.Execute();
 }
 

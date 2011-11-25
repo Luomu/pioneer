@@ -24,6 +24,9 @@ namespace Render {
 		Post::Program *m_program;
 	};
 
+	/*
+	 * Color look-up table filter
+	 */
 	class ColorLUTFilter : public GLSLFilter {
 	public:
 		ColorLUTFilter(RenderTarget *t);
@@ -33,6 +36,19 @@ namespace Render {
 
 	private:
 		Texture m_lut;
+	};
+
+	/*
+	 * an example of a multi-pass filter
+	 */
+	class MultiBlurFilter : public Filter {
+	public:
+		MultiBlurFilter(RenderTarget *t);
+		~MultiBlurFilter();
+		virtual void Execute();
+	private:
+		GLSLFilter *m_filter1;
+		GLSLFilter *m_filter2;
 	};
 
 }

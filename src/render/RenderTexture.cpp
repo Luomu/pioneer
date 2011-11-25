@@ -6,13 +6,15 @@ namespace Render {
 Texture::Texture() :
 	m_w(0),
 	m_h(0),
-	m_texture(0)
+	m_texture(0),
+	m_filterMode(LINEAR)
 { }
 
 Texture::Texture(int w, int h, GLint format,
 	GLint internalFormat, GLenum type) :
 	m_w(w),
-	m_h(h)
+	m_h(h),
+	m_filterMode(LINEAR)
 {
 	glGenTextures(1, &m_texture);
 	glBindTexture(GL_TEXTURE_2D, m_texture);
@@ -92,8 +94,14 @@ void Texture::Load(const std::string &filename)
 	SDL_Surface *s = IMG_Load(filename.c_str());
 	glGenTextures (1, &m_texture);
 	Bind();
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	if (m_filterMode == LINEAR) {
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	} else {
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	m_w = s->w;

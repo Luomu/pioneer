@@ -10,6 +10,10 @@ namespace Render {
 	 */
 	class Texture {
 	public:
+		enum FilterMode {
+			NEAREST,
+			LINEAR
+		};
 		Texture();
 		Texture(int w, int h, GLint format, GLint internalFormat, GLenum type);
 		~Texture();
@@ -25,10 +29,17 @@ namespace Render {
 		 * Load a texture from disk
 		 */
 		void Load(const std::string &filename);
+
+		void SetFilterMode(FilterMode mode) { m_filterMode = mode; }
+
+		int Width() const { return m_w; }
+		int Height() const { return m_h; }
+
 	protected:
 		int m_w;
 		int m_h;
 		GLuint m_texture;
+		FilterMode m_filterMode;
 	};
 }
 

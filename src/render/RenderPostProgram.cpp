@@ -59,7 +59,7 @@ Shader::Shader(const std::string &filename, GLenum shaderType) :
 		throw 50;
 
 	m_shader = glCreateShader(shaderType);
-	SetSource(LoadSource(std::string()+PIONEER_DATA_DIR+"/shaders/"+filename+".glsl"));
+	SetSource(LoadSource(std::string()+PIONEER_DATA_DIR+"/shaders/"+filename));
 	glCompileShader(m_shader);
 	GLint status = GL_FALSE;
 	glGetProgramiv(m_shader, GL_COMPILE_STATUS, &status);

@@ -14,7 +14,7 @@ namespace Render {
 			Program();
 			Program(const std::string &vtxName, const std::string &fragName);
 			virtual ~Program();
-			//file name will be formatted to PIONEER_DATA_DIR + /shaders/ + filename + .glsl
+			//file name will be formatted to PIONEER_DATA_DIR + /shaders/ + filename
 			void Load(const std::string &vtxName, const std::string &fragName);
 			void Use();
 			void Unuse();

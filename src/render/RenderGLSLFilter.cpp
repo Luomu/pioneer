@@ -12,9 +12,17 @@ GLSLFilter::GLSLFilter(const std::string &vertname, const std::string &fragname,
 	m_program = new Post::Program(vertname, fragname);
 }
 
+GLSLFilter::GLSLFilter(Post::Program *prog, RenderTarget *rt) :
+	Filter(rt),
+	m_program(prog)
+{
+
+}
+
 GLSLFilter::~GLSLFilter()
 {
-	delete m_program;
+	if (0 != m_program)
+		delete m_program;
 	delete m_textures[0];
 }
 
@@ -83,15 +91,20 @@ void ColorLUTFilter::SetProgramParameters()
 MultiBlurFilter::MultiBlurFilter(RenderTarget *finalTarget) :
 	Filter(finalTarget)
 {
-	m_filter1 = new GLSLFilter("ExampleFilter.vert", "ExampleFilterBlur.frag",
+	m_program = new Post::Program("ExampleFilter.vert", "ExampleFilterBlur.frag");
+	m_filter1 = new GLSLFilter(m_program,
 		new RenderTarget(finalTarget->Width(), finalTarget->Height(), GL_RGB, GL_RGB, GL_FLOAT));
-	m_filter2 = new GLSLFilter("ExampleFilter.vert", "ExampleFilterBlur.frag", finalTarget);
+	m_filter2 = new GLSLFilter(m_program, finalTarget);
 }
 
 MultiBlurFilter::~MultiBlurFilter()
 {
+	//temp hack
+	m_filter1->SetProgram(0);
 	delete m_filter1;
+	m_filter2->SetProgram(0);
 	delete m_filter2;
+	delete m_program;
 }
 
 void MultiBlurFilter::Execute()

@@ -17,8 +17,10 @@ namespace Render {
 	class GLSLFilter : public Filter {
 	public:
 		GLSLFilter(const std::string &vertname, const std::string &fragname, RenderTarget *target);
+		GLSLFilter(Post::Program *prog, RenderTarget *target);
 		virtual ~GLSLFilter();
 		virtual void Execute();
+		void SetProgram(Post::Program *prog) { m_program = prog; }
 	protected:
 		virtual void SetProgramParameters();
 		Post::Program *m_program;
@@ -47,8 +49,9 @@ namespace Render {
 		~MultiBlurFilter();
 		virtual void Execute();
 	private:
-		GLSLFilter *m_filter1;
-		GLSLFilter *m_filter2;
+		GLSLFilter    *m_filter1;
+		GLSLFilter    *m_filter2;
+		Post::Program *m_program; //shared by filters
 	};
 
 }

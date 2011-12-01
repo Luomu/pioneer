@@ -31,6 +31,7 @@ class Ship;
 class GameMenuView;
 class LuaConsole;
 namespace Sound { class MusicPlayer; }
+namespace Render { class Renderer; }
 
 #if OBJECTVIEWER
 class ObjectViewerView;
@@ -211,6 +212,8 @@ private:
 	};
 	static std::vector<JoystickState> joysticks;
 	static Sound::MusicPlayer musicPlayer;
+
+	static Render::Renderer *renderer;
 };
 
 #endif /* _PI_H */

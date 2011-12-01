@@ -29,6 +29,7 @@
 #include "Missile.h"
 #include "LmrModel.h"
 #include "render/Render.h"
+#include "render/Renderer.h"
 #include "AmbientSounds.h"
 #include "CustomSystem.h"
 #include "CityOnPlanet.h"
@@ -149,6 +150,7 @@ const char * const Pi::combatRating[] = {
 	Lang::DEADLY,
 	Lang::ELITE
 };
+Render::Renderer *Pi::renderer;
 
 #if OBJECTVIEWER
 ObjectViewerView *Pi::objectViewerView;
@@ -458,6 +460,8 @@ void Pi::Init()
 	LuaInit();
 
 	Render::Init(width, height);
+	Pi::renderer = new Render::PostProcessingRenderer(
+		Pi::scrWidth, Pi::scrHeight);
 	draw_progress(0.1f);
 
 	Galaxy::Init();
@@ -609,6 +613,7 @@ void Pi::Quit()
 	TextureManager::Clear();
 	Galaxy::Uninit();
 	Render::Uninit();
+	delete Pi::renderer;
 	LuaUninit();
 	Gui::Uninit();
 	StarSystem::ShrinkCache();
@@ -1070,9 +1075,6 @@ void Pi::Start()
 	Background::Starfield *starfield = new Background::Starfield();
 	Background::MilkyWay *milkyway = new Background::MilkyWay();
 
-	Render::PostProcessingRenderer *renderer = new Render::PostProcessingRenderer(
-		Pi::scrWidth, Pi::scrHeight);
-
 	Gui::Fixed *splash = new Gui::Fixed(float(Gui::Screen::GetWidth()), float(Gui::Screen::GetHeight()));
 	Gui::Screen::AddBaseWidget(splash, 0, 0);
 	splash->SetTransparency(true);
@@ -1346,7 +1348,7 @@ void Pi::MainLoop()
 		}
 		frame_stat++;
 
-		Render::PrepareFrame();
+		renderer->BeginFrame();
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		
@@ -1366,7 +1368,7 @@ void Pi::MainLoop()
 
 		SetMouseGrab(Pi::MouseButtonState(SDL_BUTTON_RIGHT));
 
-		Render::PostProcess();
+		renderer->EndFrame();
 		Gui::Draw();
 
 #if DEVKEYS
@@ -1381,7 +1383,7 @@ void Pi::MainLoop()
 #endif
 
 		glError();
-		Render::SwapBuffers();
+		renderer->SwapBuffers();
 		//if (glGetError()) printf ("GL: %s\n", gluErrorString (glGetError ()));
 		
 		int timeAccel = Pi::requestedTimeAccelIdx;

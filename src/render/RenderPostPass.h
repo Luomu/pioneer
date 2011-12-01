@@ -1,6 +1,8 @@
 #ifndef _RENDERPOSTPASS_H
 #define _RENDERPOSTPASS_H
 
+#include "libs.h"
+
 namespace Render {
 
 	class Texture;
@@ -14,8 +16,13 @@ namespace Render {
 		 * Texture input for a post processing pass
 		 */
 		class Sampler {
-		private:
+		public:
+			void Set(int texunit);
+			void Unset(int texunit);
 			Texture *m_texture;
+			std::string m_name;
+			GLuint m_location;
+			Program *m_program;
 		};
 
 		/*
@@ -35,15 +42,20 @@ namespace Render {
 			void SetTarget(RenderTarget *t) { m_target = t; }
 			RenderTarget* GetTarget() const { return m_target; }
 
+			// AddSampler can be used to add named samplers. However,
+			// it is better to define fixed samplers in derived Pass classes
+			void AddSampler(const std::string &name, Texture *tex);
+
 			bool renderToScreen;
 		protected:
 			// called after program.Use()
 			virtual void SetProgramParameters();
-			// clean up after rendering, if needed
+			// clean up after rendering, if needed (mostly samplers)
 			virtual void CleanUpProgramParameters();
 			Program *m_program;
 			RenderTarget *m_target;
-			//inputs
+			// texture inputs
+			std::vector<Sampler> m_samplers;
 
 			void DoQuad(float x, float y, float w, float h);
 		};

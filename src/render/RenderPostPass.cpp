@@ -62,12 +62,16 @@ void Pass::Execute()
 
 void Pass::SetProgramParameters()
 {
-
+	for (std::vector<Sampler>::size_type i = 0; i != m_samplers.size(); ++i) {
+		m_samplers[i].Set(i);
+	}
 }
 
 void Pass::CleanUpProgramParameters()
 {
-
+	for (std::vector<Sampler>::size_type i = 0; i != m_samplers.size(); ++i) {
+		m_samplers[i].Unset(i);
+	}
 }
 
 void Pass::DoQuad(const float x, const float y, const float w, const float h)
@@ -93,6 +97,33 @@ void Pass::DoQuad(const float x, const float y, const float w, const float h)
 	glDrawArrays(GL_QUADS, 0, 4);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void Pass::AddSampler(const std::string &name, Texture *tex)
+{
+	Sampler s;//(name, tex);
+	s.m_name = name;
+	s.m_texture = tex;
+	s.m_location = 0;
+	s.m_program = m_program;
+	m_samplers.push_back(s);
+}
+
+void Sampler::Set(int texunit)
+{
+	/*if (m_location < 1) {
+		m_program->GetLocation(m_name.c_str());
+	}*/
+	glActiveTexture(GL_TEXTURE0 + texunit);
+	m_texture->Bind();
+	m_program->SetUniform1i(m_name.c_str(), texunit);
+}
+
+void Sampler::Unset(int texunit)
+{
+	m_texture->Unbind();
+	if (texunit > 0)
+		glActiveTexture(GL_TEXTURE0 + texunit - 1);
 }
 
 }}

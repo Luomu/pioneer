@@ -88,7 +88,7 @@ void Shader::SetSource(const std::string &sourceString)
 
 std::string Shader::LoadSource(const std::string &fileName)
 {
-	std::ifstream infile(fileName);
+	std::ifstream infile(fileName.c_str());
 	std::string source;
 
 	while (infile.good()) {

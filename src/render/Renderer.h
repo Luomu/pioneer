@@ -1,12 +1,16 @@
 #ifndef _RENDERER_H
 #define _RENDERER_H
 
+#include <vector>
+
 namespace Render {
 
 	class RenderTarget;
-	class GLSLFilter;
-	class ColorLUTFilter;
-	class MultiBlurFilter;
+
+	namespace Post {
+		class Program;
+		class Pass;
+	}
 
 	class Renderer {
 	public:
@@ -30,9 +34,12 @@ namespace Render {
 
 	protected:
 		void PostProcess();
+		void SetUpPasses();
 		RenderTarget *m_sceneTarget;
-		ColorLUTFilter *m_colorFilter;
-		MultiBlurFilter *m_blurFilter;
+		RenderTarget *tempTarget1;
+		Post::Program *desaturateProg;
+		Post::Program *compositeProg;
+		std::vector<Post::Pass *> m_passes;
 	};
 
 }

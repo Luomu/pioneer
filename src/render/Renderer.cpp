@@ -1,8 +1,8 @@
-#include "Renderer.h"
 #include "libs.h"
-#include "RenderFilter.h"
+#include "Renderer.h"
 #include "RenderTarget.h"
-#include "RenderGLSLFilter.h"
+#include "RenderPostPass.h"
+#include "RenderPostProgram.h"
 
 namespace Render {
 
@@ -54,18 +54,20 @@ private:
 PostProcessingRenderer::PostProcessingRenderer(int width, int height) :
 	Renderer(width, height)
 {
-	m_sceneTarget = new PPSceneTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT);
-	m_colorFilter    = new ColorLUTFilter(
-		new RenderTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT));
-	m_blurFilter     = new MultiBlurFilter(
-		new RenderTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT));
+	m_sceneTarget  = new PPSceneTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT);
+	desaturateProg = new Post::Program("ExampleFilter.vert", "ExampleFilterBlur.frag");
+	compositeProg  = new Post::Program("ExampleFilter.vert", "ExampleComposite.frag");
+	tempTarget1    = new RenderTarget(width, height, GL_RGB, GL_RGB, GL_FLOAT);
+	SetUpPasses();
 }
 
 PostProcessingRenderer::~PostProcessingRenderer()
 {
 	delete m_sceneTarget;
-	delete m_colorFilter;
-	delete m_blurFilter;
+	delete desaturateProg;
+	delete compositeProg;
+	delete tempTarget1;
+	while (!m_passes.empty()) delete m_passes.back(), m_passes.pop_back();
 }
 
 void PostProcessingRenderer::BeginFrame()
@@ -79,20 +81,27 @@ void PostProcessingRenderer::EndFrame()
 	PostProcess();
 }
 
+void PostProcessingRenderer::SetUpPasses()
+{
+	using Post::Pass;
+	Pass *p = new Pass(desaturateProg);
+	p->AddSampler("fboTex", m_sceneTarget);
+	p->renderToScreen = false;
+	p->SetTarget(tempTarget1);
+	m_passes.push_back(p);
+	p = new Pass(compositeProg);
+	p->AddSampler("first", tempTarget1);
+	p->AddSampler("second", m_sceneTarget);
+	p->renderToScreen = true;
+	m_passes.push_back(p);
+}
+
 void PostProcessingRenderer::PostProcess()
 {
-	//scene has already been rendered to main rendertarget, grab texture
-	Source acquireColourBuffer(m_sceneTarget); //basic Source op will do here now
-	m_colorFilter->SetSource(&acquireColourBuffer);
-	m_colorFilter->Execute();
-
-	m_blurFilter->SetSource(m_colorFilter);
-	m_blurFilter->Execute();
-
-	//present it on screen
-	PresentOperator pop;
-	pop.SetSource(m_blurFilter);
-	pop.Execute();
+	std::vector<Post::Pass*>::iterator it = m_passes.begin();
+	for(; it != m_passes.end(); ++it) {
+		(*it)->Execute();
+	}
 }
 
 }

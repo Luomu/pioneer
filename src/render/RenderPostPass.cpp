@@ -5,7 +5,7 @@
 namespace Render { namespace Post {
 
 Pass::Pass(Program *p) :
-	renderToScreen(true),
+	renderToScreen(false),
 	m_target(0),
 	m_program(p)
 {
@@ -58,6 +58,9 @@ void Pass::Execute()
 
 	if (!renderToScreen)
 		m_target->EndRTT();
+
+	// HACK
+	glActiveTexture(GL_TEXTURE0);
 }
 
 void Pass::SetProgramParameters()

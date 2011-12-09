@@ -29,7 +29,6 @@
 #include "Missile.h"
 #include "LmrModel.h"
 #include "render/Render.h"
-#include "render/Renderer.h"
 #include "AmbientSounds.h"
 #include "CustomSystem.h"
 #include "CityOnPlanet.h"
@@ -150,7 +149,6 @@ const char * const Pi::combatRating[] = {
 	Lang::DEADLY,
 	Lang::ELITE
 };
-Render::Renderer *Pi::renderer;
 
 #if OBJECTVIEWER
 ObjectViewerView *Pi::objectViewerView;
@@ -460,8 +458,6 @@ void Pi::Init()
 	LuaInit();
 
 	Render::Init(width, height);
-	Pi::renderer = new Render::PostProcessingRenderer(
-		Pi::scrWidth, Pi::scrHeight);
 	draw_progress(0.1f);
 
 	Galaxy::Init();
@@ -613,7 +609,6 @@ void Pi::Quit()
 	TextureManager::Clear();
 	Galaxy::Uninit();
 	Render::Uninit();
-	delete Pi::renderer;
 	LuaUninit();
 	Gui::Uninit();
 	StarSystem::ShrinkCache();
@@ -1069,7 +1064,6 @@ void Pi::UninitGame()
 	StarSystem::ShrinkCache();
 }
 
-#include "render/Renderer.h"
 void Pi::Start()
 {
 	Background::Starfield *starfield = new Background::Starfield();
@@ -1116,8 +1110,6 @@ void Pi::Start()
 	do {
 		Pi::HandleEvents();
 
-		//Render::PrepareFrame();
-		renderer->BeginFrame();
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		float fracH = 1.0f / Pi::GetScrAspect();
@@ -1130,10 +1122,8 @@ void Pi::Start()
 		Pi::SetMouseGrab(false);
 
 		draw_intro(starfield, milkyway, _time);
-		//Render::PostProcess();
-		renderer->EndFrame();
 		Gui::Draw();
-		renderer->SwapBuffers();
+		Render::SwapBuffers();
 		
 		Pi::frameTime = 0.001f*(SDL_GetTicks() - last_time);
 		_time += Pi::frameTime;
@@ -1348,7 +1338,6 @@ void Pi::MainLoop()
 		}
 		frame_stat++;
 
-		renderer->BeginFrame();
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		
@@ -1368,7 +1357,6 @@ void Pi::MainLoop()
 
 		SetMouseGrab(Pi::MouseButtonState(SDL_BUTTON_RIGHT));
 
-		renderer->EndFrame();
 		Gui::Draw();
 
 #if DEVKEYS
@@ -1383,7 +1371,7 @@ void Pi::MainLoop()
 #endif
 
 		glError();
-		renderer->SwapBuffers();
+		Render::SwapBuffers();
 		//if (glGetError()) printf ("GL: %s\n", gluErrorString (glGetError ()));
 		
 		int timeAccel = Pi::requestedTimeAccelIdx;

@@ -64,12 +64,21 @@ Shader::Shader(const std::string &filename, GLenum shaderType) :
 	GLint status = GL_FALSE;
 	glGetProgramiv(m_shader, GL_COMPILE_STATUS, &status);
 	if (GL_TRUE != status) {
-		int infologLength = 0;
-		char infoLog[1024];
-		glGetShaderInfoLog(m_shader, 1024, &infologLength, infoLog);
+		GLsizei infologLength = 0;
+		glGetShaderiv(m_shader, GL_INFO_LOG_LENGTH, &infologLength);
+
 		if (infologLength > 0) {
-			printf("Error compiling %s: %s\n", filename.c_str(), infoLog);
-			throw 50;
+			char infoLog[infologLength];
+			glGetShaderInfoLog(m_shader, infologLength, &infologLength, infoLog);
+			printf("%s", infoLog);
+			// Getting this error:success issue on Radeon HD 4200 & FGLRX
+			if (strcmp(infoLog, "Vertex shader was successfully compiled to run on hardware.") != 0 &&
+				strcmp(infoLog, "Vertex shader was successfully compiled to run on hardware.\n") != 0 &&
+				strcmp(infoLog, "Fragment shader was successfully compiled to run on hardware.\n"))
+			{
+				printf("Error compiling %s: %s\n", filename.c_str(), infoLog);
+				throw 50;
+			}
 		}
 	}
 }

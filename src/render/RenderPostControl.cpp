@@ -31,6 +31,15 @@ PostSceneTarget::PostSceneTarget(int width, int height)
 	m_depthTexture = new Texture(m_w, m_h, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT24, GL_UNSIGNED_BYTE);
 	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,
 		GL_TEXTURE_2D, m_depthTexture->GetGLTexture(), 0);
+	/*
+	Renderbuffer instead of texture:
+	glGenRenderbuffersEXT(1, &m_depth);
+	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, m_depth);
+	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, m_w, m_h);
+	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
+	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,
+		GL_RENDERBUFFER_EXT, m_depth);
+	*/
 
 	CheckCompleteness();
 

@@ -2,6 +2,7 @@
 #include "RenderPostPass.h"
 #include "RenderPostProgram.h"
 #include "RefCounted.h"
+#include "RenderProgramManager.h"
 
 namespace Render {
 
@@ -77,7 +78,8 @@ void Control::PostProcess()
 
 void Control::SetUpPasses()
 {
-	RefCountedPtr<Post::Program> prog(new Post::Program("filters/Quad.vert", "filters/Passthrough.frag"));
+	ProgramManager poo;
+	RefCountedPtr<Post::Program> prog = poo.Request("filters/Quad.vert", "filters/Passthrough.frag");
 	Post::Pass *p     = new Pass(prog);
 	p->AddSampler("texture0", m_sceneTarget);
 	p->renderToScreen = true;

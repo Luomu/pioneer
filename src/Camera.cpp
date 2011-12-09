@@ -17,6 +17,7 @@ Camera::Camera(const Body *body, float width, float height) :
 	m_pose(matrix4x4d::Identity()),
 	m_camFrame(0)
 {
+	m_post = new Render::Post::Control(width, height);
 }
 
 Camera::~Camera()
@@ -25,6 +26,8 @@ Camera::~Camera()
 		m_body->GetFrame()->RemoveChild(m_camFrame);
 		delete m_camFrame;
 	}
+	if (m_post)
+		delete m_post;
 }
 
 static void position_system_lights(Frame *camFrame, Frame *frame, int &lightNum)
@@ -118,6 +121,7 @@ void Camera::Update()
 
 void Camera::Draw()
 {
+	m_post->BeginFrame();
 	m_frustum.Enable();
 
 	glPushAttrib(GL_ALL_ATTRIB_BITS);
@@ -199,6 +203,7 @@ void Camera::Draw()
 	glPopAttrib();
 
 	m_frustum.Disable();
+	m_post->EndFrame();
 }
 
 void Camera::DrawSpike(double rad, const vector3d &viewCoords, const matrix4x4d &viewTransform)

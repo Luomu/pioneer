@@ -2,6 +2,7 @@
 #define _CAMERA_H
 
 #include "render/RenderFrustum.h"
+#include "render/RenderPostControl.h"
 #include "vector3.h"
 #include "matrix4x4.h"
 #include "Background.h"
@@ -88,6 +89,7 @@ private:
 	};
 
 	std::list<BodyAttrs> m_sortedBodies;
+	Render::Post::Control *m_post;
 };
 
 #endif

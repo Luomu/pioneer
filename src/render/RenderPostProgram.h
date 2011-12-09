@@ -1,3 +1,6 @@
+#ifndef _RENDERPOSTPROGRAM_H
+#define _RENDERPOSTPROGRAM_H
+
 #include "libs.h"
 #include "RefCounted.h"
 
@@ -41,3 +44,5 @@ namespace Render {
 		};
 	}
 }
+
+#endif

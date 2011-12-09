@@ -1,5 +1,6 @@
 #include "RenderPostProgram.h"
 #include <fstream>
+#include "SmartPtr.h"
 
 namespace Render {
 namespace Post {
@@ -66,15 +67,14 @@ Shader::Shader(const std::string &filename, GLenum shaderType) :
 	if (GL_TRUE != status) {
 		GLsizei infologLength = 0;
 		glGetShaderiv(m_shader, GL_INFO_LOG_LENGTH, &infologLength);
-
-		if (infologLength > 0) {
-			char infoLog[infologLength];
-			glGetShaderInfoLog(m_shader, infologLength, &infologLength, infoLog);
+		if (infologLength > 1) {
+			ScopedArray<char> infoLog(new char[infologLength]);
+			glGetShaderInfoLog(m_shader, infologLength, &infologLength, infoLog.Get());
 			printf("%s", infoLog);
 			// Getting this error:success issue on Radeon HD 4200 & FGLRX
-			if (strcmp(infoLog, "Vertex shader was successfully compiled to run on hardware.") != 0 &&
-				strcmp(infoLog, "Vertex shader was successfully compiled to run on hardware.\n") != 0 &&
-				strcmp(infoLog, "Fragment shader was successfully compiled to run on hardware.\n"))
+			if (strcmp(infoLog.Get(), "Vertex shader was successfully compiled to run on hardware.") != 0 &&
+				strcmp(infoLog.Get(), "Vertex shader was successfully compiled to run on hardware.\n") != 0 &&
+				strcmp(infoLog.Get(), "Fragment shader was successfully compiled to run on hardware.\n"))
 			{
 				printf("Error compiling %s: %s\n", filename.c_str(), infoLog);
 				throw 50;

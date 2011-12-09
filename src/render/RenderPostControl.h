@@ -43,9 +43,6 @@ namespace Render {
 
 			PostSceneTarget *m_sceneTarget;
 			std::vector<Post::Pass *> m_passes;
-
-			// temp progs
-			Program *dummyProg;
 		};
 	}
 }

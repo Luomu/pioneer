@@ -1,4 +1,5 @@
 #include "libs.h"
+#include "RefCounted.h"
 
 namespace Render {
 	namespace Post {
@@ -9,7 +10,7 @@ namespace Render {
 		 * can be specified separately, since vtx shader is often the same
 		 * (full screen quad)
 		 */
-		class Program {
+		class Program : public RefCounted {
 		public:
 			Program();
 			Program(const std::string &vtxName, const std::string &fragName);

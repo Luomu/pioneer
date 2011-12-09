@@ -4,7 +4,7 @@
 
 namespace Render { namespace Post {
 
-Pass::Pass(Program *p) :
+Pass::Pass(RefCountedPtr<Program> p) :
 	renderToScreen(false),
 	m_target(0),
 	m_program(p)

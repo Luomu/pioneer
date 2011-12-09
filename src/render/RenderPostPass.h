@@ -2,6 +2,7 @@
 #define _RENDERPOSTPASS_H
 
 #include "libs.h"
+#include "RefCounted.h"
 
 namespace Render {
 
@@ -22,7 +23,7 @@ namespace Render {
 			Texture *m_texture;
 			std::string m_name;
 			GLuint m_location;
-			Program *m_program;
+			RefCountedPtr<Program> m_program;
 		};
 
 		/*
@@ -33,12 +34,12 @@ namespace Render {
 		 */
 		class Pass {
 		public:
-			Pass(Program *p);
+			Pass(RefCountedPtr<Program> p);
 			virtual ~Pass();
 
 			virtual void Execute();
-			void SetProgram(Program *p);
-			Program* GetProgram() { return m_program; }
+			void SetProgram(RefCountedPtr<Program> p);
+			RefCountedPtr<Program> GetProgram() const { return m_program; }
 			void SetTarget(RenderTarget *t) { m_target = t; }
 			RenderTarget* GetTarget() const { return m_target; }
 
@@ -52,7 +53,7 @@ namespace Render {
 			virtual void SetProgramParameters();
 			// clean up after rendering, if needed (mostly samplers)
 			virtual void CleanUpProgramParameters();
-			Program *m_program;
+			RefCountedPtr<Program> m_program;
 			RenderTarget *m_target;
 			// texture inputs
 			std::vector<Sampler> m_samplers;

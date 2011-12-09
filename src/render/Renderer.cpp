@@ -33,16 +33,13 @@ public:
 			GL_TEXTURE_2D, m_texture, 0);
 #define DEPTH_TEXTURE
 #ifdef DEPTH_TEXTURE //had a problem with depth-to-texture on ATI, need to check
-		glGenTextures(1, &m_depth);
-		glBindTexture(GL_TEXTURE_2D, m_depth);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		//glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
 		//glTexParameteri( GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_LUMINANCE);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, m_w, m_h, 0,
-			GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
+		m_depthTexture = new Texture(m_w, m_h, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT24, GL_UNSIGNED_BYTE);
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,
-			GL_TEXTURE_2D, m_depth, 0);
+			GL_TEXTURE_2D, m_depthTexture->GetGLTexture(), 0);
 #else
 		glGenRenderbuffersEXT(1, &m_depth);
 		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, m_depth);
@@ -57,12 +54,10 @@ public:
 	}
 
 #ifdef DEPTH_TEXTURE
-	void BindDepth() {
-		glBindTexture(GL_TEXTURE_2D, m_depth);
-	}
+	Texture *GetDepthTexture() const { return m_depthTexture; }
 
 	~PPSceneTarget() {
-		glDeleteTextures(1, &m_depth);
+		delete m_depthTexture;
 	}
 #else
 	~PPSceneTarget() {
@@ -70,7 +65,11 @@ public:
 	}
 #endif
 private:
+#ifdef DEPTH_TEXTURE
+	Texture *m_depthTexture;
+#else
 	GLuint m_depth;
+#endif
 };
 
 PostProcessingRenderer::PostProcessingRenderer(int width, int height) :

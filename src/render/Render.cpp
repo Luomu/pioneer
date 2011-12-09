@@ -1,6 +1,7 @@
 #include "Render.h"
 #include "RenderTarget.h"
 #include <stdexcept>
+#include "RenderProgramManager.h"
 
 static GLuint boundArrayBufferObject = 0;
 static GLuint boundElementArrayBufferObject = 0;
@@ -47,6 +48,8 @@ float State::m_znear = 10.0f;
 float State::m_zfar = 1e6f;
 float State::m_invLogZfarPlus1;
 Shader *State::m_currentShader = 0;
+
+ProgramManager *programManager;
 
 // 2D Rectangle texture RT
 class RectangleTarget : public RenderTarget {
@@ -378,6 +381,8 @@ void Init(int screen_width, int screen_height)
 		planetRingsShader[2] = new Shader("planetrings", "#define NUM_LIGHTS 3\n");
 		planetRingsShader[3] = new Shader("planetrings", "#define NUM_LIGHTS 4\n");
 	}
+
+	programManager = new ProgramManager();
 }
 
 void Uninit()
@@ -390,6 +395,7 @@ void Uninit()
 	delete planetRingsShader[2];
 	delete planetRingsShader[3];
 	FreeLibs();
+	delete programManager;
 }
 
 bool IsHDREnabled() { return shadersEnabled && hdrEnabled; }

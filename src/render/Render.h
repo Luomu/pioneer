@@ -9,6 +9,8 @@
  */
 namespace Render {
 
+	class ProgramManager;
+
 	/* static */ class State {
 	private:
 		static int m_numLights;
@@ -50,6 +52,8 @@ namespace Render {
 	void SwapBuffers();
 
 	void PutPointSprites(int num, vector3f v[], float size, const float modulationCol[4], int stride = sizeof(vector3f));
+
+	extern ProgramManager *programManager;
 }
 
 #endif /* _RENDER_H */

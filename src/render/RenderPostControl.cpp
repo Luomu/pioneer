@@ -53,7 +53,9 @@ PostSceneTarget::~PostSceneTarget()
 
 namespace Post {
 
-Control::Control(int width, int height)
+Control::Control(int width, int height) :
+	m_viewWidth(width),
+	m_viewHeight(height)
 {
 	// request a SceneTarget of appropriate size from some manager
 	// request programs and the rest of targets from some manager
@@ -89,7 +91,7 @@ void Control::PostProcess()
 void Control::SetUpPasses()
 {
 	RefCountedPtr<Post::Program> prog = Render::programManager->Request("filters/Quad.vert", "filters/Passthrough.frag");
-	Post::Pass *p     = new Pass(prog);
+	Post::Pass *p     = new Pass(this, prog);
 	p->AddSampler("texture0", m_sceneTarget);
 	p->renderToScreen = true;
 	m_passes.push_back(p);

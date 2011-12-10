@@ -12,6 +12,7 @@ namespace Render {
 	namespace Post {
 
 		class Program;
+		class Control;
 
 		/*
 		 * Texture input for a post processing pass
@@ -34,7 +35,7 @@ namespace Render {
 		 */
 		class Pass {
 		public:
-			Pass(RefCountedPtr<Program> p);
+			Pass(Control *c, RefCountedPtr<Program> p);
 			virtual ~Pass();
 
 			virtual void Execute();
@@ -57,6 +58,7 @@ namespace Render {
 			RenderTarget *m_target;
 			// texture inputs
 			std::vector<Sampler> m_samplers;
+			Control *m_control;
 
 			void DoQuad(float x, float y, float w, float h);
 		};

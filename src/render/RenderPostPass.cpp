@@ -1,13 +1,15 @@
 #include "RenderPostPass.h"
 #include "RenderPostProgram.h"
 #include "RenderTarget.h"
+#include "RenderPostControl.h"
 
 namespace Render { namespace Post {
 
-Pass::Pass(RefCountedPtr<Program> p) :
+Pass::Pass(Control *c, RefCountedPtr<Program> p) :
 	renderToScreen(false),
 	m_target(0),
-	m_program(p)
+	m_program(p),
+	m_control(c)
 {
 
 }
@@ -65,6 +67,9 @@ void Pass::Execute()
 
 void Pass::SetProgramParameters()
 {
+	m_program->SetUniform2f("viewportSize",
+		m_control->GetViewportWidth(),
+		m_control->GetViewportHeight());
 	for (std::vector<Sampler>::size_type i = 0; i != m_samplers.size(); ++i) {
 		m_samplers[i].Set(i);
 	}

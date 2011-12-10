@@ -37,12 +37,20 @@ namespace Render {
 			virtual ~Control();
 			void BeginFrame();
 			void EndFrame();
+
+			// XXX somebody implement vec2 please
+			int GetViewportWidth()  const { return m_viewWidth; }
+			int GetViewportHeight() const { return m_viewHeight; }
 		protected:
 			void PostProcess();
 			virtual void SetUpPasses();
 
 			PostSceneTarget *m_sceneTarget;
 			std::vector<Post::Pass *> m_passes;
+
+			// current viewport dimensions (can change during passes)
+			int m_viewWidth;
+			int m_viewHeight;
 		};
 	}
 }

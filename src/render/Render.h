@@ -3,6 +3,7 @@
 
 #include "libs.h"
 #include "RenderShader.h"
+#include <stdexcept>
 
 /*
  * bunch of reused 3d drawy routines.
@@ -54,6 +55,12 @@ namespace Render {
 	void PutPointSprites(int num, vector3f v[], float size, const float modulationCol[4], int stride = sizeof(vector3f));
 
 	extern ProgramManager *programManager;
+
+	class Exception : public std::runtime_error {
+	public:
+		Exception(const char *msg) : std::runtime_error(msg) { }
+		Exception(const std::string &msg) : std::runtime_error(msg.c_str()) { }
+	};
 }
 
 #endif /* _RENDER_H */

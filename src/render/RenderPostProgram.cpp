@@ -1,6 +1,8 @@
 #include "RenderPostProgram.h"
-#include <fstream>
 #include "SmartPtr.h"
+#include "Render.h"
+#include "StringF.h"
+#include <fstream>
 
 namespace Render {
 namespace Post {
@@ -65,9 +67,6 @@ void Program::SetUniform2f(const char *name, float val1, float val2)
 Shader::Shader(const std::string &filename, GLenum shaderType) :
 	m_shader(0)
 {
-	if (GL_VERTEX_SHADER != shaderType && GL_FRAGMENT_SHADER != shaderType)
-		throw 50;
-
 	m_shader = glCreateShader(shaderType);
 	SetSource(LoadSource(std::string()+PIONEER_DATA_DIR+"/shaders/"+filename));
 	glCompileShader(m_shader);
@@ -79,14 +78,12 @@ Shader::Shader(const std::string &filename, GLenum shaderType) :
 		if (infologLength > 1) {
 			ScopedArray<char> infoLog(new char[infologLength]);
 			glGetShaderInfoLog(m_shader, infologLength, &infologLength, infoLog.Get());
-			printf("%s", infoLog);
 			// Getting this error:success issue on Radeon HD 4200 & FGLRX
 			if (strcmp(infoLog.Get(), "Vertex shader was successfully compiled to run on hardware.") != 0 &&
 				strcmp(infoLog.Get(), "Vertex shader was successfully compiled to run on hardware.\n") != 0 &&
 				strcmp(infoLog.Get(), "Fragment shader was successfully compiled to run on hardware.\n"))
 			{
-				printf("Error compiling %s: %s\n", filename.c_str(), infoLog);
-				throw 50;
+				throw Render::Exception(stringf("Error compiling %0: %1\n", filename, std::string(infoLog.Get())));
 			}
 		}
 	}

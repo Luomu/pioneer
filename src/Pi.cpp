@@ -64,6 +64,7 @@
 #include "Lang.h"
 #include "StringF.h"
 #include "TextureManager.h"
+#include "render/RenderPostControl.h"
 
 float Pi::gameTickAlpha;
 int Pi::timeAccelIdx = 1;
@@ -1107,6 +1108,7 @@ void Pi::Start()
 	int choice = 0;
 	Uint32 last_time = SDL_GetTicks();
 	float _time = 0;
+	Render::Post::Control *postControl(new Render::Post::Control(Pi::scrWidth, Pi::scrHeight));
 	do {
 		Pi::HandleEvents();
 
@@ -1117,11 +1119,14 @@ void Pi::Start()
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		glClearColor(0,0,0,0);
+		postControl->BeginFrame();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		Pi::SetMouseGrab(false);
 
+		glDisable(GL_DEPTH_TEST);
 		draw_intro(starfield, milkyway, _time);
+		postControl->EndFrame();
 		Gui::Draw();
 		Render::SwapBuffers();
 		
@@ -1138,6 +1143,7 @@ void Pi::Start()
 	delete splash;
 	delete starfield;
 	delete milkyway;
+	delete postControl;
 	
 	InitGame();
 

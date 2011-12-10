@@ -7,6 +7,7 @@
 #include "matrix4x4.h"
 #include "Background.h"
 #include "Body.h"
+#include "SmartPtr.h"
 
 class Frame;
 
@@ -34,6 +35,8 @@ public:
 
 	// get the frustum. use for projection
 	const Render::Frustum &GetFrustum() const { return m_frustum; }
+
+	void SetPostControl(RefCountedPtr<Render::Post::Control> pc) { m_post = pc; }
 
 private:
 	void DrawSpike(double rad, const vector3d &viewCoords, const matrix4x4d &viewTransform);
@@ -89,7 +92,7 @@ private:
 	};
 
 	std::list<BodyAttrs> m_sortedBodies;
-	Render::Post::Control *m_post;
+	RefCountedPtr<Render::Post::Control> m_post;
 };
 
 #endif

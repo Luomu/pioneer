@@ -166,9 +166,16 @@ void WorldView::InitObject()
 	Add(m_combatTargetIndicator.label, 0, 0);
 	Add(m_targetLeadIndicator.label, 0, 0);
 
+	//create cameras
 	m_frontCamera = new Camera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight());
 	m_rearCamera = new Camera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight());
 	m_externalCamera = new Camera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight());
+
+	//cameras might have different PP chains, but these can use the same one
+	RefCountedPtr<Render::Post::Control> pc(new Render::Post::Control(Pi::GetScrWidth(), Pi::GetScrHeight()));
+	m_frontCamera->SetPostControl(pc);
+	m_rearCamera->SetPostControl(pc);
+	m_externalCamera->SetPostControl(pc);
 
 	m_rearCamera->SetOrientation(matrix4x4d::RotateYMatrix(M_PI));
 	

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "render/RenderTarget.h"
+#include "RefCounted.h"
 
 namespace Render {
 
@@ -31,7 +32,7 @@ namespace Render {
 		 * rendertargets should be shared as much as possible
 		 * same for glsl progs
 		 */
-		class Control {
+		class Control : public RefCounted {
 		public:
 			Control(int width, int height);
 			virtual ~Control();

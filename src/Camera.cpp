@@ -15,9 +15,9 @@ Camera::Camera(const Body *body, float width, float height) :
 	m_shadersEnabled(Render::AreShadersEnabled()),
 	m_frustum(m_width, m_height, m_fovAng),
 	m_pose(matrix4x4d::Identity()),
-	m_camFrame(0)
+	m_camFrame(0),
+	m_post(0)
 {
-	m_post = new Render::Post::Control(width, height);
 }
 
 Camera::~Camera()
@@ -26,8 +26,6 @@ Camera::~Camera()
 		m_body->GetFrame()->RemoveChild(m_camFrame);
 		delete m_camFrame;
 	}
-	if (m_post)
-		delete m_post;
 }
 
 static void position_system_lights(Frame *camFrame, Frame *frame, int &lightNum)

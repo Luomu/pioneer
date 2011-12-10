@@ -25,7 +25,9 @@ namespace Render {
 
 			//Uniform stuff
 			//these are not for performance but speedy testing
+			inline GLuint GetLocation(const char *name);
 			void SetUniform1i(const char *name, int value);
+			void SetUniform2f(const char *name, float, float);
 
 		protected:
 			GLuint m_program;

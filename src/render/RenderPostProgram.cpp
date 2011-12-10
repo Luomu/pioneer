@@ -47,10 +47,19 @@ void Program::Unuse()
 	glUseProgram(0);
 }
 
+GLuint Program::GetLocation(const char *name)
+{
+	return glGetUniformLocation(m_program, name);
+}
+
 void Program::SetUniform1i(const char *name, int value)
 {
-	GLuint loc = glGetUniformLocation(m_program, name);
-	glUniform1i(loc, value);
+	glUniform1i(GetLocation(name), value);
+}
+
+void Program::SetUniform2f(const char *name, float val1, float val2)
+{
+	glUniform2f(GetLocation(name), val1, val2);
 }
 
 Shader::Shader(const std::string &filename, GLenum shaderType) :

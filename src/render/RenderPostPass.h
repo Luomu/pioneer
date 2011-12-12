@@ -15,6 +15,18 @@ namespace Render {
 		class Control;
 
 		/*
+		 * Numeric input
+		 */
+		class Uniform {
+		public:
+			void Set();
+			std::string m_name;
+			RefCountedPtr<Program> m_program;
+			float m_value;
+			GLuint m_location;
+		};
+
+		/*
 		 * Texture input for a post processing pass
 		 */
 		class Sampler {
@@ -47,6 +59,7 @@ namespace Render {
 			// AddSampler can be used to add named samplers. However,
 			// it is better to define fixed samplers in derived Pass classes
 			void AddSampler(const std::string &name, Texture *tex);
+			void AddUniform(const std::string &name, float value);
 
 			bool renderToScreen;
 		protected:
@@ -58,6 +71,7 @@ namespace Render {
 			RefCountedPtr<RenderTarget> m_target;
 			// texture inputs
 			std::vector<Sampler> m_samplers;
+			std::vector<Uniform> m_uniforms;
 			Control *m_control;
 
 			void DoQuad(float x, float y, float w, float h);

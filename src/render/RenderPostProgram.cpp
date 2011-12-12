@@ -59,6 +59,11 @@ void Program::SetUniform1i(const char *name, int value)
 	glUniform1i(GetLocation(name), value);
 }
 
+void Program::SetUniform1f(const char *name, float value)
+{
+	glUniform1f(GetLocation(name), value);
+}
+
 void Program::SetUniform2f(const char *name, float val1, float val2)
 {
 	glUniform2f(GetLocation(name), val1, val2);

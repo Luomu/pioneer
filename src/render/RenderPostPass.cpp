@@ -70,6 +70,9 @@ void Pass::SetProgramParameters()
 	m_program->SetUniform2f("viewportSize",
 		m_control->GetViewportWidth(),
 		m_control->GetViewportHeight());
+	for (std::vector<Uniform>::size_type i = 0; i != m_uniforms.size(); ++i) {
+		m_uniforms[i].Set();
+	}
 	for (std::vector<Sampler>::size_type i = 0; i != m_samplers.size(); ++i) {
 		m_samplers[i].Set(i);
 	}
@@ -117,6 +120,16 @@ void Pass::AddSampler(const std::string &name, Texture *tex)
 	m_samplers.push_back(s);
 }
 
+void Pass::AddUniform(const std::string &name, float value)
+{
+	Uniform u;
+	u.m_name     = name;
+	u.m_location = 0;
+	u.m_program  = m_program;
+	u.m_value    = value;
+	m_uniforms.push_back(u);
+}
+
 void Sampler::Set(int texunit)
 {
 	/*if (m_location < 1) {
@@ -132,6 +145,11 @@ void Sampler::Unset(int texunit)
 	m_texture->Unbind();
 	if (texunit > 0)
 		glActiveTexture(GL_TEXTURE0 + texunit - 1);
+}
+
+void Uniform::Set()
+{
+	m_program->SetUniform1f(m_name.c_str(), m_value);
 }
 
 }}

@@ -97,10 +97,18 @@ void Control::SetUpPasses()
 	p1->SetTarget(rm->RequestRenderTarget(w, h));
 	m_passes.push_back(p1);
 
-	Post::Pass *p2 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/Passthrough.frag"));
+	//Post::Pass *p2 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/Passthrough.frag"));
+	Post::Pass *p2 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/rmBlur.frag"));
 	p2->AddSampler("texture0", p1->GetTarget().Get()); // XXX yes, Get, I know
-	p2->renderToScreen = true;
+	p2->AddUniform("sampleDist", 0.01f);
+	p2->SetTarget(rm->RequestRenderTarget(w, h));
 	m_passes.push_back(p2);
+
+	Post::Pass *p3 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/rmBlur.frag"));
+	p3->AddSampler("texture0", p2->GetTarget().Get());
+	p3->AddUniform("sampleDist", 0.02f);
+	p3->renderToScreen = true;
+	m_passes.push_back(p3);
 }
 
 } }

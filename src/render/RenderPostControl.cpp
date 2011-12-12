@@ -91,24 +91,34 @@ void Control::SetUpPasses()
 	const int w = m_viewWidth;
 	const int h = m_viewHeight;
 	ResourceManager *rm = Render::resourceManager;
+	RefCountedPtr<RenderTarget> t1 = rm->RequestRenderTarget(w, h);
+	RefCountedPtr<RenderTarget> t2 = rm->RequestRenderTarget(w, h);
+	RefCountedPtr<RenderTarget> t3 = rm->RequestRenderTarget(w, h);
 
 	Post::Pass *p1 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/Grayscale.frag"));
 	p1->AddSampler("texture0", m_sceneTarget);
-	p1->SetTarget(rm->RequestRenderTarget(w, h));
+	p1->SetTarget(t1);
 	m_passes.push_back(p1);
 
-	//Post::Pass *p2 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/Passthrough.frag"));
 	Post::Pass *p2 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/rmBlur.frag"));
 	p2->AddSampler("texture0", p1->GetTarget().Get()); // XXX yes, Get, I know
 	p2->AddUniform("sampleDist", 0.01f);
-	p2->SetTarget(rm->RequestRenderTarget(w, h));
+	p2->SetTarget(t2);
 	m_passes.push_back(p2);
 
 	Post::Pass *p3 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/rmBlur.frag"));
 	p3->AddSampler("texture0", p2->GetTarget().Get());
 	p3->AddUniform("sampleDist", 0.02f);
-	p3->renderToScreen = true;
+	p3->SetTarget(t3);
+	//p3->renderToScreen = true;
 	m_passes.push_back(p3);
+
+	Post::Pass *p4 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/composite2.frag"));
+	p4->AddSampler("texture0", p1->GetTarget().Get());
+	p4->AddSampler("texture1", p3->GetTarget().Get());
+	p4->AddUniform("mixFactor", 0.5f);
+	p4->renderToScreen = true;
+	m_passes.push_back(p4);
 }
 
 } }

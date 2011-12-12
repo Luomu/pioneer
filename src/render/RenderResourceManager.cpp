@@ -31,8 +31,10 @@ RefCountedPtr<Post::Program> ResourceManager::RequestProgram(const std::string &
 
 RefCountedPtr<RenderTarget> ResourceManager::RequestRenderTarget(int width, int height)
 {
+	// TODO: of course this idea did not work as intended. A texture might be required
+	// a few steps down the chain so it's not good to overwrite it!
 	// check for existing
-	std::vector<RefCountedPtr<RenderTarget> >::iterator i;
+	/*std::vector<RefCountedPtr<RenderTarget> >::iterator i;
 	for(i = m_renderTargets.begin(); i != m_renderTargets.end(); ++i) {
 		bool match = true;
 		RenderTarget *t = i->Get();
@@ -41,7 +43,7 @@ RefCountedPtr<RenderTarget> ResourceManager::RequestRenderTarget(int width, int 
 
 		if (match)
 			return *i;
-	}
+	}*/
 	RefCountedPtr<RenderTarget> targ(new RenderTarget(width, height, GL_RGB, GL_RGB8, GL_UNSIGNED_BYTE));
 	m_renderTargets.push_back(targ);
 	return targ;

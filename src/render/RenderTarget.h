@@ -1,12 +1,13 @@
 #ifndef _RENDERTARGET_H
 #define _RENDERTARGET_H
 #include "RenderTexture.h"
+#include "RefCounted.h"
 
 namespace Render {
 	/*
 	 * FBO rendertarget, only color
 	 */
-	class RenderTarget : public Texture {
+	class RenderTarget : public Texture, public RefCounted {
 	public:
 		RenderTarget();
 		RenderTarget(int w, int h, GLint format,

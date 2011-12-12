@@ -41,8 +41,8 @@ namespace Render {
 			virtual void Execute();
 			void SetProgram(RefCountedPtr<Program> p);
 			RefCountedPtr<Program> GetProgram() const { return m_program; }
-			void SetTarget(RenderTarget *t) { m_target = t; }
-			RenderTarget* GetTarget() const { return m_target; }
+			void SetTarget(RefCountedPtr<RenderTarget> t) { m_target = t; }
+			RefCountedPtr<RenderTarget> GetTarget() const { return m_target; }
 
 			// AddSampler can be used to add named samplers. However,
 			// it is better to define fixed samplers in derived Pass classes
@@ -55,7 +55,7 @@ namespace Render {
 			// clean up after rendering, if needed (mostly samplers)
 			virtual void CleanUpProgramParameters();
 			RefCountedPtr<Program> m_program;
-			RenderTarget *m_target;
+			RefCountedPtr<RenderTarget> m_target;
 			// texture inputs
 			std::vector<Sampler> m_samplers;
 			Control *m_control;

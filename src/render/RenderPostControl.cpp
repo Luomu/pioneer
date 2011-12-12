@@ -88,11 +88,19 @@ void Control::PostProcess()
 
 void Control::SetUpPasses()
 {
-	RefCountedPtr<Post::Program> prog = Render::resourceManager->RequestProgram("filters/Quad.vert", "filters/Passthrough.frag");
-	Post::Pass *p     = new Pass(this, prog);
-	p->AddSampler("texture0", m_sceneTarget);
-	p->renderToScreen = true;
-	m_passes.push_back(p);
+	const int w = m_viewWidth;
+	const int h = m_viewHeight;
+	ResourceManager *rm = Render::resourceManager;
+
+	Post::Pass *p1 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/Grayscale.frag"));
+	p1->AddSampler("texture0", m_sceneTarget);
+	p1->SetTarget(rm->RequestRenderTarget(w, h));
+	m_passes.push_back(p1);
+
+	Post::Pass *p2 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/Passthrough.frag"));
+	p2->AddSampler("texture0", p1->GetTarget().Get()); // XXX yes, Get, I know
+	p2->renderToScreen = true;
+	m_passes.push_back(p2);
 }
 
 } }

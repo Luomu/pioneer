@@ -29,4 +29,22 @@ RefCountedPtr<Post::Program> ResourceManager::RequestProgram(const std::string &
 	}
 }
 
+RefCountedPtr<RenderTarget> ResourceManager::RequestRenderTarget(int width, int height)
+{
+	// check for existing
+	std::vector<RefCountedPtr<RenderTarget> >::iterator i;
+	for(i = m_renderTargets.begin(); i != m_renderTargets.end(); ++i) {
+		bool match = true;
+		RenderTarget *t = i->Get();
+		if (t->Width()  != width) match  = false;
+		if (t->Height() != height) match = false;
+
+		if (match)
+			return *i;
+	}
+	RefCountedPtr<RenderTarget> targ(new RenderTarget(width, height, GL_RGB, GL_RGB8, GL_UNSIGNED_BYTE));
+	m_renderTargets.push_back(targ);
+	return targ;
+}
+
 }

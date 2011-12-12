@@ -14,6 +14,10 @@ namespace Render {
 			NEAREST,
 			LINEAR
 		};
+		enum WrapMode {
+			REPEAT,
+			CLAMP
+		};
 		Texture();
 		Texture(int w, int h, GLint format, GLint internalFormat, GLenum type);
 		~Texture();
@@ -30,7 +34,8 @@ namespace Render {
 		 */
 		void Load(const std::string &filename);
 
-		void SetFilterMode(FilterMode mode) { m_filterMode = mode; }
+		void SetFilterMode(FilterMode mode);
+		void SetWrapMode(WrapMode mode);
 
 		int Width() const { return m_w; }
 		int Height() const { return m_h; }
@@ -40,6 +45,8 @@ namespace Render {
 		int m_h;
 		GLuint m_texture;
 		FilterMode m_filterMode;
+		WrapMode m_wrapMode;
+		GLenum m_target; //GL_TEXTURE_2D etc.
 	};
 }
 

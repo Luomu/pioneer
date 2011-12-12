@@ -18,19 +18,17 @@ PostSceneTarget::PostSceneTarget(int width, int height)
 	glGenFramebuffersEXT(1, &m_fbo);
 	glGenTextures(1, &m_texture);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-	glBindTexture(GL_TEXTURE_2D, m_texture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_w, m_h, 0,
+	Bind();
+	SetWrapMode(CLAMP);
+	SetFilterMode(LINEAR);
+	glTexImage2D(m_target, 0, internalFormat, m_w, m_h, 0,
 		format, type, 0);
 	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-		GL_TEXTURE_2D, m_texture, 0);
+		m_target, m_texture, 0);
 
 	m_depthTexture = new Texture(m_w, m_h, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT24, GL_UNSIGNED_BYTE);
 	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,
-		GL_TEXTURE_2D, m_depthTexture->GetGLTexture(), 0);
+		m_target, m_depthTexture->GetGLTexture(), 0);
 	/*
 	Renderbuffer instead of texture:
 	glGenRenderbuffersEXT(1, &m_depth);

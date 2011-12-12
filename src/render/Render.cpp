@@ -59,32 +59,21 @@ public:
 		GLint internalFormat, GLenum type) {
 		m_w = w;
 		m_h = h;
+		m_target = GL_TEXTURE_RECTANGLE;
 
 		glGenFramebuffersEXT(1, &m_fbo);
 		glGenTextures(1, &m_texture);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-		glBindTexture(GL_TEXTURE_RECTANGLE, m_texture);
-		glTexParameterf(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameterf(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_RECTANGLE, 0, internalFormat, w, h, 0,
+		Bind();
+		SetWrapMode(CLAMP);
+		SetFilterMode(LINEAR);
+		glTexImage2D(m_target, 0, internalFormat, w, h, 0,
 			format, type, 0);
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-			GL_TEXTURE_RECTANGLE, m_texture, 0);
+			m_target, m_texture, 0);
 
 		CheckCompleteness();
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-	}
-
-	void Bind() {
-		glEnable(GL_TEXTURE_RECTANGLE);
-		glBindTexture(GL_TEXTURE_RECTANGLE, m_texture);
-	}
-
-	void Unbind() {
-		glBindTexture(GL_TEXTURE_RECTANGLE, 0);
-		glDisable(GL_TEXTURE_RECTANGLE);
 	}
 };
 
@@ -97,21 +86,20 @@ public:
 		glGenFramebuffersEXT(1, &m_fbo);
 		glGenTextures(1, &m_texture);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-		glBindTexture(GL_TEXTURE_2D, m_texture);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, w, h, 0, GL_RGB, GL_FLOAT, NULL);
-		glGenerateMipmapEXT(GL_TEXTURE_2D);
+		Bind();
+		SetWrapMode(CLAMP);
+		glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexImage2D(m_target, 0, GL_RGB16F, w, h, 0, GL_RGB, GL_FLOAT, NULL);
+		UpdateMipmaps();
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-			GL_TEXTURE_2D, m_texture, 0);
+			m_target, m_texture, 0);
 		CheckCompleteness();
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	}
 
 	void UpdateMipmaps() {
-		glGenerateMipmapEXT(GL_TEXTURE_2D);
+		glGenerateMipmapEXT(m_target);
 	}
 };
 
@@ -128,15 +116,13 @@ public:
 		glGenFramebuffersEXT(1, &m_fbo);
 		glGenTextures(1, &m_texture);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-		glBindTexture(GL_TEXTURE_RECTANGLE, m_texture);
-		glTexParameterf(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameterf(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_RECTANGLE, 0, internalFormat, w, h, 0,
+		Bind();
+		SetWrapMode(CLAMP);
+		SetFilterMode(LINEAR);
+		glTexImage2D(m_target, 0, internalFormat, w, h, 0,
 			format, type, 0);
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-			GL_TEXTURE_RECTANGLE, m_texture, 0);
+			m_target, m_texture, 0);
 
 		glGenRenderbuffersEXT(1, &m_depth);
 		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, m_depth);
@@ -184,15 +170,13 @@ public:
 		glGenFramebuffersEXT(1, &m_fbo);
 		glGenTextures(1, &m_texture);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-		glBindTexture(GL_TEXTURE_RECTANGLE, m_texture);
-		glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_RECTANGLE, 0, internalFormat, w, h, 0,
+		Bind();
+		SetWrapMode(CLAMP);
+		SetFilterMode(LINEAR);
+		glTexImage2D(m_target, 0, internalFormat, w, h, 0,
 			format, type, 0);
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-			GL_TEXTURE_RECTANGLE, m_texture, 0);
+			m_target, m_texture, 0);
 
 		CheckCompleteness();
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);

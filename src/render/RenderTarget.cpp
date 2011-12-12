@@ -19,15 +19,13 @@ RenderTarget::RenderTarget(int w, int h, GLint format,
 	glGenFramebuffersEXT(1, &m_fbo);
 	glGenTextures(1, &m_texture);
 	glBindFramebuffer(GL_FRAMEBUFFER_EXT, m_fbo);
-	glBindTexture(GL_TEXTURE_2D, m_texture);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0,
+	Bind();
+	SetWrapMode(CLAMP);
+	SetFilterMode(LINEAR);
+	glTexImage2D(m_target, 0, internalFormat, w, h, 0,
 		format, type, 0);
 	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-		GL_TEXTURE_2D, m_texture, 0);
+		m_target, m_texture, 0);
 
 	CheckCompleteness();
 

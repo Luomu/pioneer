@@ -10,7 +10,7 @@
  */
 namespace Render {
 
-	class ProgramManager;
+	class ResourceManager;
 
 	/* static */ class State {
 	private:
@@ -54,7 +54,7 @@ namespace Render {
 
 	void PutPointSprites(int num, vector3f v[], float size, const float modulationCol[4], int stride = sizeof(vector3f));
 
-	extern ProgramManager *programManager;
+	extern ResourceManager *resourceManager;
 
 	class Exception : public std::runtime_error {
 	public:

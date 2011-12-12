@@ -1,9 +1,9 @@
-#include "RenderProgramManager.h"
+#include "RenderResourceManager.h"
 #include "Render.h"
 
 namespace Render {
 
-RefCountedPtr<Post::Program> ProgramManager::Request(const std::string &vtxName,
+RefCountedPtr<Post::Program> ResourceManager::RequestProgram(const std::string &vtxName,
 	const std::string &fragName)
 {
 	using std::string;

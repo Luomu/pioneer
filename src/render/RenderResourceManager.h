@@ -1,5 +1,5 @@
-#ifndef _RENDERPROGRAMMANAGER_H
-#define _RENDERPROGRAMMANAGER_H
+#ifndef _RENDERRESOURCEMANAGER_H
+#define _RENDERRESOURCEMANAGER_H
 
 #include "RenderPostProgram.h"
 #include <map>
@@ -8,14 +8,15 @@
 namespace Render {
 
 	/*
-	 * GLSL program "manager"
+	 * Rendertarget & GLSL program "manager"
 	 * Users can request programs by vtx+fragment shader name
+	 * Rendertargets by dimensions/etc.
 	 * Requests are not supposed to be made each frame
 	 */
-	class ProgramManager {
+	class ResourceManager {
 	public:
-		ProgramManager() {};
-		RefCountedPtr<Post::Program> Request(const std::string &vtxName,
+		ResourceManager() {};
+		RefCountedPtr<Post::Program> RequestProgram(const std::string &vtxName,
 			const std::string &fragName);
 	private:
 		std::map<std::pair<std::string, std::string>, RefCountedPtr<Post::Program> > m_programs;

@@ -18,7 +18,7 @@ RenderTarget::RenderTarget(int w, int h, GLint format,
 	m_h = h;
 	glGenFramebuffersEXT(1, &m_fbo);
 	glGenTextures(1, &m_texture);
-	glBindFramebuffer(GL_FRAMEBUFFER_EXT, m_fbo);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
 	Bind();
 	SetWrapMode(CLAMP);
 	SetFilterMode(LINEAR);

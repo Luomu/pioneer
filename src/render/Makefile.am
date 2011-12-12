@@ -10,10 +10,10 @@ noinst_LIBRARIES = librender.a
 noinst_HEADERS = \
 	Render.h \
 	RenderFrustum.h \
-	RenderProgramManager.h \
 	RenderPostControl.h \
 	RenderPostPass.h \
 	RenderPostProgram.h \
+	RenderResourceManager.h \
 	RenderShader.h \
 	RenderTexture.h \
 	RenderTarget.h
@@ -24,7 +24,7 @@ librender_a_SOURCES = \
 	RenderPostControl.cpp \
 	RenderPostPass.cpp \
 	RenderPostProgram.cpp \
-	RenderProgramManager.cpp \
+	RenderResourceManager.cpp \
 	RenderShader.cpp \
 	RenderTexture.cpp \
 	RenderTarget.cpp

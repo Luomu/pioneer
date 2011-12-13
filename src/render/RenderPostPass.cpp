@@ -16,7 +16,7 @@ Pass::Pass(Control *c, RefCountedPtr<Program> p) :
 
 Pass::~Pass()
 {
-
+	while (!m_uniforms.empty()) delete m_uniforms.back(), m_uniforms.pop_back();
 }
 
 void Pass::Execute()
@@ -70,8 +70,8 @@ void Pass::SetProgramParameters()
 	m_program->SetUniform2f("viewportSize",
 		m_control->GetViewportWidth(),
 		m_control->GetViewportHeight());
-	for (std::vector<Uniform>::size_type i = 0; i != m_uniforms.size(); ++i) {
-		m_uniforms[i].Set();
+	for (std::vector<Uniform*>::size_type i = 0; i != m_uniforms.size(); ++i) {
+		m_uniforms[i]->Set();
 	}
 	for (std::vector<Sampler>::size_type i = 0; i != m_samplers.size(); ++i) {
 		m_samplers[i].Set(i);
@@ -127,16 +127,23 @@ void Pass::AddSampler(const std::string &name, Pass *pass)
 
 void Pass::AddUniform(const std::string &name, float value)
 {
-	Uniform u;
-	u.m_name     = name;
-	u.m_location = 0;
-	u.m_program  = m_program;
-	u.m_value    = value;
+	Uniform *u    = new Uniform();
+	u->m_name     = name;
+	u->m_location = 0;
+	u->m_program  = m_program;
+	u->m_value    = value;
+	m_uniforms.push_back(u);
+}
+
+void Pass::AddUniform(Uniform *u)
+{
+	u->m_program = m_program;
 	m_uniforms.push_back(u);
 }
 
 void Sampler::Set(int texunit)
 {
+	// XXX todo: cache location
 	/*if (m_location < 1) {
 		m_program->GetLocation(m_name.c_str());
 	}*/

@@ -19,7 +19,7 @@ namespace Render {
 		 */
 		class Uniform {
 		public:
-			void Set();
+			virtual void Set();
 			std::string m_name;
 			RefCountedPtr<Program> m_program;
 			float m_value;
@@ -62,6 +62,8 @@ namespace Render {
 			// get target texture of another pass
 			void AddSampler(const std::string &name, Pass *pass);
 			void AddUniform(const std::string &name, float value);
+			// special shit
+			void AddUniform(Uniform *uniform);
 
 			bool renderToScreen;
 		protected:
@@ -73,7 +75,7 @@ namespace Render {
 			RefCountedPtr<RenderTarget> m_target;
 			// texture inputs
 			std::vector<Sampler> m_samplers;
-			std::vector<Uniform> m_uniforms;
+			std::vector<Uniform*> m_uniforms;
 			Control *m_control;
 
 			void DoQuad(float x, float y, float w, float h);

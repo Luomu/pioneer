@@ -120,6 +120,11 @@ void Pass::AddSampler(const std::string &name, Texture *tex)
 	m_samplers.push_back(s);
 }
 
+void Pass::AddSampler(const std::string &name, Pass *pass)
+{
+	AddSampler(name, pass->GetTarget().Get());
+}
+
 void Pass::AddUniform(const std::string &name, float value)
 {
 	Uniform u;

@@ -59,6 +59,8 @@ namespace Render {
 			// AddSampler can be used to add named samplers. However,
 			// it is better to define fixed samplers in derived Pass classes
 			void AddSampler(const std::string &name, Texture *tex);
+			// get target texture of another pass
+			void AddSampler(const std::string &name, Pass *pass);
 			void AddUniform(const std::string &name, float value);
 
 			bool renderToScreen;

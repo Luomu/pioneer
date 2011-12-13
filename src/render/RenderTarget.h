@@ -4,6 +4,19 @@
 #include "RefCounted.h"
 
 namespace Render {
+
+	struct TextureFormat {
+		TextureFormat() :
+			format(GL_RGB), internalFormat(GL_RGB8), type(GL_UNSIGNED_BYTE)
+		{ }
+		TextureFormat(GLint fo, GLint ifo, GLenum typ) :
+			format(fo), internalFormat(ifo), type(typ)
+		{ }
+		GLint format;
+		GLint internalFormat;
+		GLenum type;
+	};
+
 	/*
 	 * FBO rendertarget, only color
 	 */

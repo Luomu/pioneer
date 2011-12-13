@@ -29,7 +29,8 @@ RefCountedPtr<Post::Program> ResourceManager::RequestProgram(const std::string &
 	}
 }
 
-RefCountedPtr<RenderTarget> ResourceManager::RequestRenderTarget(int width, int height)
+RefCountedPtr<RenderTarget> ResourceManager::RequestRenderTarget(int width, int height,
+	const TextureFormat &tf, bool mipmaps)
 {
 	// TODO: of course this idea did not work as intended. A texture might be required
 	// a few steps down the chain so it's not good to overwrite it!
@@ -44,9 +45,14 @@ RefCountedPtr<RenderTarget> ResourceManager::RequestRenderTarget(int width, int 
 		if (match)
 			return *i;
 	}*/
-	RefCountedPtr<RenderTarget> targ(new RenderTarget(width, height, GL_RGB, GL_RGB8, GL_UNSIGNED_BYTE));
-	m_renderTargets.push_back(targ);
+	RefCountedPtr<RenderTarget> targ(new RenderTarget(width, height, tf.format, tf.internalFormat, tf.type));
+	//m_renderTargets.push_back(targ);
 	return targ;
+}
+
+RefCountedPtr<RenderTarget> ResourceManager::RequestRenderTarget(int width, int height)
+{
+	return RequestRenderTarget(width, height, TextureFormat(GL_RGB, GL_RGB8, GL_UNSIGNED_BYTE));
 }
 
 }

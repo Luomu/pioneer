@@ -45,6 +45,7 @@ namespace Render {
 		protected:
 			void PostProcess();
 			virtual void SetUpPasses();
+			void SetUpClassicHDR();
 
 			PostSceneTarget *m_sceneTarget;
 			std::vector<Post::Pass *> m_passes;

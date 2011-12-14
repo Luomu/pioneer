@@ -4,6 +4,7 @@
 #include "RefCounted.h"
 #include "RenderResourceManager.h"
 #include "Render.h"
+#include "RenderHDR.h"
 
 namespace Render {
 
@@ -88,6 +89,8 @@ void Control::PostProcess()
 
 void Control::SetUpPasses()
 {
+	return SetUpClassicHDR();
+
 	const int w = m_viewWidth;
 	const int h = m_viewHeight;
 	ResourceManager *rm = Render::resourceManager;
@@ -119,6 +122,61 @@ void Control::SetUpPasses()
 	p4->AddUniform("mixFactor", 0.5f);
 	p4->renderToScreen = true;
 	m_passes.push_back(p4);
+}
+
+void Control::SetUpClassicHDR()
+{
+	const int w = m_viewWidth;
+	const int h = m_viewHeight;
+	ResourceManager *rm = Render::resourceManager;
+
+	/*RefCountedPtr<RenderTarget> tinyTarget = rm->RequestRenderTarget(128, 128,
+		TextureFormat(GL_RGB, GL_RGB16F_ARB, GL_HALF_FLOAT_ARB), true);*/
+	RefCountedPtr<RenderTarget> luminanceTarget(new LuminanceTarget(128, 128));
+	RefCountedPtr<LuminanceTarget> luminanceTexture(static_cast<LuminanceTarget*>(luminanceTarget.Get())); // bleh
+	TextureFormat fmt(GL_RGB, GL_RGB16F_ARB, GL_HALF_FLOAT_ARB);
+	fmt = TextureFormat(GL_RGB, GL_RGB32F, GL_FLOAT);
+	RefCountedPtr<RenderTarget> brightT =
+		rm->RequestRenderTarget(w, h, fmt);
+	RefCountedPtr<RenderTarget> bloomT1 =
+		rm->RequestRenderTarget(w>>1, h>>1, fmt);
+	RefCountedPtr<RenderTarget> bloomT2 =
+		rm->RequestRenderTarget(w>>1, h>>1, fmt);
+
+	//luminance pass
+	Pass *lum = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/luminance.frag"));
+	lum->AddSampler("sceneTex", m_sceneTarget);
+	lum->SetTarget(luminanceTarget);
+	m_passes.push_back(lum);
+
+	//bloom brightpass
+	Pass *bp = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/brightpass.frag"));
+	bp->AddSampler("sceneTex", m_sceneTarget);
+	bp->SetTarget(brightT);
+	bp->AddUniform(new AverageLuminance("avgLum", luminanceTexture));
+	m_passes.push_back(bp);
+
+	//first blur
+	Pass *blur01 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/blurV.frag"));
+	blur01->AddSampler("texture0", bp);
+	blur01->AddUniform("sampleDist", 0.005f);
+	blur01->SetTarget(bloomT1);
+	m_passes.push_back(blur01);
+
+	//second blur
+	Pass *blur02 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/blurH.frag"));
+	blur02->AddSampler("texture0", blur01);
+	blur02->AddUniform("sampleDist", 0.005f);
+	blur02->SetTarget(bloomT2);
+	m_passes.push_back(blur02);
+
+	Pass *comp = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/compose.frag"));
+	comp->AddSampler("sceneTex", m_sceneTarget);
+	comp->AddSampler("bloomTex01", blur02);
+	comp->AddUniform(new AverageLuminance("avgLum", luminanceTexture));
+	comp->AddUniform(new MiddleGrey("middleGrey", luminanceTexture));
+	comp->renderToScreen = true;
+	m_passes.push_back(comp);
 }
 
 } }

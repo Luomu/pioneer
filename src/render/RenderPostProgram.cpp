@@ -76,7 +76,7 @@ Shader::Shader(const std::string &filename, GLenum shaderType) :
 	SetSource(LoadSource(std::string()+PIONEER_DATA_DIR+"/shaders/"+filename));
 	glCompileShader(m_shader);
 	GLint status = GL_FALSE;
-	glGetProgramiv(m_shader, GL_COMPILE_STATUS, &status);
+	glGetShaderiv(m_shader, GL_COMPILE_STATUS, &status);
 	if (GL_TRUE != status) {
 		GLsizei infologLength = 0;
 		glGetShaderiv(m_shader, GL_INFO_LOG_LENGTH, &infologLength);

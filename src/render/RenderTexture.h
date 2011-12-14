@@ -20,7 +20,7 @@ namespace Render {
 		};
 		Texture();
 		Texture(int w, int h, GLint format, GLint internalFormat, GLenum type);
-		~Texture();
+		virtual ~Texture();
 		virtual void Bind();
 		virtual void Unbind();
 		GLuint GetGLTexture() const { return m_texture; }

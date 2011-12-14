@@ -25,7 +25,7 @@ namespace Render {
 		RenderTarget();
 		RenderTarget(int w, int h, GLint format,
 			GLint internalFormat, GLenum type);
-		~RenderTarget();
+		virtual ~RenderTarget();
 		virtual void BeginRTT();
 		virtual void EndRTT();
 

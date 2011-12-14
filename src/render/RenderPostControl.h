@@ -3,21 +3,10 @@
 
 #include <vector>
 #include "render/RenderTarget.h"
+#include "RenderPostSceneTarget.h"
 #include "RefCounted.h"
 
 namespace Render {
-
-	/*
-	 * Rendertarget with a depth texture attachment
-	 */
-	class PostSceneTarget : public RenderTarget {
-	public:
-		PostSceneTarget(int width, int height);
-		virtual ~PostSceneTarget();
-		Texture *GetDepthTexture() const { return m_depthTexture; }
-	private:
-		Texture *m_depthTexture;
-	};
 
 	namespace Post {
 
@@ -47,7 +36,7 @@ namespace Render {
 			virtual void SetUpPasses();
 			void SetUpClassicHDR();
 
-			PostSceneTarget *m_sceneTarget;
+			SceneTarget *m_sceneTarget;
 			std::vector<Post::Pass *> m_passes;
 
 			// current viewport dimensions (can change during passes)

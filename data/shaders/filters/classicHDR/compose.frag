@@ -12,7 +12,8 @@ varying vec2 texCoord_c;
 void main(void)
 {
 	vec3 col  = texture2D(sceneTex,   texCoord).rgb;
-	//vec3 bcol = texture2D(bloomTex01, texCoord).rgb;
+	vec3 bcol = texture2D(bloomTex01, texCoord).rgb;
+	col += bcol * 0.1;
 	//col      += bcol / 2.0;
 	//col /= 2.0;
 	//col += bcol * 0.1;

@@ -13,7 +13,7 @@ namespace Render {
 	// calculates averageLuminance and middleGrey from scene texture
 	class LuminanceTarget : public RenderTarget {
 	public:
-		LuminanceTarget(int w, int h);
+		LuminanceTarget(const TextureFormat &format);
 		// calls generateMipmaps + extracts values
 		virtual void EndRTT();
 		float averageLuminance;

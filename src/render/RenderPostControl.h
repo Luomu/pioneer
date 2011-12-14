@@ -42,6 +42,8 @@ namespace Render {
 			// current viewport dimensions (can change during passes)
 			int m_viewWidth;
 			int m_viewHeight;
+			TextureFormat m_tf;
+			TextureFormat m_hdrtf;
 		};
 	}
 }

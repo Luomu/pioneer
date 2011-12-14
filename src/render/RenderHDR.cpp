@@ -4,14 +4,13 @@
 
 namespace Render { namespace Post {
 
-LuminanceTarget::LuminanceTarget(int w, int h)
+LuminanceTarget::LuminanceTarget(const TextureFormat &format)
 {
-	m_w      = w;
-	m_h      = h;
+	//fixed at 128x128, because we assume 7th mipmap level is 4pixels
+	m_w      = 128;
+	m_h      = 128;
+	m_format = format;
 	m_target = GL_TEXTURE_2D;
-
-	//m_format = TextureFormat(GL_RGB, GL_RGB16F_ARB, GL_HALF_FLOAT_ARB);
-	m_format = TextureFormat(GL_RGB, GL_RGB32F, GL_FLOAT);
 
 	glGenFramebuffersEXT(1, &m_fbo);
 	glGenTextures(1, &m_texture);
@@ -21,7 +20,7 @@ LuminanceTarget::LuminanceTarget(int w, int h)
 	SetWrapMode(CLAMP);
 	glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexImage2D(m_target, 0, m_format.internalFormat, w, h, 0,
+	glTexImage2D(m_target, 0, m_format.internalFormat, m_w, m_h, 0,
 			m_format.format, m_format.type, 0);
 	glGenerateMipmapEXT(m_target);
 	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,

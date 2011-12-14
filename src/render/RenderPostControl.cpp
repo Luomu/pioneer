@@ -12,12 +12,11 @@ namespace Post {
 
 Control::Control(int width, int height) :
 	m_viewWidth(width),
-	m_viewHeight(height)
+	m_viewHeight(height),
+	m_tf(GL_RGB, GL_RGB8, GL_UNSIGNED_BYTE),
+	m_hdrtf(GL_RGB, GL_RGB32F, GL_FLOAT)
 {
-	// request a SceneTarget of appropriate size from some manager
-	// request programs and the rest of targets from some manager
-
-	m_sceneTarget = new SceneTarget(width, height, TextureFormat(GL_RGB, GL_RGB32F, GL_FLOAT));
+	m_sceneTarget = new SceneTarget(width, height, m_hdrtf);
 	SetUpPasses();
 }
 
@@ -88,18 +87,14 @@ void Control::SetUpClassicHDR()
 	const int h = m_viewHeight;
 	ResourceManager *rm = Render::resourceManager;
 
-	/*RefCountedPtr<RenderTarget> tinyTarget = rm->RequestRenderTarget(128, 128,
-		TextureFormat(GL_RGB, GL_RGB16F_ARB, GL_HALF_FLOAT_ARB), true);*/
-	RefCountedPtr<RenderTarget> luminanceTarget(new LuminanceTarget(128, 128));
+	RefCountedPtr<RenderTarget> luminanceTarget(new LuminanceTarget(m_hdrtf));
 	RefCountedPtr<LuminanceTarget> luminanceTexture(static_cast<LuminanceTarget*>(luminanceTarget.Get())); // bleh
-	TextureFormat fmt(GL_RGB, GL_RGB16F_ARB, GL_HALF_FLOAT_ARB);
-	fmt = TextureFormat(GL_RGB, GL_RGB32F, GL_FLOAT);
 	RefCountedPtr<RenderTarget> brightT =
-		rm->RequestRenderTarget(w, h, fmt);
+		rm->RequestRenderTarget(w, h, m_hdrtf);
 	RefCountedPtr<RenderTarget> bloomT1 =
-		rm->RequestRenderTarget(w>>1, h>>1, fmt);
+		rm->RequestRenderTarget(w>>1, h>>1, m_hdrtf);
 	RefCountedPtr<RenderTarget> bloomT2 =
-		rm->RequestRenderTarget(w>>1, h>>1, fmt);
+		rm->RequestRenderTarget(w>>1, h>>1, m_hdrtf);
 
 	//luminance pass
 	Pass *lum = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/luminance.frag"));

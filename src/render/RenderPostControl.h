@@ -36,6 +36,9 @@ namespace Render {
 			virtual void SetUpPasses();
 			void SetUpClassicHDR();
 
+			// create & add a pass from program
+			Pass* AddPass(RefCountedPtr<Program> prog);
+
 			SceneTarget *m_sceneTarget;
 			std::vector<Post::Pass *> m_passes;
 

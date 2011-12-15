@@ -44,6 +44,13 @@ void Control::PostProcess()
 	}
 }
 
+Pass* Control::AddPass(RefCountedPtr<Program> prog)
+{
+	Pass *pass = new Pass(this, prog);
+	m_passes.push_back(pass);
+	return pass;
+}
+
 void Control::SetUpPasses()
 {
 	return SetUpClassicHDR();

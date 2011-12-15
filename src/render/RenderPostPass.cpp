@@ -67,9 +67,11 @@ void Pass::Execute()
 
 void Pass::SetProgramParameters()
 {
-	m_program->SetUniform2f("viewportSize",
-		m_control->GetViewportWidth(),
-		m_control->GetViewportHeight());
+	if (renderToScreen)
+		m_program->SetUniform2f("viewportSize", m_control->GetViewportWidth(), m_control->GetViewportHeight());
+	else
+		m_program->SetUniform2f("viewportSize", m_target->Width(), m_target->Height());
+
 	for (std::vector<Uniform*>::size_type i = 0; i != m_uniforms.size(); ++i) {
 		m_uniforms[i]->Set();
 	}

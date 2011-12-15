@@ -277,7 +277,7 @@ static struct postprocessBuffers_t {
 		luminanceRT = new LuminanceTarget(128, 128);
 		bloom1RT = new RectangleTarget(width>>2, height>>2, GL_RGB, GL_RGB16F_ARB, GL_HALF_FLOAT_ARB);
 		bloom2RT = new RectangleTarget(width>>2, height>>2, GL_RGB, GL_RGB16F_ARB, GL_HALF_FLOAT_ARB);
-		if (msSamples > 1)
+		if (msSamples > 1 && glewIsSupported("GL_EXT_framebuffer_multisample"))
 			sceneRT = new MultiSampledSceneTarget(width, height, GL_RGB, GL_RGB16F_ARB, GL_HALF_FLOAT_ARB, msSamples);
 		else
 			sceneRT = new SceneTarget(width, height, GL_RGB, GL_RGB16F_ARB, GL_HALF_FLOAT_ARB);

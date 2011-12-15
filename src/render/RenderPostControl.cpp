@@ -96,8 +96,10 @@ void Control::SetUpClassicHDR()
 
 	RefCountedPtr<RenderTarget> luminanceTarget(new LuminanceTarget(m_hdrtf));
 	RefCountedPtr<LuminanceTarget> luminanceTexture(static_cast<LuminanceTarget*>(luminanceTarget.Get())); // bleh
+	RefCountedPtr<RenderTarget> halfT =
+		rm->RequestRenderTarget(w>>1, h>>1, m_hdrtf);
 	RefCountedPtr<RenderTarget> brightT =
-		rm->RequestRenderTarget(w, h, m_hdrtf);
+		rm->RequestRenderTarget(w>>1, h>>1, m_hdrtf);
 	RefCountedPtr<RenderTarget> bloomT1 =
 		rm->RequestRenderTarget(w>>1, h>>1, m_hdrtf);
 	RefCountedPtr<RenderTarget> bloomT2 =
@@ -109,10 +111,15 @@ void Control::SetUpClassicHDR()
 	lum->SetTarget(luminanceTarget);
 	m_passes.push_back(lum);
 
+	//downsample
+	Pass *ds = AddPass(rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/downsample2.frag"));
+	ds->SetTarget(halfT);
+	ds->AddSampler("texture0", m_sceneTarget);
+
 	//bloom brightpass
 	Pass *bp = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/brightpass.frag"));
-	bp->AddSampler("sceneTex", m_sceneTarget);
 	bp->SetTarget(brightT);
+	bp->AddSampler("sceneTex", ds);
 	bp->AddUniform(new AverageLuminance("avgLum", luminanceTexture));
 	m_passes.push_back(bp);
 

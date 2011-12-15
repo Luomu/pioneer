@@ -140,7 +140,7 @@ void Camera::Draw()
 
 	glPushAttrib(GL_ALL_ATTRIB_BITS);
 
-	glClearColor(0,0,0,0);
+	glClearColor(0.0001f,0.0001f,0.0001f,0.f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	matrix4x4d trans2bg;

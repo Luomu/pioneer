@@ -1161,8 +1161,9 @@ void Pi::Start()
 		glFrustum(-1, 1, -fracH, fracH, 1.0f, 10000.0f);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		glClearColor(0,0,0,0);
+
 		postControl->BeginFrame();
+		glClearColor(0.0001f,0.0001f,0.0001f,0.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		Pi::SetMouseGrab(false);

@@ -14,7 +14,7 @@ Control::Control(int width, int height) :
 	m_viewWidth(width),
 	m_viewHeight(height),
 	m_tf(GL_RGB, GL_RGB8, GL_UNSIGNED_BYTE),
-	m_hdrtf(GL_RGB, GL_RGB32F, GL_FLOAT)
+	m_hdrtf(GL_RGB, GL_RGB16F_ARB, GL_HALF_FLOAT_ARB)
 {
 	m_sceneTarget = new SceneTarget(width, height, m_hdrtf);
 	SetUpPasses();

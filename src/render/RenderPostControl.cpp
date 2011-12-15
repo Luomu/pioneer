@@ -106,10 +106,9 @@ void Control::SetUpClassicHDR()
 		rm->RequestRenderTarget(w>>1, h>>1, m_hdrtf);
 
 	//luminance pass
-	Pass *lum = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/luminance.frag"));
+	Pass *lum = AddPass(rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/luminance.frag"));
 	lum->AddSampler("sceneTex", m_sceneTarget);
 	lum->SetTarget(luminanceTarget);
-	m_passes.push_back(lum);
 
 	//downsample
 	Pass *ds = AddPass(rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/downsample2.frag"));
@@ -117,33 +116,30 @@ void Control::SetUpClassicHDR()
 	ds->AddSampler("texture0", m_sceneTarget);
 
 	//bloom brightpass
-	Pass *bp = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/brightpass.frag"));
+	Pass *bp = AddPass(rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/brightpass.frag"));
 	bp->SetTarget(brightT);
 	bp->AddSampler("sceneTex", ds);
 	bp->AddUniform(new AverageLuminance("avgLum", luminanceTexture));
-	m_passes.push_back(bp);
 
 	//first blur
-	Pass *blur01 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/blurV.frag"));
+	Pass *blur01 = AddPass(rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/blurV.frag"));
 	blur01->AddSampler("texture0", bp);
 	blur01->AddUniform("sampleDist", 0.0015f);
 	blur01->SetTarget(bloomT1);
-	m_passes.push_back(blur01);
 
 	//second blur
-	Pass *blur02 = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/blurH.frag"));
+	Pass *blur02 = AddPass(rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/blurH.frag"));
 	blur02->AddSampler("texture0", blur01);
 	blur02->AddUniform("sampleDist", 0.0015f);
 	blur02->SetTarget(bloomT2);
-	m_passes.push_back(blur02);
 
-	Pass *comp = new Pass(this, rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/compose.frag"));
+	//downsample again
+	Pass *comp = AddPass(rm->RequestProgram("filters/Quad.vert", "filters/classicHDR/compose.frag"));
 	comp->AddSampler("sceneTex", m_sceneTarget);
 	comp->AddSampler("bloomTex01", blur02);
 	comp->AddUniform(new AverageLuminance("avgLum", luminanceTexture));
 	comp->AddUniform(new MiddleGrey("middleGrey", luminanceTexture));
 	comp->renderToScreen = true;
-	m_passes.push_back(comp);
 }
 
 } }

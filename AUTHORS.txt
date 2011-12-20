@@ -1,4 +1,4 @@
-The Pioneer team are (14 October 2011, alpha 15):
+The Pioneer team are (9 December 2011, alpha 17):
 
 Project leads: Tom Morton, John Jordan
 
@@ -33,6 +33,7 @@ Art:
   Marcel Tulloh
   Michele Botticelli
   Gareth Allnutt
+  C de Craen
 
 Music:
   Dan Bennett
@@ -46,6 +47,7 @@ Translations:
   Vincent Teerling
   Alessandro Giachi
   Paul Mahol
+  Thierry Dupré
 
 Thanks to those that have moved on (we hope to see you back!)
 

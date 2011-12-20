@@ -7,12 +7,12 @@
 #include "Space.h"
 #include "Player.h"
 #include "FloatComparison.h"
+#include "Game.h"
 
 const double SystemView::PICK_OBJECT_RECT_SIZE = 12.0;
 
 SystemView::SystemView()
 {
-	m_system = 0;
 	SetTransparency(true);
 
 	Gui::Screen::PushFont("OverlayFont");
@@ -75,7 +75,6 @@ SystemView::SystemView()
 
 SystemView::~SystemView()
 {
-	if (m_system) m_system->Release();
 	m_onMouseButtonDown.disconnect();
 }
 
@@ -91,7 +90,7 @@ void SystemView::ResetViewpoint()
 	m_rot_x = 50;
 	m_zoom = 1.0f/AU;
 	m_timeStep = 1.0f;
-	m_time = Pi::GetGameTime();
+	m_time = Pi::game->GetTime();
 }
 
 void SystemView::PutOrbit(SBody *b, vector3d offset)
@@ -139,8 +138,8 @@ void SystemView::OnClickObject(SBody *b)
 
 	if (Pi::KeyState(SDLK_LSHIFT) || Pi::KeyState(SDLK_RSHIFT)) {
 		SystemPath path = m_system->GetPathOf(b);
-		if (Pi::currentSystem->GetPath() == m_system->GetPath()) {
-			Body* body = Space::FindBodyForPath(&path);
+		if (Pi::game->GetSpace()->GetStarSystem()->GetPath() == m_system->GetPath()) {
+			Body* body = Pi::game->GetSpace()->FindBodyForPath(&path);
 			if (body != 0)
 				Pi::player->SetNavTarget(body);
 		}
@@ -273,8 +272,7 @@ void SystemView::Draw3D()
 	SystemPath path = Pi::sectorView->GetSelectedSystem();
 	if (m_system) {
 		if (!m_system->GetPath().IsSameSystem(path)) {
-			m_system->Release();
-			m_system = 0;
+			m_system.Reset();
 			ResetViewpoint();
 		}
 	}
@@ -303,7 +301,7 @@ void SystemView::Draw3D()
 		m_infoLabel->SetText(Lang::UNEXPLORED_SYSTEM_NO_SYSTEM_VIEW);
 	else if (m_system->rootBody) {
 		PutBody(m_system->rootBody, pos);
-		if (Pi::currentSystem == m_system) {
+		if (Pi::game->GetSpace()->GetStarSystem() == m_system) {
 			const Body *navTarget = Pi::player->GetNavTarget();
 			const SBody *navTargetSBody = navTarget ? navTarget->GetSBody() : 0;
 			if (navTargetSBody)

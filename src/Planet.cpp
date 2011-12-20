@@ -42,7 +42,7 @@ void Planet::GetAtmosphericState(double dist, double *outPressure, double *outDe
 	double surfaceDensity;
 	double atmosDist = dist/(GetSBody()->GetRadius()*ATMOSPHERE_RADIUS);
 	
-	GetGeoSphere()->GetAtmosphereFlavor(&c, &surfaceDensity);
+	GetSBody()->GetAtmosphereFlavor(&c, &surfaceDensity);
 	// kg / m^3
 	// exp term should be the same as in AtmosLengthDensityProduct GLSL function
 	*outDensity = 1.15*surfaceDensity * exp(-500.0 * (atmosDist - (2.0 - ATMOSPHERE_RADIUS)));
@@ -155,7 +155,7 @@ void Planet::DrawGasGiantRings()
 	glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
 	glDisable(GL_CULL_FACE);
 
-//	MTRand rng((int)Pi::GetGameTime());
+//	MTRand rng((int)Pi::game->GetTime());
 	MTRand rng(GetSBody()->seed+965467);
 	float col[4];
 
@@ -201,7 +201,7 @@ void Planet::DrawAtmosphere(const vector3d &camPos)
 {
 	Color col;
 	double density;
-	GetGeoSphere()->GetAtmosphereFlavor(&col, &density);
+	GetSBody()->GetAtmosphereFlavor(&col, &density);
 	
 	const double rad1 = 0.999;
 	const double rad2 = 1.05;

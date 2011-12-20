@@ -4,6 +4,7 @@
 #include "Ship.h"
 #include "Pi.h"
 #include "render/Render.h"
+#include "Game.h"
 
 bool ShipSpinnerElement::GetIntrinsicDimensions(Rocket::Core::Vector2f &dimensions)
 {
@@ -33,7 +34,7 @@ void ShipSpinnerElement::OnRender()
 	float x2 = x1 + GetClientWidth();
 	float y2 = y1 + GetClientHeight();
 
-	m_params.time = Pi::GetGameTime();
+	m_params.time = Pi::game->GetTime();
 
 	m_rotX += .5*Pi::GetFrameTime();
 	m_rotY += Pi::GetFrameTime();

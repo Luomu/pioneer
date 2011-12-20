@@ -11,6 +11,7 @@
 #include "Lang.h"
 #include "StringF.h"
 #include "KeyBindings.h"
+#include "Game.h"
 
 #define SCANNER_RANGE_MAX	100000.0f
 #define SCANNER_RANGE_MIN	1000.0f
@@ -61,8 +62,8 @@ void MsgLogWidget::ShowNext()
 	} else {
 		// current message expired and more in queue
 		Pi::BoinkNoise();
-		Pi::SetTimeAccel(1);
-		Pi::RequestTimeAccel(1);
+		Pi::game->RequestTimeAccel(Game::TIMEACCEL_1X);
+		Pi::game->SetTimeAccel(Game::TIMEACCEL_1X);
 		message_t msg("","",NONE);
 		// use MUST_SEE messages first
 		for (std::list<message_t>::iterator i = m_msgQueue.begin();
@@ -104,7 +105,27 @@ ScannerWidget::ScannerWidget()
 	m_mode = SCANNER_MODE_AUTO;
 	m_currentRange = m_manualRange = m_targetRange = SCANNER_RANGE_MIN;
 
-	KeyBindings::toggleScanMode.onPress.connect(sigc::mem_fun(this, &ScannerWidget::ToggleMode));
+	InitObject();
+}
+
+ScannerWidget::ScannerWidget(Serializer::Reader &rd)
+{
+	m_mode = ScannerMode(rd.Int32());
+	m_currentRange = rd.Float();
+	m_manualRange = rd.Float();
+	m_targetRange = rd.Float();
+
+	InitObject();
+}
+
+void ScannerWidget::InitObject()
+{
+	m_toggleScanModeConnection = KeyBindings::toggleScanMode.onPress.connect(sigc::mem_fun(this, &ScannerWidget::ToggleMode));
+}
+
+ScannerWidget::~ScannerWidget()
+{
+	m_toggleScanModeConnection.disconnect();
 }
 
 void ScannerWidget::GetSizeRequested(float size[2])
@@ -115,7 +136,7 @@ void ScannerWidget::GetSizeRequested(float size[2])
 
 void ScannerWidget::ToggleMode()
 {
-	if (IsVisible() && !Pi::IsTimeAccelPause()) {
+	if (IsVisible() && Pi::game->GetTimeAccel() != Game::TIMEACCEL_PAUSED) {
 		if (m_mode == SCANNER_MODE_AUTO) m_mode = SCANNER_MODE_MANUAL;
 		else m_mode = SCANNER_MODE_AUTO;
 	}
@@ -187,7 +208,7 @@ void ScannerWidget::Update()
 	float combat_dist = 0, far_ship_dist = 0, nav_dist = 0, far_other_dist = 0;
 
 	// collect the bodies to be displayed, and if AUTO, distances
-	for (Space::bodiesIter_t i = Space::bodies.begin(); i != Space::bodies.end(); ++i) {
+	for (Space::BodyIterator i = Pi::game->GetSpace()->BodiesBegin(); i != Pi::game->GetSpace()->BodiesEnd(); ++i) {
 		if ((*i) == Pi::player) continue;
 
 		float dist = float((*i)->GetPositionRelTo(Pi::player).Length());
@@ -411,6 +432,16 @@ void ScannerWidget::DrawRingsAndSpokes(bool blend)
 	/* outer range soicle */
 	float range_percent = m_currentRange / SCANNER_RANGE_MAX;
 
+	float arc_end_x, arc_end_y;
+	if (range_percent < 1.0f) {
+		arc_end_x = m_x - m_x * sin(range_percent * circle);
+		arc_end_y = m_y + SCANNER_YSHRINK * m_y * cos(range_percent * circle);
+	} else {
+		arc_end_x = m_x;
+		arc_end_y = m_y + SCANNER_YSHRINK * m_y;
+	}
+
+	/* draw bright range arg */
 	if (m_mode == SCANNER_MODE_AUTO) {
 		/* green like the scanner to indicate that the scanner is controlling the range */
 		if (blend) glColor4f(0, 0.7f, 0, 0.25f);
@@ -420,27 +451,26 @@ void ScannerWidget::DrawRingsAndSpokes(bool blend)
 		else glColor3f(0.7f, 0.7f, 0);
 	}
 
-	glBegin(GL_LINE_LOOP);
+	glBegin(GL_LINE_STRIP);
 	for (float a = 0; a < range_percent * circle; a += step) {
 		glVertex2f(m_x - m_x * sin(a), m_y + SCANNER_YSHRINK * m_y * cos(a));
 	}
+	glVertex2f(arc_end_x, arc_end_y);
+	glEnd();
+
+	/* and dim surround for the remaining segment */
 	if (range_percent < 1.0f) {
-		/* this vertex is so the part that indicates range ends at
-		 * the exact point rather than a multiple of 3.6 degrees */
-		glVertex2f(m_x - m_x * sin(range_percent * circle),
-			m_y + SCANNER_YSHRINK * m_y * cos(range_percent * circle));
 		if (blend) glColor4f(0.2f, 0.3f, 0.2f, 0.25f);
 		else glColor3f(0.2f, 0.3f, 0.2f);
-		/* we start the second color at the same point so that it changes
-		 * immediately rather than blending over 3.6 degrees */
+		glBegin(GL_LINE_STRIP);
+		glVertex2f(arc_end_x, arc_end_y);
 		for (float a = range_percent * circle; a < circle; a += step) {
 			glVertex2f(m_x - m_x * sin(a), m_y + SCANNER_YSHRINK * m_y * cos(a));
 		}
-		/* this vertex ensures that the end of the second color
-		 * doesn't blend with the beginning of the first color */
+		/* reconnect to the start */
 		glVertex2f(m_x, m_y + SCANNER_YSHRINK * m_y);
+		glEnd();
 	}
-	glEnd();
 }
 
 void ScannerWidget::TimeStepUpdate(float step)
@@ -461,13 +491,6 @@ void ScannerWidget::Save(Serializer::Writer &wr)
 	wr.Float(m_targetRange);
 }
 
-void ScannerWidget::Load(Serializer::Reader &rd)
-{
-	m_mode = ScannerMode(rd.Int32());
-	m_currentRange = rd.Float();
-	m_manualRange = rd.Float();
-	m_targetRange = rd.Float();
-}
 
 /////////////////////////////////
 

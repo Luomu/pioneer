@@ -6,12 +6,12 @@
 #include "View.h"
 #include "mtrand.h"
 #include "gameconsts.h"
-#include "Serializer.h"
 #include "GameConfig.h"
 #include "LuaEventQueue.h"
 #include "LuaSerializer.h"
 #include "LuaTimer.h"
 #include "CargoBody.h"
+#include "Space.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -51,36 +51,24 @@ enum MsgLevel {
 };
 
 class Frame;
-
-#define PHYSICS_HZ (60.0f)
+class Game;
 
 class Pi {
 public:
 	static void Init();
 	static void RedirectStdio();
 	static void InitGame();
+	static void StarportStart(Uint32 starport);
 	static void StartGame();
-	static void UninitGame();
 	static void EndGame();
 	static void Start();
 	static void MainLoop();
 	static void TombStoneLoop();
+	static void HandleMenuKey(int n);
 	static void OnChangeDetailLevel();
 	static void ToggleLuaConsole();
 	static void Quit() __attribute((noreturn));
-	static void Serialize(Serializer::Writer &wr);
-	static void Unserialize(Serializer::Reader &rd);
 	static float GetFrameTime() { return frameTime; }
-	static double GetGameTime() { return gameTime; }
-	static void SetTimeAccel(int v);
-	static void RequestTimeAccel(int v, bool force = false);
-	static int GetRequestedTimeAccelIdx() { return requestedTimeAccelIdx; }
-	static int GetTimeAccelIdx() { return timeAccelIdx; }
-	static bool IsTimeAccelPause() { return (timeAccelIdx == 0); }
-	static bool IsTimeAccelNormal() { return (timeAccelIdx == 1); }
-	static bool IsTimeAccelFast() { return (timeAccelIdx > 1); }
-	static float GetTimeAccel() { return timeAccelRates[timeAccelIdx]; }
-	static float GetTimeStep() { return timeAccelRates[timeAccelIdx]*(1.0f/PHYSICS_HZ); }
 	static float GetGameTickAlpha() { return gameTickAlpha; }
 	static int GetScrWidth() { return scrWidth; }
 	static int GetScrHeight() { return scrHeight; }
@@ -101,7 +89,6 @@ public:
 	}
 	static void SetMouseGrab(bool on);
 	static void BoinkNoise();
-	static bool IsGameStarted() { return isGameStarted; }
 	static float CalcHyperspaceRange(int hyperclass, int total_mass_in_tonnes);
 	static void Message(const std::string &message, const std::string &from = "", enum MsgLevel level = MSG_NORMAL);
 
@@ -133,7 +120,7 @@ public:
 	static LuaEventQueue<Ship,Body> *luaOnShipTakeOff;
 	static LuaEventQueue<Ship,const char *> *luaOnShipAlertChanged;
 	static LuaEventQueue<Ship,CargoBody> *luaOnJettison;
-	static LuaEventQueue<Ship> *luaOnAICompleted;
+	static LuaEventQueue<Ship,const char *> *luaOnAICompleted;
 	static LuaEventQueue<SpaceStation> *luaOnCreateBB;
 	static LuaEventQueue<SpaceStation> *luaOnUpdateBB;
 	static LuaEventQueue<> *luaOnSongFinished;
@@ -145,7 +132,6 @@ public:
 
 	static void SetView(View *v);
 	static View *GetView() { return currentView; }
-	static StarSystem *GetSelectedSystem();
 
 #if DEVKEYS
 	static bool showDebugInfo;
@@ -162,12 +148,13 @@ public:
 	static LuaConsole *luaConsole;
 	static ShipCpanel *cpan;
 	static GLUquadric *gluQuadric;
-	static StarSystem *currentSystem;
 	static Sound::MusicPlayer &GetMusicPlayer() { return musicPlayer; }
 
 #if OBJECTVIEWER
 	static ObjectViewerView *objectViewerView;
 #endif
+
+	static Game *game;
 
 	static int CombatRating(int kills);
 	static const char * const combatRating[];
@@ -182,15 +169,15 @@ private:
 	static void HandleEvents();
 	static void InitJoysticks();
 
+	static bool menuDone;
+
 	static View *currentView;
 
-	static double gameTime;
 	/** So, the game physics rate (50Hz) can run slower
 	  * than the frame rate. gameTickAlpha is the interpolation
 	  * factor between one physics tick and another [0.0-1.0]
 	  */
 	static float gameTickAlpha;
-	static StarSystem *selectedSystem;
 	static int timeAccelIdx;
 	static int requestedTimeAccelIdx;
 	static bool forceTimeAccel;
@@ -204,7 +191,6 @@ private:
 	static int mouseMotion[2];
 	static bool doingMouseGrab;
 	static const float timeAccelRates[];
-	static bool isGameStarted;
 
 	static bool joystickEnabled;
 	static bool mouseYInvert;

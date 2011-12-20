@@ -1,3 +1,68 @@
+Alpha 18
+
+   * New features
+     * Multisampled antialiasing. Set the "AntiAliasingMode" config value or
+       change your graphics driver settings (#848)
+
+   * Minor changes and tweaks
+     * Target square now appears on specific docking port of station when
+       clearance is granted (#836, #835)
+     * OpenGL info saved to opengl.txt on game start (#857)
+
+   * Fixes
+     * Fix incorrect galaxy density on OSX (#867, #869)
+
+   * Script changes
+     * SystemPath.GetSystemBody now checks to make sure the path is valid
+       and throws a Lua error if it is not (#863, #864)
+
+   * Internal changes
+     * Refactored game and space state into discrete object (#833, #70)
+
+Alpha 17
+
+  * Christmas edition!
+
+  * New features
+    * New ship: "Natrix" (#816)
+    * French translation (#814)
+    * Rewritten autopilot (#789)
+    * Yellow indicator to show target orientation change by mouse
+      movement (#216, #777)
+    * Check/set speed relative to navigation or combat target (press CTRL
+      while targeting) (#462, #769)
+    * Passenger cabins and taxi missions (#718)
+    * Fuel club (#788, #794, #796)
+
+  * Minor changes and tweaks
+    * Improved planet atmosphere rendering
+    * Window icon (#817)
+    * Increase difficulty of high-risk taxi missions (#800)
+    * Flip texture UV coordinates on object load (#818)
+    * Removed airport station
+
+  * Fixes
+    * Star halo now drawn properly in the world space (#768)
+    * Allow equipment to be removed even if the station has none in stock (#780, #781)
+    * Fix scanner drawing glitches with some recent NVidia drivers (#758)
+    * Fix textures and shaders on Intel and VMware (#711)
+    * Correctly order texture coordinates when loading models (#667)
+    * Reset breakdown service jump count to 0 when buying new drive (#820, #841)
+    * Fix crash when a script tries to obtain the parent of an object with no
+	  parent (eg a star)
+
+  * Script changes
+    * New Character class to represent and test NPC attributes (#725, #787)
+    * SystemPath has additional methods to test for sector-only and
+      system-only paths (#795)
+
+  * Internal changes
+    * Cleanups and general code improvements (#819)
+    * Terrain color/height fractal refactor (#699)
+    * SystemPath now has specific invalid values to indicate sector-only and
+      system-only paths (#795)
+    * Scoped and RefCounted smart pointers (#803)
+
 Alpha 16
 
   * New features
@@ -55,6 +120,9 @@ Alpha 16
     * Fix error capture from filter functions to EquipType.GetEquipTypes,
       ShipType.GetShipTypes and Space.GetBodies when called from console (#764)
     * Objects on the scanner now positioned correctly (#521)
+    * Only randomise goods trader stock levels when bulletin board is created (#772, #776)
+    * Clear breakdown servicing state on game start to avoid state leak
+      between games (#775)
   
   * Script changes
     * Modules moved into dedicated subdirs with their translation files (#640)

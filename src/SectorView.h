@@ -13,7 +13,9 @@
 class SectorView: public View {
 public:
 	SectorView();
+	SectorView(Serializer::Reader &rd);
 	virtual ~SectorView();
+
 	virtual void Update();
 	virtual void ShowAll();
 	virtual void Draw3D();
@@ -27,14 +29,15 @@ public:
 	void GotoCurrentSystem() { GotoSystem(m_current); }
 	void GotoSelectedSystem() { GotoSystem(m_selected); }
 	void GotoHyperspaceTarget() { GotoSystem(m_hyperspaceTarget); }
-	void WarpToSystem(const SystemPath &path);
 	virtual void Save(Serializer::Writer &wr);
-	virtual void Load(Serializer::Reader &rd);
 	virtual void OnSwitchTo();
 
 	sigc::signal<void> onHyperspaceTargetChanged;
 
 private:
+	void InitDefaults();
+	void InitObject();
+
 	struct SystemLabels {
 		Gui::Label *systemName;
 		Gui::Label *distance;
@@ -42,13 +45,15 @@ private:
 		Gui::Label *shortDesc;
 	};
 	
-	void DrawSector(int x, int y, int z, const vector3f &playerAbsPos);
+	void DrawSector(int x, int y, int z);
 	void PutClickableLabel(const std::string &text, const Color &labelCol, const SystemPath &path);
 
 	void SetSelectedSystem(const SystemPath &path);
 	void OnClickSystem(const SystemPath &path);
 
 	void UpdateSystemLabels(SystemLabels &labels, const SystemPath &path);
+
+	void UpdateHyperspaceLockLabel();
 
 	Sector* GetCached(int sectorX, int sectorY, int sectorZ);
 	void ShrinkCache();
@@ -57,7 +62,7 @@ private:
 	void OnKeyPressed(SDL_keysym *keysym);
 	void OnSearchBoxKeyPress(const SDL_keysym *keysym);
 
-	bool m_firstTime;
+	bool m_inSystem;
 
 	SystemPath m_current;
 	SystemPath m_selected;

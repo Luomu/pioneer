@@ -35,9 +35,10 @@ public:
 	const Render::Frustum &GetFrustum() const { return m_frustum; }
 
 private:
-	void DrawSpike(double rad, const vector3d &viewCoords, const matrix4x4d &viewTransform);
-
 	void OnBodyDeleted();
+	sigc::connection m_onBodyDeletedConnection;
+
+	void DrawSpike(double rad, const vector3d &viewCoords, const matrix4x4d &viewTransform);
 
 	Body *m_body;
 
@@ -55,8 +56,6 @@ private:
 	Background::MilkyWay m_milkyWay;
 
 	Frame *m_camFrame;
-
-	sigc::connection m_bodyOnDeleteConnection;
 
 	// temp attrs for sorting and drawing
 	struct BodyAttrs {

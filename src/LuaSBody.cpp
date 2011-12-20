@@ -141,10 +141,13 @@ static int l_sbody_attr_parent(lua_State *l)
 
 	// sbody->parent is 0 as it was cleared by the acquirer. we need to go
 	// back to the starsystem proper to get what we need.
-	StarSystem *s = StarSystem::GetCached(sbody->path);
+	RefCountedPtr<StarSystem> s = StarSystem::GetCached(sbody->path);
 	SBody *live_sbody = s->GetBodyByPath(sbody->path);
+
+	if (!live_sbody->parent)
+		return 0;
+
 	LuaSBody::PushToLua(live_sbody->parent);
-	s->Release();
 	return 1;
 }
 

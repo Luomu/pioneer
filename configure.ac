@@ -5,7 +5,7 @@ dnl Setup
 dnl ###########################################################################
 AC_PREREQ(2.59)
 
-AC_INIT([pioneer], [alpha-17-dev], [pioneer-dev@pioneerspacesim.net])
+AC_INIT([pioneer], [alpha-18-dev], [pioneer@pioneerspacesim.net])
 dnl AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([1.9 foreign dist-bzip2 dist-xz dist-zip])
@@ -243,6 +243,7 @@ AC_CONFIG_FILES([
 	src/gui/Makefile
 	src/render/Makefile
 	src/ui/Makefile
+	src/terrain/Makefile
 	contrib/Makefile
 	contrib/lua/Makefile
 	contrib/oolua/Makefile

@@ -1,5 +1,5 @@
 ## Process this file with automake to produce Makefile.in
-SUBDIRS = collider gui render ui
+SUBDIRS = collider gui render terrain ui
 
 include $(top_srcdir)/Makefile.common
 
@@ -29,6 +29,7 @@ noinst_HEADERS = \
 	EquipType.h \
 	FaceElement.h \
 	FaceVideoLink.h \
+	FileSelectorWidget.h \
 	Font.h \
 	FontManager.h \
 	Form.h \
@@ -36,9 +37,10 @@ noinst_HEADERS = \
 	Frame.h \
 	GalacticView.h \
 	Galaxy.h \
+	Game.h \
+	GameLoaderSaver.h \
 	GameMenuView.h \
 	GeoSphere.h \
-	GeoSphereStyle.h \
 	HyperspaceCloud.h \
 	InfoView.h \
 	IniConfig.h \
@@ -78,6 +80,7 @@ noinst_HEADERS = \
 	LuaUI.h \
 	LuaUtils.h \
 	MarketAgent.h \
+	MathUtil.h \
 	Missile.h \
 	ModelBody.h \
 	MyLuaMathTypes.h \
@@ -134,6 +137,7 @@ noinst_HEADERS = \
 	VideoLink.h \
 	View.h \
 	WorldView.h \
+	SmartPtr.h \
 	buildopts.h \
 	fixed.h \
 	gameconsts.h \
@@ -161,15 +165,17 @@ pioneer_SOURCES	= \
 	EquipType.cpp \
 	FaceElement.cpp \
 	FaceVideoLink.cpp \
+	FileSelectorWidget.cpp \
 	Font.cpp \
 	FontManager.cpp \
 	FormController.cpp \
 	Frame.cpp \
 	GalacticView.cpp \
 	Galaxy.cpp \
+	Game.cpp \
+	GameLoaderSaver.cpp \
 	GameMenuView.cpp \
 	GeoSphere.cpp \
-	GeoSphereStyle.cpp \
 	HyperspaceCloud.cpp \
 	InfoView.cpp \
 	IniConfig.cpp \
@@ -209,6 +215,7 @@ pioneer_SOURCES	= \
 	LuaUI.cpp \
 	LuaUtils.cpp \
 	MarketAgent.cpp \
+	MathUtil.cpp \
 	Missile.cpp \
 	ModelBody.cpp \
 	MyLuaMathTypes.cpp \
@@ -264,10 +271,8 @@ pioneer_SOURCES	= \
 	utils.cpp \
 	enum_table.cpp
 
-pioneer_LDADD = \
-		collider/libcollider.a gui/libgui.a render/librender.a ui/libui.a \
+pioneer_LDADD = ../contrib/oolua/liboolua.a collider/libcollider.a gui/libgui.a render/librender.a terrain/libterrain.a ui/libui.a \
 		../contrib/rocket/src/Core/librocketcore.a ../contrib/rocket/src/Controls/librocketcontrols.a \
-		../contrib/oolua/liboolua.a \
 		$(MINGW_LIBS) \
 		$(FREETYPE_LIBS) $(GLEW_LIBS) $(GLU_LIBS) $(GL_LIBS) \
 		$(SDL_LIBS) $(SIGC_LIBS) $(LUA_LIBS) $(VORBIS_LIBS) \
@@ -296,8 +301,7 @@ modelviewer_SOURCES = \
 	perlin.cpp \
 	utils.cpp \
 	enum_table.cpp
-
-modelviewer_LDADD = collider/libcollider.a gui/libgui.a render/librender.a ui/libui.a \
+modelviewer_LDADD = collider/libcollider.a gui/libgui.a render/librender.a terrain/libterrain.a ui/libui.a \
 			../contrib/rocket/src/Core/librocketcore.a ../contrib/rocket/src/Controls/librocketcontrols.a \
 		    $(MINGW_LIBS) \
 		    $(FREETYPE_LIBS) $(GLEW_LIBS) $(GLU_LIBS) $(GL_LIBS) \
@@ -315,7 +319,7 @@ tests_SOURCES = \
 
 TESTS = tests
  
-tests_LDADD = collider/libcollider.a gui/libgui.a render/librender.a
+tests_LDADD = collider/libcollider.a gui/libgui.a render/librender.a terrain/libterrain.a
 
 INCLUDES = -isystem @top_srcdir@/contrib -isystem @top_srcdir@/contrib/rocket/include
 if !HAVE_LUA

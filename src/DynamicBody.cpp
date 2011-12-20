@@ -23,6 +23,8 @@ DynamicBody::DynamicBody(): ModelBody()
 	m_atmosForce = vector3d(0.0);
 	m_gravityForce = vector3d(0.0);
 	m_externalForce = vector3d(0.0);		// do external forces calc instead?
+	m_lastForce = vector3d(0.0);
+	m_lastTorque = vector3d(0.0);
 }
 
 void DynamicBody::SetForce(const vector3d f)
@@ -50,9 +52,9 @@ void DynamicBody::AddRelTorque(const vector3d t)
 	m_torque += m_orient.ApplyRotationOnly(t);
 }
 
-void DynamicBody::Save(Serializer::Writer &wr)
+void DynamicBody::Save(Serializer::Writer &wr, Space *space)
 {
-	ModelBody::Save(wr);
+	ModelBody::Save(wr, space);
 	for (int i=0; i<16; i++) wr.Double(m_orient[i]);
 	wr.Vector3d(m_force);
 	wr.Vector3d(m_torque);
@@ -64,9 +66,9 @@ void DynamicBody::Save(Serializer::Writer &wr)
 	wr.Bool(m_enabled);
 }
 
-void DynamicBody::Load(Serializer::Reader &rd)
+void DynamicBody::Load(Serializer::Reader &rd, Space *space)
 {
-	ModelBody::Load(rd);
+	ModelBody::Load(rd, space);
 	for (int i=0; i<16; i++) m_orient[i] = rd.Double();
 	m_oldOrient = m_orient;
 	m_force = rd.Vector3d();
@@ -79,7 +81,7 @@ void DynamicBody::Load(Serializer::Reader &rd)
 	m_enabled = rd.Bool();
 }
 
-void DynamicBody::PostLoadFixup()
+void DynamicBody::PostLoadFixup(Space *space)
 {
 	CalcExternalForce();
 }
@@ -190,6 +192,8 @@ void DynamicBody::TimeStepUpdate(const float timeStep)
 //	m_vel.x, m_vel.y, m_vel.z, m_force.x, m_force.y, m_force.z,
 //	m_externalForce.x, m_externalForce.y, m_externalForce.z);
 
+		m_lastForce = m_force;
+		m_lastTorque = m_torque;
 		m_force = vector3d(0.0);
 		m_torque = vector3d(0.0);
 		CalcExternalForce();			// regenerate for new pos/vel
@@ -200,12 +204,18 @@ void DynamicBody::TimeStepUpdate(const float timeStep)
 }
 
 // for timestep changes, to stop autopilot overshoot
+// either adds half of current accel or removes all of current accel 
 void DynamicBody::ApplyAccel(const float timeStep)
 {
-	vector3d newvel = m_vel + double(timeStep) * m_force * (1.0 / m_mass);
-	if (newvel.LengthSqr() < m_vel.LengthSqr()) m_vel = newvel;
-	vector3d newav = m_angVel + double(timeStep) * m_torque * (1.0 / m_angInertia);
-	if (newav.LengthSqr() < m_angVel.LengthSqr()) m_angVel = newav;
+	vector3d vdiff = double(timeStep) * m_lastForce * (1.0 / m_mass);
+	double spd = m_vel.LengthSqr();
+	if ((m_vel-2.0*vdiff).LengthSqr() < spd) m_vel -= 2.0*vdiff;
+	else if ((m_vel+vdiff).LengthSqr() < spd) m_vel += vdiff;
+
+	vector3d avdiff = double(timeStep) * m_lastTorque * (1.0 / m_angInertia);
+	double aspd = m_angVel.LengthSqr();
+	if ((m_angVel-2.0*avdiff).LengthSqr() < aspd) m_angVel -= 2.0*avdiff;
+	else if ((m_angVel+avdiff).LengthSqr() < aspd) m_angVel += avdiff;
 }
 
 void DynamicBody::UpdateInterpolatedTransform(double alpha)

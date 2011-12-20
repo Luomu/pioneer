@@ -11,10 +11,12 @@
 #include "Sector.h"
 #include "HyperspaceCloud.h"
 #include "KeyBindings.h"
+#include "TextureManager.h"
 #include "perlin.h"
 #include "SectorView.h"
 #include "Lang.h"
 #include "StringF.h"
+#include "Game.h"
 #include "CameraElement.h"
 
 const double WorldView::PICK_OBJECT_RECT_SIZE = 20.0;
@@ -22,11 +24,28 @@ static const Color s_hudTextColor(0.0f,1.0f,0.0f,0.8f);
 
 #define HUD_CROSSHAIR_SIZE	24.0f
 
-WorldView::WorldView(): View(),
-	m_showHyperspaceButton(false),
-	m_frontCamera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight()),
-	m_rearCamera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight()),
-	m_externalCamera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight())
+WorldView::WorldView(): View()
+{
+	m_showHyperspaceButton = false;
+	m_externalViewRotX = m_externalViewRotY = 0;
+	m_externalViewDist = 200;
+	m_camType = CAM_FRONT;
+
+	InitObject();
+}
+
+WorldView::WorldView(Serializer::Reader &rd): View()
+{
+	m_externalViewRotX = rd.Float();
+	m_externalViewRotY = rd.Float();
+	m_externalViewDist = rd.Float();
+	m_camType = CamType(rd.Int32());
+	m_showHyperspaceButton = rd.Bool();
+
+	InitObject();
+}
+
+void WorldView::InitObject()
 {
 	float size[2];
 	GetSize(size);
@@ -34,13 +53,8 @@ WorldView::WorldView(): View(),
 	m_showTargetActionsTimeout = 0;
 	m_numLights = 1;
 	m_labelsOn = true;
-	m_camType = CAM_FRONT;
 	SetTransparency(true);
-	m_externalViewRotX = m_externalViewRotY = 0;
-	m_externalViewDist = 200;
 
-	m_rearCamera.SetOrientation(matrix4x4d::RotateYMatrix(M_PI));
-	
 	m_commsOptions = new Fixed(size[0], size[1]/2);
 	m_commsOptions->SetTransparency(true);
 	Add(m_commsOptions, 10, 200);
@@ -154,6 +168,12 @@ WorldView::WorldView(): View(),
 	Add(m_combatTargetIndicator.label, 0, 0);
 	Add(m_targetLeadIndicator.label, 0, 0);
 
+	m_frontCamera = new Camera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight());
+	m_rearCamera = new Camera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight());
+	m_externalCamera = new Camera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight());
+
+	m_rearCamera->SetOrientation(matrix4x4d::RotateYMatrix(M_PI));
+	
 	m_onHyperspaceTargetChangedCon =
 		Pi::sectorView->onHyperspaceTargetChanged.connect(sigc::mem_fun(this, &WorldView::OnHyperspaceTargetChanged));
 	m_onPlayerEquipmentChangeCon =
@@ -165,10 +185,18 @@ WorldView::WorldView(): View(),
 		Pi::onPlayerChangeFlightControlState.connect(sigc::mem_fun(this, &WorldView::OnPlayerChangeFlightControlState));
 	m_onMouseButtonDown =
 		Pi::onMouseButtonDown.connect(sigc::mem_fun(this, &WorldView::MouseButtonDown));
+	m_onPlayerEquipmentChangeCon =
+		Pi::player->m_equipment.onChange.connect(sigc::mem_fun(this, &WorldView::OnPlayerEquipmentChange));
+
+	Pi::player->SetMouseForRearView(m_camType == CAM_REAR);
 }
 
 WorldView::~WorldView()
 {
+	delete m_frontCamera;
+	delete m_rearCamera;
+	delete m_externalCamera;
+
 	m_onHyperspaceTargetChangedCon.disconnect();
 	m_onPlayerEquipmentChangeCon.disconnect();
 
@@ -186,22 +214,13 @@ void WorldView::Save(Serializer::Writer &wr)
 	wr.Bool(bool(m_showHyperspaceButton));
 }
 
-void WorldView::Load(Serializer::Reader &rd)
-{
-	m_externalViewRotX = rd.Float();
-	m_externalViewRotY = rd.Float();
-	m_externalViewDist = rd.Float();
-	m_camType = CamType(rd.Int32());
-	m_showHyperspaceButton = rd.Bool();
-
-	m_onPlayerEquipmentChangeCon =
-		Pi::player->m_equipment.onChange.connect(sigc::mem_fun(this, &WorldView::OnPlayerEquipmentChange));
-}
-
 void WorldView::SetCamType(enum CamType c)
 {
-	m_camType = c;
-	onChangeCamType.emit();
+	if (c != m_camType) {
+		m_camType = c;
+		Pi::player->SetMouseForRearView(c == CAM_REAR);
+		onChangeCamType.emit();
+	}
 }
 
 vector3d WorldView::GetExternalViewTranslation()
@@ -370,7 +389,7 @@ static Color get_color_for_warning_meter_bar(float v) {
 
 void WorldView::RefreshButtonStateAndVisibility()
 {
-	if ((!Pi::player) || Pi::player->IsDead() || !Pi::IsGameStarted()) {
+	if (!Pi::player || Pi::player->IsDead() || !Pi::game) {
 		HideAll();
 		return;
 	}
@@ -452,18 +471,18 @@ void WorldView::RefreshButtonStateAndVisibility()
 	}
 #if DEVKEYS
 	if (Pi::showDebugInfo) {
-		char buf[1024];
+		char buf[1024], aibuf[256];
 		vector3d pos = Pi::player->GetPosition();
-		vector3d abs_pos = Pi::player->GetPositionRelTo(Space::rootFrame);
+		vector3d abs_pos = Pi::player->GetPositionRelTo(Pi::game->GetSpace()->GetRootFrame());
 		const char *rel_to = (Pi::player->GetFrame() ? Pi::player->GetFrame()->GetLabel() : "System");
 		const char *rot_frame = (Pi::player->GetFrame()->IsRotatingFrame() ? "yes" : "no");
-
+		Pi::player->AIGetStatusText(aibuf); aibuf[255] = 0;
 		snprintf(buf, sizeof(buf), "Pos: %.1f,%.1f,%.1f\n"
 			"AbsPos: %.1f,%.1f,%.1f (%.3f AU)\n"
-			"Rel-to: %s (%.0f km), rotating: %s\n",
+			"Rel-to: %s (%.0f km), rotating: %s\n" "%s",
 			pos.x, pos.y, pos.z,
 			abs_pos.x, abs_pos.y, abs_pos.z, abs_pos.Length()/AU,
-			rel_to, pos.Length()/1000, rot_frame);
+			rel_to, pos.Length()/1000, rot_frame, aibuf);
 
 		m_debugInfo->SetText(buf);
 		m_debugInfo->Show();
@@ -472,14 +491,14 @@ void WorldView::RefreshButtonStateAndVisibility()
 	}
 #endif
 
-	if (const SystemPath *dest = Space::GetHyperspaceDest()) {
-		StarSystem *s = StarSystem::GetCached(*dest);
+	if (Pi::player->GetFlightState() == Ship::HYPERSPACE) {
+		const SystemPath dest = Pi::player->GetHyperspaceDest();
+		RefCountedPtr<StarSystem> s = StarSystem::GetCached(dest);
 		m_hudVelocity->SetText(stringf(Lang::IN_TRANSIT_TO_N_X_X_X,
 			formatarg("system", s->GetName()),
-			formatarg("x", dest->sectorX),
-			formatarg("y", dest->sectorY),
-			formatarg("z", dest->sectorZ)));
-		s->Release();
+			formatarg("x", dest.sectorX),
+			formatarg("y", dest.sectorY),
+			formatarg("z", dest.sectorZ)));
 		m_hudVelocity->Show();
 
 		m_hudTargetDist->Hide();
@@ -489,9 +508,17 @@ void WorldView::RefreshButtonStateAndVisibility()
 
 	else {
 		{
-			double _vel = vel.Length();
 			std::string str;
-			const char *rel_to = Pi::player->GetFrame()->GetLabel();
+			double _vel = 0;
+			const char *rel_to = 0;
+			const Body *set_speed_target = Pi::player->GetSetSpeedTarget();
+			if (set_speed_target) {
+				rel_to = set_speed_target->GetLabel().c_str();
+				_vel = Pi::player->GetVelocityRelTo(set_speed_target).Length();
+			} else {
+				rel_to = Pi::player->GetFrame()->GetLabel();
+				_vel = vel.Length();
+			}
 			if (_vel > 1000) {
 				str = stringf(Lang::KM_S_RELATIVE_TO, formatarg("speed", _vel*0.001), formatarg("frame", rel_to));
 			} else {
@@ -727,14 +754,14 @@ void WorldView::Update()
 	}
 
 	if (GetCamType() == CAM_EXTERNAL) {
-		m_externalCamera.SetPosition(GetExternalViewTranslation());
-		m_externalCamera.SetOrientation(GetExternalViewRotation());
+		m_externalCamera->SetPosition(GetExternalViewTranslation());
+		m_externalCamera->SetOrientation(GetExternalViewRotation());
 	}
 
 	m_activeCamera =
-		GetCamType() == CAM_FRONT ? &m_frontCamera :
-		GetCamType() == CAM_REAR  ? &m_rearCamera  :
-		                            &m_externalCamera;
+		GetCamType() == CAM_FRONT ? m_frontCamera :
+		GetCamType() == CAM_REAR  ? m_rearCamera  :
+		                            m_externalCamera;
 
 	m_activeCamera->Update();
 	UpdateProjectedObjects();
@@ -757,8 +784,11 @@ void WorldView::OnSwitchTo()
 
 void WorldView::ToggleTargetActions()
 {
-	if (m_showTargetActionsTimeout) m_showTargetActionsTimeout = 0;
-	else m_showTargetActionsTimeout = SDL_GetTicks();
+	if (Pi::game->IsHyperspace() || m_showTargetActionsTimeout)
+		m_showTargetActionsTimeout = 0;
+	else
+		m_showTargetActionsTimeout = SDL_GetTicks();
+
 	UpdateCommsOptions();
 }
 
@@ -804,18 +834,18 @@ void WorldView::BuildCommsNavOptions()
 
 	m_commsNavOptions->PackEnd(new Gui::Label(std::string("#ff0")+std::string(Lang::NAVIGATION_TARGETS_IN_THIS_SYSTEM)+std::string("\n")));
 
-	for ( std::vector<SBody*>::const_iterator i = Pi::currentSystem->m_spaceStations.begin();
-	      i != Pi::currentSystem->m_spaceStations.end(); ++i) {
+	for ( std::vector<SBody*>::const_iterator i = Pi::game->GetSpace()->GetStarSystem()->m_spaceStations.begin();
+	      i != Pi::game->GetSpace()->GetStarSystem()->m_spaceStations.end(); ++i) {
 
 		groups[(*i)->parent->path.bodyIndex].push_back(*i);
 	}
 
 	for ( std::map< Uint32,std::vector<SBody*> >::const_iterator i = groups.begin(); i != groups.end(); ++i ) {
-		m_commsNavOptions->PackEnd(new Gui::Label("#f0f" + Pi::currentSystem->m_bodies[(*i).first]->name));
+		m_commsNavOptions->PackEnd(new Gui::Label("#f0f" + Pi::game->GetSpace()->GetStarSystem()->m_bodies[(*i).first]->name));
 
 		for ( std::vector<SBody*>::const_iterator j = (*i).second.begin(); j != (*i).second.end(); ++j) {
-			SystemPath path = Pi::currentSystem->GetPathOf(*j);
-			Body *body = Space::FindBodyForPath(&path);
+			SystemPath path = Pi::game->GetSpace()->GetStarSystem()->GetPathOf(*j);
+			Body *body = Pi::game->GetSpace()->FindBodyForPath(&path);
 			AddCommsNavOption((*j)->name, body);
 		}
 	}
@@ -859,9 +889,11 @@ void WorldView::OnHyperspaceTargetChanged()
 
 	const SystemPath path = Pi::sectorView->GetHyperspaceTarget();
 
-	StarSystem *system = StarSystem::GetCached(path);
+	RefCountedPtr<StarSystem> system = StarSystem::GetCached(path);
 	Pi::cpan->MsgLog()->Message("", stringf(Lang::SET_HYPERSPACE_DESTINATION_TO, formatarg("system", system->GetName())));
-	system->Release();
+
+	if (Pi::game->IsHyperspace())
+		return;
 
 	int fuelReqd;
 	double dur;
@@ -916,7 +948,7 @@ void WorldView::UpdateCommsOptions()
 
 	if (m_showTargetActionsTimeout == 0) return;
 
-	if (Pi::currentSystem->m_spaceStations.size() > 0)
+	if (Pi::game->GetSpace()->GetStarSystem()->m_spaceStations.size() > 0)
 	{
 		BuildCommsNavOptions();
 	}
@@ -999,13 +1031,13 @@ void WorldView::SelectBody(Body *target, bool reselectIsDeselect)
 		if (Pi::player->GetCombatTarget() == target) {
 			if (reselectIsDeselect) Pi::player->SetCombatTarget(0);
 		} else {
-			Pi::player->SetCombatTarget(target);
+			Pi::player->SetCombatTarget(target, Pi::KeyState(SDLK_LCTRL) || Pi::KeyState(SDLK_RCTRL));
 		}
 	} else {
 		if (Pi::player->GetNavTarget() == target) {
 			if (reselectIsDeselect) Pi::player->SetNavTarget(0);
 		} else {
-			Pi::player->SetNavTarget(target);
+			Pi::player->SetNavTarget(target, Pi::KeyState(SDLK_LCTRL) || Pi::KeyState(SDLK_RCTRL));
 		}
 	}
 }
@@ -1060,7 +1092,7 @@ void WorldView::UpdateProjectedObjects()
 	// determine projected positions and update labels
 	m_bodyLabels->Clear();
 	m_projectedPos.clear();
-	for(std::list<Body*>::iterator i = Space::bodies.begin(); i != Space::bodies.end(); ++i) {
+	for (Space::BodyIterator i = Pi::game->GetSpace()->BodiesBegin(); i != Pi::game->GetSpace()->BodiesEnd(); ++i) {
 		Body *b = *i;
 
 		vector3d pos = b->GetInterpolatedPositionRelTo(cam_frame);
@@ -1082,6 +1114,15 @@ void WorldView::UpdateProjectedObjects()
 	else
 		HideIndicator(m_velIndicator);
 
+	// orientation according to mouse
+	if (Pi::player->IsMouseActive()) {
+		vector3d mouseDir = Pi::player->GetMouseDir() * cam_rot;
+		if (GetCamType() == CAM_REAR)
+			mouseDir = -mouseDir;
+		UpdateIndicator(m_mouseDirIndicator, (Pi::player->GetBoundingRadius() * 1.5) * mouseDir);
+	} else
+		HideIndicator(m_mouseDirIndicator);
+
 	// navtarget info
 	if (Body *navtarget = Pi::player->GetNavTarget()) {
 		// if navtarget and body frame are the same,
@@ -1093,7 +1134,7 @@ void WorldView::UpdateProjectedObjects()
 		// navtarget distance/target square indicator (displayed with navtarget label)
 		double dist = Pi::player->GetPositionRelTo(navtarget).Length();
 		m_navTargetIndicator.label->SetText(format_distance(dist).c_str());
-		UpdateIndicator(m_navTargetIndicator, navtarget->GetInterpolatedPositionRelTo(cam_frame));
+		UpdateIndicator(m_navTargetIndicator, navtarget->GetTargetIndicatorPosition(cam_frame));
 
 		// velocity relative to navigation target
 		vector3d navvelocity = Pi::player->GetVelocityRelTo(navtarget);
@@ -1156,7 +1197,7 @@ void WorldView::UpdateProjectedObjects()
 			// now the text speed/distance
 			// want to calculate closing velocity that you couldn't counter with retros
 
-			double vel = targvel.z; // position should be towards
+			double vel = targvel.Dot(targpos.NormalizedSafe()); // position should be towards
 			double raccel =
 				Pi::player->GetShipType().linThrust[ShipType::THRUSTER_REVERSE] / Pi::player->GetMass();
 
@@ -1382,6 +1423,9 @@ void WorldView::Draw()
 
 	glLineWidth(2.0f);
 
+	glColor4f(0.9f, 0.9f, 0.3f, 1.0f);
+	DrawImageIndicator(m_mouseDirIndicator, PIONEER_DATA_DIR "/icons/indicator_mousedir.png");
+
 	// combat target indicator
 	glColor4f(1.0f, 0.0f, 0.0f, 0.5f);
 	DrawCombatTargetIndicator(m_combatTargetIndicator, m_targetLeadIndicator);
@@ -1512,6 +1556,57 @@ void WorldView::DrawVelocityIndicator(const Indicator &marker)
 	} else
 		DrawEdgeMarker(marker);
 
+}
+
+void WorldView::DrawCircleIndicator(const Indicator &marker)
+{
+	if (marker.side == INDICATOR_HIDDEN) return;
+
+	const float sz = HUD_CROSSHAIR_SIZE*0.5;
+	if (marker.side == INDICATOR_ONSCREEN) {
+		const float posx = marker.pos[0];
+		const float posy = marker.pos[1];
+		GLfloat vtx[72*2];
+		for (int i = 0; i < 72*2; i+=2) {
+			vtx[i]   = posx+sinf(DEG2RAD(i*5))*sz;
+			vtx[i+1] = posy+cosf(DEG2RAD(i*5))*sz;
+		}
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glVertexPointer(2, GL_FLOAT, 0, vtx);
+		glDrawArrays(GL_LINE_LOOP, 0, 72);
+		glDisableClientState(GL_VERTEX_ARRAY);
+	} else
+		DrawEdgeMarker(marker);
+}
+
+void WorldView::DrawImageIndicator(const Indicator &marker, const char *icon_path)
+{
+	if (marker.side == INDICATOR_HIDDEN) return;
+
+	if (marker.side == INDICATOR_ONSCREEN) {
+		Texture *tex = TextureManager::GetTexture(icon_path, true);
+		const float w = tex->GetWidth();
+		const float h = tex->GetHeight();
+		const float x0 = marker.pos[0] - w/2.0f;
+		const float y0 = marker.pos[1] - h/2.0f;
+		GLfloat vtx[4*4] = {
+			x0,     y0,     0.0f, 0.0f,
+			x0,     y0 + h, 0.0f, 1.0f,
+			x0 + w, y0 + h, 1.0f, 1.0f,
+			x0 + w, y0,     1.0f, 0.0f,
+		};
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+		glEnable(GL_TEXTURE_2D);
+		tex->BindTexture();
+		glVertexPointer(2, GL_FLOAT, sizeof(GLfloat)*4, &vtx[0]);
+		glTexCoordPointer(2, GL_FLOAT, sizeof(GLfloat)*4, &vtx[2]);
+		glDrawArrays(GL_QUADS, 0, 4);
+		glDisable(GL_TEXTURE_2D);
+		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+		glDisableClientState(GL_VERTEX_ARRAY);
+	} else
+		DrawEdgeMarker(marker);
 }
 
 void WorldView::DrawEdgeMarker(const Indicator &marker)

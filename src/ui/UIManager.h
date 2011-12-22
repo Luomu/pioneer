@@ -23,17 +23,17 @@ public:
 	EventListener(const std::string &eventName) : Rocket::Core::EventListener(), m_eventName(eventName) {}
 
 	virtual void ProcessEvent(Rocket::Core::Event &e) {
-		CallHandler();
+		CallHandler(e);
 	}
 
-	void SetHandler(sigc::slot<void> handler) { m_handler = handler; }
-	void CallHandler() {
-		if (m_handler) m_handler();
+	void SetHandler(sigc::slot<void, Rocket::Core::Event&> handler) { m_handler = handler; }
+	void CallHandler(Rocket::Core::Event &e) {
+		if (m_handler) m_handler(e);
 	}
 
 private:
 	std::string m_eventName;
-	sigc::slot<void> m_handler;
+	sigc::slot<void, Rocket::Core::Event&> m_handler;
 };
 
 

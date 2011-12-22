@@ -579,7 +579,7 @@ void Screen::ProcessKeyboardShortcut(Rocket::Core::Input::KeyIdentifier key, Roc
 	std::map<std::string,EventListener*>::iterator j = m_eventListeners.find((*i).second);
 	assert((*j).second);
 
-	(*j).second->CallHandler();
+	//(*j).second->CallHandler();
 }
 
 EventListener *Screen::GetEventListener(const std::string &eventName)

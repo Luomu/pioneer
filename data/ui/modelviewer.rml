@@ -108,6 +108,10 @@
 			{
 				icon-image-t: 96px 128px;
 			}
+
+			div {
+				display: block;
+			}
 		</style>
 	</head>
 	<body>
@@ -125,14 +129,18 @@
 			<span stash="performance.radius" />
 		</div>
 		<div id="colorcontrols">
-			Pattern:
-			<select id="pattern" name="pattern" onchange="patternchange">
-				<!-- will be added from code -->
-			</select>
-			Color:
-			R <input id="col.r" type="range" value="0" orientation="vertical" onchange="colorchange" />
-			G <input id="col.g" type="range" value="0" orientation="vertical" onchange="colorchange" />
-			B <input id="col.b" type="range" value="0" orientation="vertical" onchange="colorchange" />
+			<div>
+				Pattern:
+				<select id="pattern" name="pattern" onchange="patternchange">
+					<!-- will be added from code -->
+				</select>
+			</div>
+			<div>
+				Color:
+				R <input id="col.r" type="range" value="0" orientation="vertical" onchange="colorchange" />
+				G <input id="col.g" type="range" value="0" orientation="vertical" onchange="colorchange" />
+				B <input id="col.b" type="range" value="0" orientation="vertical" onchange="colorchange" />
+			</div>
 		</div>
 	</body>
 </rml>

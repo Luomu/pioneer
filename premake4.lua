@@ -168,6 +168,7 @@ solution "Pioneer"
 		}
 
 	--main app project
+--[[
 	project "Pioneer"
 		kind "ConsoleApp"
 		includedirs {
@@ -196,7 +197,7 @@ solution "Pioneer"
 			"libvorbisfile",
 			"sdlmain",
 		}
-
+]]--
 	project "Modelviewer"
 		uuid "A077B8D0-FCAC-11E0-BE50-0800200C9A66"
 		kind "ConsoleApp"

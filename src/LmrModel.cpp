@@ -401,7 +401,12 @@ public:
 			case OP_SET_MATERIAL:
 				{
 					const LmrMaterial &m = m_model->m_materials[op.col.material_idx];
-					glMaterialfv (GL_FRONT, GL_AMBIENT_AND_DIFFUSE, m.diffuse);
+					const Color &c = m_model->m_color;
+					const GLfloat diffuse[4] = {
+						c.r, c.g, c.b, 1.f
+					};
+					glMaterialfv (GL_FRONT, GL_AMBIENT_AND_DIFFUSE, diffuse);
+					//glMaterialfv (GL_FRONT, GL_AMBIENT_AND_DIFFUSE, m.diffuse);
 					glMaterialfv (GL_FRONT, GL_SPECULAR, m.specular);
 					glMaterialfv (GL_FRONT, GL_EMISSION, m.emissive);
 					glMaterialf (GL_FRONT, GL_SHININESS, m.shininess);

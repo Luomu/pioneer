@@ -210,6 +210,7 @@ public:
 		} else if (targ == "col.b") {
 			m_shipColor.b = col;
 		}
+		m_model->SetColor(m_shipColor);
 	}
 
 	void MainLoop();
@@ -491,8 +492,8 @@ void Viewer::MainLoop()
 		glFrustum(-1, 1, -fracH, fracH, 1.0f, 10000.0f);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		//glClearColor(0,0,0,0);
-		glClearColor(m_shipColor.r, m_shipColor.g, m_shipColor.b, 0.f);
+		glClearColor(0,0,0,0);
+		//glClearColor(m_shipColor.r, m_shipColor.g, m_shipColor.b, 0.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 		

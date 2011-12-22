@@ -195,7 +195,9 @@ public:
 	}
 
 	void OnPatternChange(Rocket::Core::Event &e) {
-
+		const Rocket::Core::String &s = e.GetParameter<Rocket::Core::String>("value", "");
+		if (!s.Empty())
+			printf("Pattern selected: %s\n", s.CString());
 	}
 
 	void OnColorChange(Rocket::Core::Event &e) {
@@ -218,6 +220,7 @@ private:
 	void PollEvents();
 	void SetupUi();
 	void OnThrusterUpdate();
+	void AddPatternsFromModel(LmrModel *m);
 	Color m_shipColor;
 	bool m_showBoundingRadius;
 	bool m_quit;
@@ -240,12 +243,6 @@ void Viewer::SetupUi()
 {
 	m_ui = m_uiManager.OpenScreen("modelviewer");
 
-	// Add options to the pattern selection
-	Rocket::Core::ElementDocument *doc = m_ui->GetDocument();
-	Rocket::Core::Element *el = doc->GetElementById("pattern");
-	Rocket::Controls::ElementFormControlSelect *sel = dynamic_cast<Rocket::Controls::ElementFormControlSelect*>(el);
-	sel->Add("one", "one");
-	sel->Add("two", "two");
 	//m_ui->GetEventListener("changeview"         )->SetHandler(sigc::mem_fun(this, &Viewer::OnClickChangeView));
 	/*m_ui->GetEventListener("show-boundingradius")->SetHandler(sigc::mem_fun(this, &Viewer::OnToggleBoundingRadius));
 	m_ui->GetEventListener("performancetest"    )->SetHandler(sigc::mem_fun(this, &Viewer::OnClickToggleBenchmark));
@@ -270,6 +267,8 @@ void Viewer::SetModel(LmrModel *model)
 		m_space->RemoveGeom(m_geom);
 		delete m_geom;
 	}
+
+	AddPatternsFromModel(model);
 
 	// set up model parameters
 	// inefficient (looks up and searches tags table separately for each tag)
@@ -633,6 +632,19 @@ void Viewer::VisualizeBoundingRadius(matrix4x4f& trans, double radius)
 	glPopMatrix();
 }
 
+void Viewer::AddPatternsFromModel(LmrModel *m)
+{
+	// Add options to the pattern selection
+	Rocket::Core::ElementDocument *doc = m_ui->GetDocument();
+	Rocket::Core::Element *el = doc->GetElementById("pattern");
+	Rocket::Controls::ElementFormControlSelect *sel = dynamic_cast<Rocket::Controls::ElementFormControlSelect*>(el);
+	sel->RemoveAll();
+
+	const std::vector<LmrPattern> &pats = m->GetPatterns();
+	for (std::vector<LmrPattern>::const_iterator it = pats.begin(); it != pats.end(); ++it) {
+		sel->Add(it->name.c_str(), it->name.c_str());
+	}
+}
 
 int main(int argc, char **argv)
 {

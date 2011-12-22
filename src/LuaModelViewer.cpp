@@ -88,11 +88,12 @@ public:
 
 	Viewer(): Gui::Fixed(float(g_width), float(g_height)),
 		m_uiManager(g_width, g_height),
-		m_quit(false)
+		m_quit(false),
+		m_shipColor(0.f, 0.f, 0.f, 0.f)
         {
 		m_model = 0;
 		m_cmesh = 0;
-		m_geom = 0;
+		m_geom  = 0;
 		m_space = new CollisionSpace();
 		m_showBoundingRadius = false;
 		Gui::Screen::AddBaseWidget(this, 0, 0);
@@ -183,7 +184,7 @@ public:
 		else g_wheelMoveDir = -1;
 	}
 
-	void OnClickChangeView() {
+	void OnClickChangeView(Rocket::Core::Event &e) {
 		g_renderType++;
 		// XXX raytraced view disabled
 		if (g_renderType > 1) g_renderType = 0;
@@ -191,6 +192,22 @@ public:
 
 	void OnToggleBoundingRadius() {
 		m_showBoundingRadius = !m_showBoundingRadius;
+	}
+
+	void OnPatternChange(Rocket::Core::Event &e) {
+
+	}
+
+	void OnColorChange(Rocket::Core::Event &e) {
+		const float col = Clamp(e.GetParameter<float>("value", 0.f), 0.f, 1.f);
+		const Rocket::Core::String &targ = e.GetTargetElement()->GetId();
+		if (targ == "col.r") {
+			m_shipColor.r = col;
+		} else if (targ == "col.g") {
+			m_shipColor.g = col;
+		} else if (targ == "col.b") {
+			m_shipColor.b = col;
+		}
 	}
 
 	void MainLoop();
@@ -201,6 +218,7 @@ private:
 	void PollEvents();
 	void SetupUi();
 	void OnThrusterUpdate();
+	Color m_shipColor;
 	bool m_showBoundingRadius;
 	bool m_quit;
 };
@@ -221,13 +239,22 @@ void Viewer::Quit()
 void Viewer::SetupUi()
 {
 	m_ui = m_uiManager.OpenScreen("modelviewer");
-	m_ui->GetEventListener("changeview"         )->SetHandler(sigc::mem_fun(this, &Viewer::OnClickChangeView));
-	m_ui->GetEventListener("show-boundingradius")->SetHandler(sigc::mem_fun(this, &Viewer::OnToggleBoundingRadius));
+
+	// Add options to the pattern selection
+	Rocket::Core::ElementDocument *doc = m_ui->GetDocument();
+	Rocket::Core::Element *el = doc->GetElementById("pattern");
+	Rocket::Controls::ElementFormControlSelect *sel = dynamic_cast<Rocket::Controls::ElementFormControlSelect*>(el);
+	sel->Add("one", "one");
+	sel->Add("two", "two");
+	//m_ui->GetEventListener("changeview"         )->SetHandler(sigc::mem_fun(this, &Viewer::OnClickChangeView));
+	/*m_ui->GetEventListener("show-boundingradius")->SetHandler(sigc::mem_fun(this, &Viewer::OnToggleBoundingRadius));
 	m_ui->GetEventListener("performancetest"    )->SetHandler(sigc::mem_fun(this, &Viewer::OnClickToggleBenchmark));
-	m_ui->GetEventListener("resetanimations"    )->SetHandler(sigc::mem_fun(this, &Viewer::OnResetAdjustments));
+	m_ui->GetEventListener("resetanimations"    )->SetHandler(sigc::mem_fun(this, &Viewer::OnResetAdjustments));*/
 
 	//thruster sliders
-	m_ui->GetEventListener("thrusterupdate"     )->SetHandler(sigc::mem_fun(this, &Viewer::OnThrusterUpdate));
+	//m_ui->GetEventListener("thrusterupdate"     )->SetHandler(sigc::mem_fun(this, &Viewer::OnThrusterUpdate));
+	m_ui->GetEventListener("patternchange")->SetHandler(sigc::mem_fun(this, &Viewer::OnPatternChange));
+	m_ui->GetEventListener("colorchange"  )->SetHandler(sigc::mem_fun(this, &Viewer::OnColorChange));
 }
 
 void Viewer::OnThrusterUpdate()

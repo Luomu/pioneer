@@ -2,6 +2,7 @@
 	<head>
 		<link type="text/rcss" href="templates/core.rcss"/>
 		<link type="text/rcss" href="templates/screen.rcss"/>
+		<link type="text/rcss" href="dropdown.rcss"/>
 		<style>
 			body {
 				font-family: TitilliumText22L;
@@ -67,6 +68,13 @@
 				background-image: templates/skin.png 32px 32px 64px 48px;
 			}
 
+			sliderbar:hover {
+				width: 16px;
+				height: 16px;
+				background-decorator: image;
+				background-image: templates/sliders.png 0px 33px 32px 65px;
+			}
+
 			/* Checkboxes */
 			input.checkbox
 			{
@@ -115,6 +123,16 @@
 			<span stash="performance.triangles" /><br />
 			<span stash="performance.dimensions" /><br />
 			<span stash="performance.radius" />
+		</div>
+		<div id="colorcontrols">
+			Pattern:
+			<select id="pattern" name="pattern" onchange="patternchange">
+				<!-- will be added from code -->
+			</select>
+			Color:
+			R <input id="col.r" type="range" value="0" orientation="vertical" onchange="colorchange" />
+			G <input id="col.g" type="range" value="0" orientation="vertical" onchange="colorchange" />
+			B <input id="col.b" type="range" value="0" orientation="vertical" onchange="colorchange" />
 		</div>
 	</body>
 </rml>

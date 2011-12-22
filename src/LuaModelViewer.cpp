@@ -31,8 +31,6 @@ static int g_mouseButton[5];
 static float g_zbias;
 static bool g_doBenchmark = false;
 
-static GLuint mytexture;
-
 extern void LmrModelCompilerInit();
 
 static int g_wheelMoveDir = -1;
@@ -95,15 +93,6 @@ public:
 		Gui::Screen::AddBaseWidget(this, 0, 0);
 		SetTransparency(true);
 
-#if 0
-		{
-			Gui::Button *b = new Gui::SolidButton();
-			b->SetShortcut(SDLK_g, KMOD_NONE);
-			b->onClick.connect(sigc::mem_fun(*this, &Viewer::OnToggleGearState));
-			Add(b, 10, 30);
-			Add(new Gui::Label("[g] Toggle gear state"), 30, 30);
-		}
-#endif /* 0 */	
 		{
 			Add(new Gui::Label("Linear thrust"), 0, Gui::Screen::GetHeight()-140.0f);
 			for (int i=0; i<3; i++) {
@@ -334,42 +323,6 @@ void Viewer::SetSbreParams()
 {
 	float gameTime = SDL_GetTicks() * 0.001f;
 
-#if 0
-	-- get_arg() indices
-	ARG_ALL_TIME_SECONDS = 1
-	ARG_ALL_TIME_MINUTES = 2
-	ARG_ALL_TIME_HOURS = 3
-	ARG_ALL_TIME_DAYS = 4
-
-	ARG_STATION_BAY1_STAGE = 6
-	ARG_STATION_BAY1_POS   = 10
-
-	ARG_SHIP_WHEEL_STATE = 0
-	ARG_SHIP_EQUIP_SCOOP = 5
-	ARG_SHIP_EQUIP_ENGINE = 6
-	ARG_SHIP_EQUIP_ECM = 7
-	ARG_SHIP_EQUIP_SCANNER = 8
-	ARG_SHIP_EQUIP_ATMOSHIELD = 9
-	ARG_SHIP_EQUIP_LASER0 = 10
-	ARG_SHIP_EQUIP_LASER1 = 11
-	ARG_SHIP_EQUIP_MISSILE0 = 12
-	ARG_SHIP_EQUIP_MISSILE1 = 13
-	ARG_SHIP_EQUIP_MISSILE2 = 14
-	ARG_SHIP_EQUIP_MISSILE3 = 15
-	ARG_SHIP_EQUIP_MISSILE4 = 16
-	ARG_SHIP_EQUIP_MISSILE5 = 17
-	ARG_SHIP_EQUIP_MISSILE6 = 18
-	ARG_SHIP_EQUIP_MISSILE7 = 19
-	ARG_SHIP_FLIGHT_STATE = 20
-
-	-- get_arg_string() indices
-	ARGSTR_ALL_LABEL = 0
-	ARGSTR_STATION_ADMODEL1 = 4
-	ARGSTR_STATION_ADMODEL2 = 5
-	ARGSTR_STATION_ADMODEL3 = 6
-	ARGSTR_STATION_ADMODEL4 = 7
-#endif
-
 	if (m_modelCategory == MODEL_SHIP) {
 		g_params.animValues[Ship::ANIM_WHEEL_STATE] = GetAnimValue(0);
 
@@ -441,82 +394,11 @@ static void render_coll_mesh(const LmrCollMesh *m)
 	glEnable(GL_LIGHTING);
 }
 
-#define TEXSIZE 512
-float wank[TEXSIZE][TEXSIZE];
 float aspectRatio = 1.0;
 double camera_zoom = 1.0;
 vector3f g_campos(0.0f, 0.0f, 100.0f);
 matrix4x4f g_camorient;
 extern int stat_rayTriIntersections;
-static void raytraceCollMesh(vector3d camPos, vector3d camera_up, vector3d camera_forward, CollisionSpace *space)
-{
-	memset(wank, 0, sizeof(float)*TEXSIZE*TEXSIZE);
-
-	vector3d toPoint, xMov, yMov;
-
-	vector3d topLeft, topRight, botRight, cross;
-	topLeft = topRight = botRight = camera_forward * camera_zoom;
-	cross = camera_forward.Cross(camera_up) * aspectRatio;
-	topLeft = topLeft + camera_up - cross;
-	topRight = topRight + camera_up + cross;
-	botRight = botRight - camera_up + cross;
-
-	xMov = topRight - topLeft;
-	yMov = botRight - topRight;
-	float xstep = 1.0f / TEXSIZE;
-	float ystep = 1.0f / TEXSIZE;
-	float xpos, ypos;
-	ypos = 0.0f;
-	GeomTree::stats_rayTriIntersections = 0;
-
-	Uint32 t = SDL_GetTicks();
-	for (int y=0; y<TEXSIZE; y++, ypos += ystep) {
-		xpos = 0.0f;
-		for (int x=0; x<TEXSIZE; x++, xpos += xstep) {
-			toPoint = (topLeft + (xMov * xpos) + (yMov * ypos)).Normalized();
-			
-			CollisionContact c;
-			space->TraceRay(camPos, toPoint, 1000000.0f, &c);
-
-			if (c.triIdx != -1) {
-				wank[x][y] = 100.0/(10*c.dist);
-			} else {
-				wank[x][y] = 0;
-			}
-		}
-	}
-	printf("%.3f million rays/sec, %.2f tri isect tests per ray\n", (TEXSIZE*TEXSIZE)/(1000.0*(SDL_GetTicks()-t)),
-				GeomTree::stats_rayTriIntersections/float(TEXSIZE*TEXSIZE));
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, mytexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TEXSIZE, TEXSIZE, 0, GL_LUMINANCE, GL_FLOAT, wank);
-
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_LIGHTING);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, 1, 0, 1, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	
-	//glActiveTexture(GL_TEXTURE0);
-	glDisable(GL_LIGHTING);
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-	glBegin(GL_TRIANGLE_FAN);
-		glTexCoord2i(0,1);
-		glVertex3f(1,1,0);
-
-		glTexCoord2i(0,0);
-		glVertex3f(0,1,0);
-		
-		glTexCoord2i(1,0);
-		glVertex3f(0,0,0);
-		
-		glTexCoord2i(1,1);
-		glVertex3f(1,0,0);
-	glEnd();
-	glDisable(GL_TEXTURE_2D);
-}
 
 void Viewer::MainLoop()
 {
@@ -604,10 +486,7 @@ void Viewer::MainLoop()
 			render_coll_mesh(m_cmesh);
 			glPopMatrix();
 		} else {
-			matrix4x4f tran = modelRot * g_camorient;//.InverseOf();
-			vector3d forward = vector3d(tran * vector3f(0.0,0.0,-1.0));
-			vector3d up = vector3d(tran * vector3f(0.0,1.0,0.0));
-			raytraceCollMesh(vector3d(modelRot * g_campos), up, forward, m_space);
+			//used to be raytrace
 		}
 		Render::State::UseProgram(0);
 		if (m_showBoundingRadius) {
@@ -775,13 +654,6 @@ int main(int argc, char **argv)
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	
-
-	glGenTextures(1, &mytexture);
-	glBindTexture(GL_TEXTURE_2D, mytexture);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
 	glClearColor(0,0,0,0);
 	glViewport(0, 0, g_width, g_height);

@@ -54,12 +54,16 @@ static LmrObjParams g_params = {
 	{ { 0.8f, 0.8f, 0.8f, 1 }, { 0, 0, 0 }, { 0, 0, 0 }, 0 } },
 };
 
+#define ANIMS 0
+
 class Viewer: public Gui::Fixed {
 public:
+#if ANIMS
 	Gui::Adjustment *m_linthrust[3];
 	Gui::Adjustment *m_angthrust[3];
 	Gui::Adjustment *m_anim[LMR_ARG_MAX];
 	Gui::TextEntry *m_animEntry[LMR_ARG_MAX];
+#endif
 	LmrCollMesh *m_cmesh;
 	LmrModel *m_model;
 	CollisionSpace *m_space;
@@ -75,11 +79,12 @@ public:
 	void PickModel() {
 		PickModel("", "");
 	}
-
+#if ANIMS
 	float GetAnimValue(int i) {
 		std::string val = m_animEntry[i]->GetText();
 		return float(atof(val.c_str()));
 	}
+#endif
 
 	Viewer(): Gui::Fixed(float(g_width), float(g_height)),
 		m_uiManager(g_width, g_height),
@@ -94,6 +99,7 @@ public:
 		SetTransparency(true);
 
 		{
+#if ANIMS
 			Add(new Gui::Label("Linear thrust"), 0, Gui::Screen::GetHeight()-140.0f);
 			for (int i=0; i<3; i++) {
 				m_linthrust[i] = new Gui::Adjustment();
@@ -132,6 +138,7 @@ public:
 				m_anim[i]->onValueChanged.connect(sigc::bind(sigc::mem_fun(this, &Viewer::OnAnimChange), m_anim[i], m_animEntry[i]));
 				OnAnimChange(m_anim[i], m_animEntry[i]);
 			}
+#endif
 		}
 		SetupUi();
 
@@ -150,11 +157,13 @@ public:
 	}
 
 	void OnResetAdjustments() {
+#if ANIMS
 		for (int i=0; i<LMR_ARG_MAX; i++) m_anim[i]->SetValue(0);
 		for (int i=0; i<3; i++) {
 			m_linthrust[i]->SetValue(0.5);
 			m_angthrust[i]->SetValue(0.5);
 		}
+#endif
 	}
 	void OnClickToggleBenchmark() {
 		g_doBenchmark = !g_doBenchmark;
@@ -322,7 +331,8 @@ void Viewer::PickModel(const std::string &initial_name, const std::string &initi
 void Viewer::SetSbreParams()
 {
 	float gameTime = SDL_GetTicks() * 0.001f;
-
+	g_params.time = gameTime;
+#if ANIMS
 	if (m_modelCategory == MODEL_SHIP) {
 		g_params.animValues[Ship::ANIM_WHEEL_STATE] = GetAnimValue(0);
 
@@ -352,20 +362,13 @@ void Viewer::SetSbreParams()
 		g_params.animValues[SpaceStation::ANIM_DOCKING_BAY_4] = GetAnimValue(13);
 	}
 
-/*
-	for (int i=0; i<LMR_ARG_MAX; i++) {
-		params.argDoubles[i] = GetAnimValue(i);
-	}
-*/
-
-	g_params.time = gameTime;
-
 	g_params.linthrust[0] = 2.0f * (m_linthrust[0]->GetValue() - 0.5f);
 	g_params.linthrust[1] = 2.0f * (m_linthrust[1]->GetValue() - 0.5f);
 	g_params.linthrust[2] = 2.0f * (m_linthrust[2]->GetValue() - 0.5f);
 	g_params.angthrust[0] = 2.0f * (m_angthrust[0]->GetValue() - 0.5f);
 	g_params.angthrust[1] = 2.0f * (m_angthrust[1]->GetValue() - 0.5f);
 	g_params.angthrust[2] = 2.0f * (m_angthrust[2]->GetValue() - 0.5f);
+#endif
 }
 
 

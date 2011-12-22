@@ -1,0 +1,82 @@
+select
+{
+	text-align: left;
+	margin-left: 20px;
+	width: 175px;
+	height: 37px;
+	color: black;
+}
+
+select selectvalue
+{
+	width: auto;
+	margin-right: 30px;
+
+	height: 28px;
+	padding: 9px 10px 0px 10px;
+
+	background-decorator: image;
+	background-image: invader.tga 162px 192px 307px 229px;
+}
+
+select selectvalue:hover
+{
+	background-image-t: 230px 267px;
+}
+
+select selectarrow
+{
+	width: 30px;
+	height: 37px;
+
+	icon-decorator: image;
+	icon-image: invader.tga 307px 192px 337px 229px;
+}
+
+select selectarrow:hover
+{
+	icon-image-t: 230px 267px;
+}
+
+select selectarrow:active,
+select selectarrow:checked
+{
+	icon-image-t: 268px 305px;
+}
+
+select selectbox
+{
+	margin-left: 1px;
+	margin-top: -7px;
+	width: 162px;
+	padding: 1px 4px 4px 4px;
+}
+
+select selectbox
+{
+	background-decorator: tiled-box;
+	background-top-left-image: invader.tga 281px 275px 292px 284px;
+	background-top-right-image: invader.tga 294px 275px 305px 284px;
+	background-top-image: invader.tga stretch 292px 275px 293px 284px;
+	background-bottom-left-image: invader.tga 281px 285px 292px 296px;
+	background-bottom-right-image: invader.tga 294px 285px 305px 296px;
+	background-bottom-image: invader.tga stretch 292px 285px 293px 296px;
+	background-left-image: invader.tga stretch 281px 283px 292px 284px;
+	background-center-image: invader.tga stretch 292px 283px 293px 284px;
+}
+
+select selectbox option
+{
+	width: auto;
+	padding-left: 3px;
+}
+
+select selectbox option:nth-child(even)
+{
+	background: #FFFFFFA0;
+}
+
+select selectbox option:hover
+{
+	background: #FF5D5D;
+}

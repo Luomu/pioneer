@@ -21,6 +21,7 @@
 #endif /* PIONEER_DATA_DIR */
 
 #ifdef _WIN32
+#pragma warning(4 : 4244 4005 4305 4800)
 #	include <malloc.h>
 
 #	ifndef __MINGW32__

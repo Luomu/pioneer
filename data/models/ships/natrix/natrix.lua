@@ -19,6 +19,7 @@ define_model('natrix', {
 		bounding_radius = 40,
 		lod_pixels = {50, 100},
 		materials = {'default'},
+		patterns = {'one.png', 'two.png'},
 		tags = {'ship'},
 		ship_defs = {
 			{

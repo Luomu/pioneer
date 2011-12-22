@@ -949,6 +949,30 @@ LmrModel::LmrModel(const char *model_name)
 		}
 		lua_pop(sLua, 1);
 
+		lua_getfield(sLua, -1, "patterns");
+		if (lua_istable(sLua, -1)) {
+			for (int i = 1;; i++) {
+				lua_pushinteger(sLua, i);
+				lua_gettable(sLua, -2);
+				bool is_string = lua_isstring(sLua, -1) != 0;
+				if (is_string) {
+					const char *pat_name = luaL_checkstring(sLua, -1);
+					//lookup pattern
+					lua_getglobal(sLua, "CurrentDirectory");
+					std::string dir = luaL_checkstring(sLua, -1);
+					lua_pop(sLua, 1);
+
+					const std::string t = dir + std::string("/") + pat_name;
+					printf("Loaded pattern %s\n", t.c_str());
+					Texture *tex = TextureManager::GetTexture(t);
+					m_patterns.push_back(LmrPattern(std::string(pat_name), tex));
+				}
+				lua_pop(sLua, 1);
+				if (!is_string) break;
+			}
+		}
+		lua_pop(sLua, 1);
+
 		lua_getfield(sLua, -1, "scale");
 		if (lua_isnumber(sLua, -1)) {
 			m_scale = lua_tonumber(sLua, -1);

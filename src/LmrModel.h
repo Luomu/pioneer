@@ -48,6 +48,16 @@ struct LmrObjParams
 	struct LmrMaterial pMat[3];
 };
 
+class Texture;
+
+/* alternative colour patterns/skins */
+struct LmrPattern {
+	LmrPattern() : name(""), tex(0) { }
+	LmrPattern(const std::string &n, Texture *t) : name(n), tex(t) { }
+	std::string name;
+	Texture *tex;
+};
+
 struct RenderState;
 class LmrCollMesh;
 
@@ -65,6 +75,7 @@ public:
 	void PushAttributeToLuaStack(const char *attr_name) const;
 	const char *GetName() const { return m_name.c_str(); }
 	bool HasTag(const char *tag) const;
+	const std::vector<LmrPattern> &GetPatterns() const { return m_patterns; }
 private:
 	void Build(int lod, const LmrObjParams *params);
 
@@ -82,6 +93,7 @@ private:
 	float m_drawClipRadius;
 	float m_scale;
 	friend class LmrGeomBuffer;
+	std::vector<LmrPattern> m_patterns;
 };
 
 void LmrModelCompilerInit();

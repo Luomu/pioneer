@@ -363,7 +363,10 @@ public:
 					UseProgram(curShader, true, op.elems.glowmap != 0);
 					glActiveTexture(GL_TEXTURE0);
 					glEnable(GL_TEXTURE_2D);
-					op.elems.texture->BindTexture();
+					if (m_model->GetPatterns().size() > 0)
+						m_model->GetPatterns().at(m_model->m_currentPattern).tex->BindTexture();
+					else
+						op.elems.texture->BindTexture();
 					if (op.elems.glowmap != 0) {
 						glActiveTexture(GL_TEXTURE1);
 						op.elems.glowmap->BindTexture();
@@ -895,7 +898,8 @@ public:
 	}
 };
 
-LmrModel::LmrModel(const char *model_name)
+LmrModel::LmrModel(const char *model_name) :
+	m_currentPattern(0)
 {
 	m_name = model_name;
 	m_drawClipRadius = 1.0f;

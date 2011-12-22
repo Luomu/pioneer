@@ -195,9 +195,8 @@ public:
 	}
 
 	void OnPatternChange(Rocket::Core::Event &e) {
-		const Rocket::Core::String &s = e.GetParameter<Rocket::Core::String>("value", "");
-		if (!s.Empty())
-			printf("Pattern selected: %s\n", s.CString());
+		const int idx = e.GetParameter<int>("value", 0);
+		m_model->SetPattern(idx);
 	}
 
 	void OnColorChange(Rocket::Core::Event &e) {
@@ -643,7 +642,7 @@ void Viewer::AddPatternsFromModel(LmrModel *m)
 
 	const std::vector<LmrPattern> &pats = m->GetPatterns();
 	for (std::vector<LmrPattern>::const_iterator it = pats.begin(); it != pats.end(); ++it) {
-		sel->Add(it->name.c_str(), it->name.c_str());
+		sel->Add(it->name.c_str(), stringf("%0", it - pats.begin()).c_str());
 	}
 }
 

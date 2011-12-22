@@ -77,6 +77,7 @@ public:
 	bool HasTag(const char *tag) const;
 	const std::vector<LmrPattern> &GetPatterns() const { return m_patterns; }
 	void SetColor(const Color &c) { m_color = c; }
+	void SetPattern(int idx) { m_currentPattern = idx; }
 private:
 	void Build(int lod, const LmrObjParams *params);
 
@@ -96,6 +97,7 @@ private:
 	friend class LmrGeomBuffer;
 	std::vector<LmrPattern> m_patterns;
 	Color m_color;
+	int m_currentPattern;
 };
 
 void LmrModelCompilerInit();

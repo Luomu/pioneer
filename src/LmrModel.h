@@ -13,6 +13,13 @@ class GeomTree;
 
 class EquipSet;
 
+struct ColorMap {
+	ColorMap();
+	~ColorMap();
+	void Generate(const Color&, const Color&, const Color&);
+	GLuint tex;
+};
+
 #define LMR_MAX_LOD 4
 
 struct LmrMaterial {
@@ -76,7 +83,7 @@ public:
 	const char *GetName() const { return m_name.c_str(); }
 	bool HasTag(const char *tag) const;
 	const std::vector<LmrPattern> &GetPatterns() const { return m_patterns; }
-	void SetColor(const Color &c) { m_color = c; }
+	void SetColor(const Color &, const Color &, const Color &);
 	void SetPattern(int idx) { m_currentPattern = idx; }
 private:
 	void Build(int lod, const LmrObjParams *params);
@@ -96,8 +103,8 @@ private:
 	float m_scale;
 	friend class LmrGeomBuffer;
 	std::vector<LmrPattern> m_patterns;
-	Color m_color;
 	int m_currentPattern;
+	ColorMap m_colorMap;
 };
 
 void LmrModelCompilerInit();

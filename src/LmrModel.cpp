@@ -235,6 +235,7 @@ SHADER_CLASS_END()
 
 static LmrShader *s_sunlightShader[4];
 static LmrShader *s_pointlightShader[4];
+static LmrShader *s_patternShader[4];
 static float s_scrWidth = 800.0f;
 static bool s_buildDynamic;
 static FontManager s_fontManager;
@@ -360,17 +361,31 @@ public:
 			switch (op.type) {
 			case OP_DRAW_ELEMENTS:
 				if (op.elems.texture != 0 ) {
-					UseProgram(curShader, true, op.elems.glowmap != 0);
-					glActiveTexture(GL_TEXTURE0);
-					glEnable(GL_TEXTURE_2D);
-					if (m_model->GetPatterns().size() > 0)
-						m_model->GetPatterns().at(m_model->m_currentPattern).tex->BindTexture();
-					else
+					if (m_model->GetPatterns().size() > 0) {
+						LmrShader *olds = curShader;
+						curShader = s_patternShader[Render::State::GetNumLights()-1];
+						Render::State::UseProgram(curShader);
+						glActiveTexture(GL_TEXTURE0);
 						op.elems.texture->BindTexture();
-					if (op.elems.glowmap != 0) {
+						curShader->set_tex(0);
+						glActiveTexture(GL_TEXTURE1);
+						m_model->GetPatterns().at(m_model->m_currentPattern).tex->BindTexture();
+						curShader->SetUniform1i(curShader->GetLocation("patternMap"), 1);
+						glActiveTexture(GL_TEXTURE2);
+						glBindTexture(GL_TEXTURE_1D, m_model->m_colorMap.tex);
+						curShader->SetUniform1i(curShader->GetLocation("colorMap"), 2);
+						curShader = olds;
+					} else {
+						UseProgram(curShader, true, op.elems.glowmap != 0);
+						glActiveTexture(GL_TEXTURE0);
+						glEnable(GL_TEXTURE_2D);
+						op.elems.texture->BindTexture();
+					}
+						
+					/*if (op.elems.glowmap != 0) {
 						glActiveTexture(GL_TEXTURE1);
 						op.elems.glowmap->BindTexture();
-					}
+					}*/
 				} else {
 					UseProgram(curShader, false);
 				}
@@ -404,12 +419,12 @@ public:
 			case OP_SET_MATERIAL:
 				{
 					const LmrMaterial &m = m_model->m_materials[op.col.material_idx];
-					const Color &c = m_model->m_color;
+					/*const Color &c = m_model->m_color;
 					const GLfloat diffuse[4] = {
 						c.r, c.g, c.b, 1.f
 					};
-					glMaterialfv (GL_FRONT, GL_AMBIENT_AND_DIFFUSE, diffuse);
-					//glMaterialfv (GL_FRONT, GL_AMBIENT_AND_DIFFUSE, m.diffuse);
+					glMaterialfv (GL_FRONT, GL_AMBIENT_AND_DIFFUSE, diffuse);*/
+					glMaterialfv (GL_FRONT, GL_AMBIENT_AND_DIFFUSE, m.diffuse);
 					glMaterialfv (GL_FRONT, GL_SPECULAR, m.specular);
 					glMaterialfv (GL_FRONT, GL_EMISSION, m.emissive);
 					glMaterialf (GL_FRONT, GL_SHININESS, m.shininess);
@@ -4451,6 +4466,10 @@ void LmrModelCompilerInit()
 	s_pointlightShader[1] = new LmrShader("model-pointlit", "#define NUM_LIGHTS 2\n");
 	s_pointlightShader[2] = new LmrShader("model-pointlit", "#define NUM_LIGHTS 3\n");
 	s_pointlightShader[3] = new LmrShader("model-pointlit", "#define NUM_LIGHTS 4\n");
+	s_patternShader[0] = new LmrShader("pattern", "#define NUM_LIGHTS 1\n");
+	s_patternShader[1] = new LmrShader("pattern", "#define NUM_LIGHTS 2\n");
+	s_patternShader[2] = new LmrShader("pattern", "#define NUM_LIGHTS 3\n");
+	s_patternShader[3] = new LmrShader("pattern", "#define NUM_LIGHTS 4\n");
 
 	PiVerify(s_font = s_fontManager.GetVectorFont("WorldFont"));
 
@@ -4550,6 +4569,7 @@ void LmrModelCompilerUninit()
 	for (int i=0; i<4; i++) {
 		delete s_sunlightShader[i];
 		delete s_pointlightShader[i];
+		delete s_patternShader[i];
 	}
 	// FontManager should be ok...
 
@@ -4562,3 +4582,57 @@ void LmrModelCompilerUninit()
 
 	delete s_staticBufferPool;
 }
+
+void LmrModel::SetColor(const Color &a, const Color &b, const Color &c)
+{
+	m_colorMap.Generate(a, b, c);
+}
+
+ColorMap::ColorMap()
+{
+	glGenTextures(1, &tex);
+	const Color r(1.f, 0.f, 0.f, 1.f);
+	const Color g(0.f, 1.f, 0.f, 1.f);
+	const Color b(0.f, 0.f, 1.f, 1.f);
+	Generate(r, g, b);
+}
+
+ColorMap::~ColorMap()
+{
+	glDeleteTextures(1, &tex);
+}
+
+typedef std::vector<char> pixbuf;
+void _addCol(int width, const Color &c, pixbuf &vec)
+{
+	for (int i=0; i < width; i++) {
+		vec.push_back(static_cast<char>(c.r * 255.f));
+		vec.push_back(static_cast<char>(c.g * 255.f));
+		vec.push_back(static_cast<char>(c.b * 255.f));
+		//vec.push_back(1.f);
+	}
+}
+
+void ColorMap::Generate(const Color &a, const Color &b, const Color &c)
+{
+	const Color w(1.f, 1.f, 1.f, 1.f);
+	const int comps = 3;
+	const int width = 2;
+	pixbuf buf;
+	_addCol(width, w, buf);
+	_addCol(width, a, buf);
+	_addCol(width, b, buf);
+	_addCol(width, c, buf);
+	const int foo = 4 * width;
+
+	//glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_1D, tex);
+	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, foo, 0,
+		GL_RGB, GL_UNSIGNED_BYTE, &buf[0]);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_1D, 0);
+}
+#undef pixbuf

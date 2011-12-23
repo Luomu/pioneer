@@ -142,4 +142,14 @@ fail:
 	return false;
 }
 
+GLint Shader::GetLocation(const char *name)
+{
+	return glGetUniformLocation(m_program, name);
+}
+
+void Shader::SetUniform1i(GLint loc, GLint v0)
+{
+	glUniform1i(loc, v0);
+}
+
 } /* namespace Render */

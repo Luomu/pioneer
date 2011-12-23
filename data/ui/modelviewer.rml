@@ -2,7 +2,9 @@
 	<head>
 		<link type="text/rcss" href="templates/core.rcss"/>
 		<link type="text/rcss" href="templates/screen.rcss"/>
-		<link type="text/rcss" href="dropdown.rcss"/>
+		<link type="text/rcss" href="templates/dropdown.rcss"/>
+		<link type="text/rcss" href="templates/checkbox.rcss"/>
+		<link type="text/rcss" href="templates/sliders.rcss"/>
 		<style>
 			body {
 				font-family: TitilliumText22L;
@@ -16,7 +18,7 @@
 				width: 50%;
 				padding: 2px;
 			}
-			div {
+			/*div {
 				display: inline-block;
 				padding: 2px;
 			}
@@ -30,86 +32,13 @@
 				position: absolute;
 				top: 0;
 				left: 60%; /* right: 0 doesn't work? */
-			}
-
-			div#slidercontainer {
-				background-color: rgba(49, 143, 200, 90);
-				display:inline-block;
-				position: absolute;
-				bottom: 0px;
-			}
-
-			/* Separates sliders */
-			.column {
-				display: inline-block;
-				width: 100px; /* disappears without width? */
-				margin: 0;
-				padding: 0;
-			}
-
-			/* Sliders */
-			input.range {
-				display: inline-block;
-				margin: 2px;
-				width: 16px;
-				height: 160px;
-			}
-
-			slidertrack {
-				background-decorator: tiled-vertical;
-				background-top-image: templates/skin.png 32px 0px 64px 4px;
-				background-center-image: templates/skin.png stretch 32px 4px 64px 28px;
-				background-bottom-image: templates/skin.png 32px 28px 64px 32px;
-			}
-
-			sliderbar { /* Handle */
-				height: 8px;
-				background-decorator: image;
-				background-image: templates/skin.png 32px 32px 64px 48px;
-			}
-
-			sliderbar:hover {
-				width: 16px;
-				height: 16px;
-				background-decorator: image;
-				background-image: templates/sliders.png 0px 33px 32px 65px;
-			}
-
-			/* Checkboxes */
-			input.checkbox
-			{
-				icon-decorator: image;
-				icon-image: templates/skin.png 0px 0px 32px 32px;
-				width: 18px;
-				height: 18px;
-			}
-
-			input.checkbox:hover
-			{
-				icon-image-t: 32px 64px;
-			}
-
-			input.checkbox:active
-			{
-				icon-image-t: 32px 64px;
-			}
-
-			input.checkbox:checked
-			{
-				icon-image-t: 64px 96px;
-			}
-
-			input.checkbox:checked:hover
-			{
-				icon-image-t: 96px 128px;
-			}
-
-			input.checkbox:checked:active
-			{
-				icon-image-t: 96px 128px;
-			}
+			}*/
 
 			div {
+				display: block;
+			}
+
+			span {
 				display: block;
 			}
 		</style>
@@ -120,27 +49,30 @@
 			<input id="view.showcollision" type="checkbox" onclick="changeview" shortcut="c" />View collision mesh<br />
 			<input type="checkbox" onclick="show-boundingradius" shortcut="shift b" />Visualize bounding radius<br />
 			<input type="checkbox" onclick="performancetest" shortcut="p" />Performance test (renders model 1000 times per frame)<br />
-			<button class="point" onclick="resetanimations" shortcut="r" />Reset thruster/animation sliders<br />
 		</div>
 		<div id="performance">
-			<span stash="performance.fps" /><br />
-			<span stash="performance.triangles" /><br />
-			<span stash="performance.dimensions" /><br />
+			<span stash="performance.fps" /><br/>
+			<span stash="performance.triangles"  /><br/>
+			<span stash="performance.dimensions" /><br/>
 			<span stash="performance.radius" />
 		</div>
 		<div id="colorcontrols">
-			<div>
-				Pattern:
-				<select id="pattern" name="pattern" onchange="patternchange">
-					<!-- will be added from code -->
-				</select>
-			</div>
-			<div>
-				Color:
-				R <input id="col.r" type="range" value="0" orientation="vertical" onchange="colorchange" />
-				G <input id="col.g" type="range" value="0" orientation="vertical" onchange="colorchange" />
-				B <input id="col.b" type="range" value="0" orientation="vertical" onchange="colorchange" />
-			</div>
+			<h2>Pattern:</h2>
+			<select id="pattern" name="pattern" onchange="patternchange">
+				<!-- will be added from code -->
+			</select>
+			<h2>Primary color:</h2>
+			R<input id="one.r" type="range" value="0" orientation="horizontal" onchange="colorchange" /><br />
+			G<input id="one.g" type="range" value="0" orientation="horizontal" onchange="colorchange" /><br />
+			B<input id="one.b" type="range" value="0" orientation="horizontal" onchange="colorchange" /><br />
+			<h2>Secondary color:</h2>
+			R<input id="two.r" type="range" value="0" orientation="horizontal" onchange="colorchange" /><br />
+			G<input id="two.g" type="range" value="0" orientation="horizontal" onchange="colorchange" /><br />
+			B<input id="two.b" type="range" value="0" orientation="horizontal" onchange="colorchange" /><br />
+			<h2>Bonus color:</h2>
+			R<input id="tri.r" type="range" value="0" orientation="horizontal" onchange="colorchange" /><br />
+			G<input id="tri.g" type="range" value="0" orientation="horizontal" onchange="colorchange" /><br />
+			B<input id="tri.b" type="range" value="0" orientation="horizontal" onchange="colorchange" /><br />
 		</div>
 	</body>
 </rml>

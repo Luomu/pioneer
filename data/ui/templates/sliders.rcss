@@ -1,0 +1,19 @@
+input.range {
+	width: auto;
+	width: 120px;
+	height: 34px;
+}
+
+input.range sliderbar {
+	width: 18px;
+	height: 34px;
+	background-decorator: image;
+	background-image: sloders.png 0px 0px 18px 34px;
+}
+
+input.range slidertrack {
+	background-decorator:    tiled-horizontal;
+	background-left-image:   sloders.png         20px 0px 28px 34px;
+	background-center-image: sloders.png stretch 28px 0px 32px 34px;
+	background-right-image:  sloders.png         32px 0px 52px 34px;
+}

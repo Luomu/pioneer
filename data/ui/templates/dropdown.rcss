@@ -1,0 +1,62 @@
+select
+{
+	text-align: left;
+	width: auto;
+	height: 24px;
+	color: white;
+}
+
+select selectvalue
+{
+	height: 24px;
+	background-decorator: tiled-horizontal;
+	background-left-image:   sloders.png         0px  36px 8px  60px;
+	background-center-image: sloders.png stretch 8px  36px 16px 60px;
+	background-right-image:  sloders.png         52px 36px 64px 60px;
+}
+
+select selectvalue:hover
+{
+	/*background-image-t: 230px 267px;*/
+}
+
+select selectarrow
+{
+	width: 24px;
+	height: 24px;
+
+	icon-decorator: image;
+	icon-image: sloders.png 64px 36px 88px 60px;
+}
+
+select selectarrow:hover
+{
+	/*icon-image-t: 0px 24px;*/
+}
+
+select selectarrow:active,
+select selectarrow:checked
+{
+	/*icon-image-t: 0px 24px;*/
+}
+
+select selectbox
+{
+	margin-left: 1px;
+	margin-top: -7px;
+	width: 162px;
+	padding: 1px 4px 4px 4px;
+}
+
+select selectbox
+{
+	margin: 0;
+	padding: 0;
+	width: auto;
+	background-color: rgb(128, 112, 50);
+}
+
+select selectbox option:hover
+{
+	background: rgb(80, 80, 50);
+}

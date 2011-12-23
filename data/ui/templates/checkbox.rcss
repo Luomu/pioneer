@@ -1,0 +1,33 @@
+/* Checkboxes */
+input.checkbox
+{
+	icon-decorator: image;
+	icon-image: skin.png 0px 0px 32px 32px;
+	width: 18px;
+	height: 18px;
+}
+
+input.checkbox:hover
+{
+	icon-image-t: 32px 64px;
+}
+
+input.checkbox:active
+{
+	icon-image-t: 32px 64px;
+}
+
+input.checkbox:checked
+{
+	icon-image-t: 64px 96px;
+}
+
+input.checkbox:checked:hover
+{
+	icon-image-t: 96px 128px;
+}
+
+input.checkbox:checked:active
+{
+	icon-image-t: 96px 128px;
+}

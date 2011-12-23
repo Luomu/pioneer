@@ -7,16 +7,15 @@
 		<link type="text/rcss" href="templates/sliders.rcss"/>
 		<style>
 			body {
-				font-family: TitilliumText22L;
-				font-size: 12pt;
 				width: 100%;
 				height: 100%;
 			}
 			h1 {
-				background-color: rgba(49, 143, 200, 130);
-				display: block;
-				width: 50%;
-				padding: 2px;
+				font-size: 80%;
+			}
+
+			h2 {
+				font-size: 80%;
 			}
 			/*div {
 				display: inline-block;
@@ -27,12 +26,7 @@
 				display:inline-block;
 				width: 50%;
 			}
-			div#performance {
-				display: block;
-				position: absolute;
-				top: 0;
-				left: 60%; /* right: 0 doesn't work? */
-			}*/
+			*/
 
 			div {
 				display: block;
@@ -41,19 +35,33 @@
 			span {
 				display: block;
 			}
+
+			div#performance {
+				display: block;
+				position: absolute;
+				top: 0;
+				left: 60%;
+				margin: 5px;
+				padding: 0;
+				font-size: 12pt;
+			}
+
+			#colorcontrols {
+				margin-left: 10px;
+			}
 		</style>
 	</head>
 	<body>
 		<h1 id="modelname" style="font-size: 1.4em;">Modelname here</h1>
-		<div id="controls">
+		<!--<div id="controls">
 			<input id="view.showcollision" type="checkbox" onclick="changeview" shortcut="c" />View collision mesh<br />
 			<input type="checkbox" onclick="show-boundingradius" shortcut="shift b" />Visualize bounding radius<br />
 			<input type="checkbox" onclick="performancetest" shortcut="p" />Performance test (renders model 1000 times per frame)<br />
-		</div>
+		</div>-->
 		<div id="performance">
-			<span stash="performance.fps" /><br/>
-			<span stash="performance.triangles"  /><br/>
-			<span stash="performance.dimensions" /><br/>
+			<span stash="performance.fps" />
+			<span stash="performance.triangles" />
+			<span stash="performance.dimensions" />
 			<span stash="performance.radius" />
 		</div>
 		<div id="colorcontrols">

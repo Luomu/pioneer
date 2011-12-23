@@ -89,7 +89,9 @@ public:
 	Viewer(): Gui::Fixed(float(g_width), float(g_height)),
 		m_uiManager(g_width, g_height),
 		m_quit(false),
-		m_shipColor(0.f, 0.f, 0.f, 0.f)
+		m_shipColor1(1.f, 0.f, 0.f, 0.f),
+		m_shipColor2(0.f, 1.f, 0.f, 0.f),
+		m_shipColor3(0.f, 0.f, 1.f, 0.f)
         {
 		m_model = 0;
 		m_cmesh = 0;
@@ -202,14 +204,25 @@ public:
 	void OnColorChange(Rocket::Core::Event &e) {
 		const float col = Clamp(e.GetParameter<float>("value", 0.f), 0.f, 1.f);
 		const Rocket::Core::String &targ = e.GetTargetElement()->GetId();
-		if (targ == "col.r") {
-			m_shipColor.r = col;
-		} else if (targ == "col.g") {
-			m_shipColor.g = col;
-		} else if (targ == "col.b") {
-			m_shipColor.b = col;
-		}
-		m_model->SetColor(m_shipColor);
+		if (targ.Length() < 5) return;
+		const char *numb = targ.Substring(0,3).CString();
+		const char *comp = targ.Substring(4,1).CString();
+		Color *curcol;
+		if (strcmp(numb,"one") == 0)
+			curcol = &m_shipColor1;
+		else if(strcmp(numb,"two") == 0)
+			curcol = &m_shipColor2;
+		else
+			curcol = &m_shipColor3;
+
+		if (strcmp(comp,"r") == 0)
+			curcol->r = col;
+		else if (strcmp(comp,"g") == 0)
+			curcol->g = col;
+		else
+			curcol->b = col;
+
+		m_model->SetColor(m_shipColor1, m_shipColor2, m_shipColor3);
 	}
 
 	void MainLoop();
@@ -221,7 +234,9 @@ private:
 	void SetupUi();
 	void OnThrusterUpdate();
 	void AddPatternsFromModel(LmrModel *m);
-	Color m_shipColor;
+	Color m_shipColor1;
+	Color m_shipColor2;
+	Color m_shipColor3;
 	bool m_showBoundingRadius;
 	bool m_quit;
 };

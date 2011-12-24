@@ -7,7 +7,7 @@ AM_CFLAGS += $(WARN_CFLAGS)
 AM_CPPFLAGS += $(WARN_CPPFLAGS)
 AM_CXXFLAGS += $(WARN_CXXFLAGS)
 
-bin_PROGRAMS = pioneer modelviewer
+bin_PROGRAMS = modelviewer
 noinst_HEADERS = \
 	Aabb.h \
 	AmbientSounds.h \

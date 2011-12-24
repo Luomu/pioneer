@@ -30,6 +30,7 @@ class GalacticView;
 class Ship;
 class GameMenuView;
 class LuaConsole;
+class Berkele;
 namespace Sound { class MusicPlayer; }
 
 #if OBJECTVIEWER
@@ -160,6 +161,7 @@ public:
 
 	static struct DetailLevel detail;
 	static GameConfig config;
+	static Berkele *berk;
 private:
 	static void InitOpenGL();
 	static void HandleEvents();

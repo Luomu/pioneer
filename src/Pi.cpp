@@ -66,6 +66,7 @@
 #include "TextureManager.h"
 #include "Game.h"
 #include "GameLoaderSaver.h"
+#include "Berkelium.h"
 
 float Pi::gameTickAlpha;
 int Pi::scrWidth;
@@ -145,6 +146,7 @@ const char * const Pi::combatRating[] = {
 	Lang::DEADLY,
 	Lang::ELITE
 };
+Berkele *Pi::berk;
 
 #if OBJECTVIEWER
 ObjectViewerView *Pi::objectViewerView;
@@ -607,6 +609,7 @@ void Pi::Quit()
 {
 	delete Pi::gameMenuView;
 	delete Pi::luaConsole;
+	delete Pi::berk;
 	Sound::Uninit();
 	SpaceStation::Uninit();
 	CityOnPlanet::Uninit();
@@ -1105,6 +1108,7 @@ void Pi::HandleMenuKey(int n)
 
 void Pi::Start()
 {
+	Pi::berk = new Berkele(GetPiUserDir());
 	Background::Container *background = new Background::Container(UNIVERSE_SEED);
 
 	Gui::Fixed *menu = new Gui::Fixed(float(Gui::Screen::GetWidth()), float(Gui::Screen::GetHeight()));
@@ -1169,7 +1173,10 @@ void Pi::Start()
 
 		draw_intro(background, _time);
 		Render::PostProcess();
-		Gui::Draw();
+
+		berk->Update();
+		berk->Render(0, 0, 1024, 768);
+		//Gui::Draw();
 		Render::SwapBuffers();
 		
 		Pi::frameTime = 0.001f*(SDL_GetTicks() - last_time);

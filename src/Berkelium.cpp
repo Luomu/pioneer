@@ -2,13 +2,17 @@
 #include "berkelium/Context.hpp"
 #include "render/RenderShader.h"
 
+//shader's not necessary but I find it nicer to test with
 SHADER_CLASS_BEGIN(BerkProgram)
 	SHADER_UNIFORM_SAMPLER(texture0)
 SHADER_CLASS_END()
 
-Berkele::Berkele(const std::string &)
+Berkele::Berkele(const std::string &) :
+	m_fullRefresh(true)
 {
-	if (!Berkelium::init(Berkelium::FileString::empty()))
+	//this should be PiUserDir probably
+	Berkelium::FileString str = Berkelium::FileString::empty();
+	if (!Berkelium::init(str))
 		throw "lo, disaster";
 
 	Berkelium::Context *ctx = Berkelium::Context::create();
@@ -26,8 +30,10 @@ Berkele::Berkele(const std::string &)
 
 	m_window->setDelegate(this);
 	m_window->resize(width, height);
+	//transparent: colour-less items will be transparent
 	m_window->setTransparent(true);
-	LoadURL("http://www.google.com");
+	LoadURL("http://pioneerspacesim.net");
+	//LoadURL("file:///index.html");
 	delete ctx;
 
 	m_prog = new BerkProgram("berk");
@@ -62,10 +68,10 @@ void _DoQuad(const float x, const float y, const float w, const float h)
 		x,     y + h, 0.f
 	};
 	const GLfloat texcoords[] = {
-		0.f, 0.f,
-		1.f, 0.f,
-		1.f, 1.f,
 		0.f, 1.f,
+		1.f, 1.f,
+		1.f, 0.f,
+		0.f, 0.f,
 	};
 	glColor3f(1.f, 0.f, 1.f);
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -86,6 +92,7 @@ void Berkele::Render(int, int, int, int)
 	glPushAttrib(GL_ENABLE_BIT);
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_LIGHTING);
+	glEnable(GL_BLEND);
 
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
@@ -113,6 +120,7 @@ void Berkele::Render(int, int, int, int)
 	glPopAttrib();
 }
 
+// don't call this horrible, it's from the berkelium samples
 bool mapOnPaintToTexture(
     Berkelium::Window *wini,
     const unsigned char* bitmap_in, const Berkelium::Rect& bitmap_rect,
@@ -248,12 +256,22 @@ void Berkele::onPaint(Berkelium::Window *wini,
 {
 	int width = 1024;
 	int height = 768;
-	bool needs_full_refresh = false;
 
 	bool updated = mapOnPaintToTexture(
 		wini, bitmap_in, bitmap_rect, num_copy_rects, copy_rects,
 		dx, dy, scroll_rect,
-		m_tex, width, height, needs_full_refresh, m_scrollBuffer
+		m_tex, width, height, m_fullRefresh, m_scrollBuffer
 	);
-	printf("Updated: %d\n", updated);
+	if (updated)
+		m_fullRefresh = false;
+}
+
+void Berkele::Mouse(int x, int y)
+{
+	m_window->mouseMoved(x, y);
+}
+
+void Berkele::MouseButtonEvent(int button, bool down)
+{
+	m_window->mouseButton(button, down);
 }

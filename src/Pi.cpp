@@ -797,15 +797,18 @@ void Pi::HandleEvents()
 				Pi::mouseButton[event.button.button] = 1;
 				Pi::onMouseButtonDown.emit(event.button.button,
 						event.button.x, event.button.y);
+				Pi::berk->MouseButtonEvent(0, true);
 				break;
 			case SDL_MOUSEBUTTONUP:
 				Pi::mouseButton[event.button.button] = 0;
 				Pi::onMouseButtonUp.emit(event.button.button,
 						event.button.x, event.button.y);
+				Pi::berk->MouseButtonEvent(0, false);
 				break;
 			case SDL_MOUSEMOTION:
 				Pi::mouseMotion[0] += event.motion.xrel;
 				Pi::mouseMotion[1] += event.motion.yrel;
+				Pi::berk->Mouse(event.motion.x, event.motion.y);
 		//		SDL_GetRelativeMouseState(&Pi::mouseMotion[0], &Pi::mouseMotion[1]);
 				break;
 			case SDL_JOYAXISMOTION:
@@ -1310,6 +1313,8 @@ void Pi::MainLoop()
 #endif
 
 		glError();
+		berk->Update();
+		berk->Render(0,0,0,0);
 		Render::SwapBuffers();
 		//if (glGetError()) printf ("GL: %s\n", gluErrorString (glGetError ()));
 		

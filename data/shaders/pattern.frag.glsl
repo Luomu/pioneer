@@ -45,6 +45,7 @@ void main(void)
 	vec4 base     = texture2D(tex, texCoord) * gl_FrontMaterial.diffuse;
 	vec4 pat      = texture2D(patternMap, texCoord);
 	vec4 col      = texture1D(colorMap, pat.r);
-	gl_FragColor  = diff * (base * col) + spec * 0.2;
+	vec4 emit     = texture2D(texGlow, texCoord);
+	gl_FragColor  = diff * (base * col) + (spec * 0.2) + emit;
 	SetFragDepth(gl_TexCoord[6].z);
 }

@@ -374,6 +374,11 @@ public:
 						glActiveTexture(GL_TEXTURE2);
 						glBindTexture(GL_TEXTURE_1D, m_model->m_colorMap.tex);
 						curShader->SetUniform1i(curShader->GetLocation("colorMap"), 2);
+						if (op.elems.glowmap != 0) {
+							glActiveTexture(GL_TEXTURE3);
+							op.elems.glowmap->BindTexture();
+							curShader->SetUniform1i(curShader->GetLocation("texGlow"), 3);
+						}
 						curShader = olds;
 					} else {
 						UseProgram(curShader, true, op.elems.glowmap != 0);
@@ -4617,7 +4622,7 @@ void ColorMap::Generate(const Color &a, const Color &b, const Color &c)
 {
 	const Color w(1.f, 1.f, 1.f, 1.f);
 	const int comps = 3;
-	const int width = 2;
+	const int width = 4;
 	pixbuf buf;
 	_addCol(width, w, buf);
 	_addCol(width, a, buf);
@@ -4629,8 +4634,8 @@ void ColorMap::Generate(const Color &a, const Color &b, const Color &c)
 	glBindTexture(GL_TEXTURE_1D, tex);
 	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, foo, 0,
 		GL_RGB, GL_UNSIGNED_BYTE, &buf[0]);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_1D, 0);

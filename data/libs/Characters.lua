@@ -900,7 +900,7 @@ Character = {
 --
 -- Return:
 --
---   rating: Translatable string
+--   rating - Translatable string
 --
 -- Example:
 --

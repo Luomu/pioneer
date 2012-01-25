@@ -1,6 +1,11 @@
+varying vec2 texCoord0;
+varying float dist;
 
 void main(void)
 {
+	texCoord0 = gl_MultiTexCoord0.st;
+	vec3 ecposition = vec3(gl_ModelViewMatrix * gl_Vertex);
+	dist = abs(ecposition.z);
 #ifdef ZHACK
 	gl_Position = logarithmicTransform();
 #else

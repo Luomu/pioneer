@@ -7,13 +7,16 @@
 #include "render/Render.h"
 #include "render/RenderFrustum.h"
 #include "render/Renderer.h"
+#include <stddef.h> //for offsetof
 
 #include <deque>
 #include <algorithm>
 
 // tri edge lengths
 #define GEOPATCH_SUBDIVIDE_AT_CAMDIST	5.0
-#define GEOPATCH_MAX_DEPTH  15 + (2*Pi::detail.fracmult) //15 
+//#define GEOPATCH_MAX_DEPTH  15 + (2*Pi::detail.fracmult) //15
+//avoid patches getting too small
+#define GEOPATCH_MAX_DEPTH 10
 #define GEOSPHERE_USE_THREADING
 
 static const int GEOPATCH_MAX_EDGELEN = 55;
@@ -38,15 +41,13 @@ SHADER_CLASS_END()
 
 static GeosphereShader *s_geosphereSurfaceShader[4], *s_geosphereSkyShader[4], *s_geosphereStarShader, *s_geosphereDimStarShader[4];
 
-#pragma pack(4)
 struct VBOVertex
 {
 	float x,y,z;
 	float nx,ny,nz;
+	vector2f uv;
 	unsigned char col[4];
-	float padding;
 };
-#pragma pack()
 
 // for glDrawRangeElements
 static int s_loMinIdx[4], s_loMaxIdx[4];
@@ -384,7 +385,8 @@ public:
 			if (!m_vbo) glGenBuffersARB(1, &m_vbo);
 			m_needUpdateVBOs = false;
 			glBindBufferARB(GL_ARRAY_BUFFER, m_vbo);
-			glBufferDataARB(GL_ARRAY_BUFFER, sizeof(VBOVertex)*ctx->NUMVERTICES(), 0, GL_DYNAMIC_DRAW);
+			int r = 0;
+			int row = 0;
 			for (int i=0; i<ctx->NUMVERTICES(); i++)
 			{
 				clipRadius = std::max(clipRadius, (vertices[i]-clipCentroid).Length());
@@ -395,10 +397,17 @@ public:
 				pData->nx = float(normals[i].x);
 				pData->ny = float(normals[i].y);
 				pData->nz = float(normals[i].z);
+				pData->uv.x = 1.0 - float(r) / float(ctx->edgeLen);
+				pData->uv.y = float(row) / float(ctx->edgeLen);
 				pData->col[0] = static_cast<unsigned char>(Clamp(colors[i].x*255.0, 0.0, 255.0));
 				pData->col[1] = static_cast<unsigned char>(Clamp(colors[i].y*255.0, 0.0, 255.0));
 				pData->col[2] = static_cast<unsigned char>(Clamp(colors[i].z*255.0, 0.0, 255.0));
 				pData->col[3] = 255;
+				r++;
+				if (r >= ctx->edgeLen) {
+					r = 0;
+					row++;
+				}
 			}
 			glBufferDataARB(GL_ARRAY_BUFFER, sizeof(VBOVertex)*ctx->NUMVERTICES(), ctx->vbotemp, GL_DYNAMIC_DRAW);
 			glBindBufferARB(GL_ARRAY_BUFFER, 0);
@@ -879,11 +888,13 @@ public:
 			glEnableClientState(GL_VERTEX_ARRAY);
 			glEnableClientState(GL_NORMAL_ARRAY);
 			glEnableClientState(GL_COLOR_ARRAY);
+			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
 			glBindBufferARB(GL_ARRAY_BUFFER, m_vbo);
-			glVertexPointer(3, GL_FLOAT, sizeof(VBOVertex), 0);
-			glNormalPointer(GL_FLOAT, sizeof(VBOVertex), reinterpret_cast<void *>(3*sizeof(float)));
-			glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(VBOVertex), reinterpret_cast<void *>(6*sizeof(float)));
+			glVertexPointer(3, GL_FLOAT, sizeof(VBOVertex), reinterpret_cast<const GLvoid *>(offsetof(VBOVertex, x)));
+			glNormalPointer(GL_FLOAT, sizeof(VBOVertex), reinterpret_cast<const GLvoid *>(offsetof(VBOVertex, nx)));
+			glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(VBOVertex), reinterpret_cast<const GLvoid *>(offsetof(VBOVertex, col)));
+			glTexCoordPointer(2, GL_FLOAT, sizeof(VBOVertex), reinterpret_cast<const GLvoid *>(offsetof(VBOVertex, uv)));
 			glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER, ctx->indices_vbo);
 			glDrawRangeElements(GL_TRIANGLES, 0, ctx->NUMVERTICES()-1, ctx->VBO_COUNT_MID_IDX(), GL_UNSIGNED_SHORT, reinterpret_cast<void*>(ctx->IDX_VBO_MAIN_OFFSET()));
 			for (int i=0; i<4; i++) {
@@ -899,6 +910,7 @@ public:
 			glDisableClientState(GL_VERTEX_ARRAY);
 			glDisableClientState(GL_NORMAL_ARRAY);
 			glDisableClientState(GL_COLOR_ARRAY);
+			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 			glPopMatrix();
 		}
 	}
@@ -1326,6 +1338,9 @@ void GeoSphere::Render(Renderer *renderer, vector3d campos, const float radius, 
 	Render::Frustum frustum = Render::Frustum::FromGLState();
 
 	const float atmosRadius = ATMOSPHERE_RADIUS;
+
+	static Texture* tex = Pi::textureCache->GetModelTexture(PIONEER_DATA_DIR"/textures/high.png");
+	static Texture* tex2 = Pi::textureCache->GetModelTexture(PIONEER_DATA_DIR"/textures/low.png");
 	
 	// no frustum test of entire geosphere, since Space::Render does this
 	// for each body using its GetBoundingRadius() value
@@ -1367,6 +1382,12 @@ void GeoSphere::Render(Renderer *renderer, vector3d campos, const float radius, 
 		else {
 			GeosphereShader *shader = s_geosphereSurfaceShader[Render::State::GetNumLights()-1];
 			Render::State::UseProgram(shader);
+			glActiveTexture(GL_TEXTURE0);
+			tex->Bind();
+			glUniform1i(glGetUniformLocation(shader->GetProgram(), "texture0"), 0);
+			glActiveTexture(GL_TEXTURE1);
+			tex2->Bind();
+			glUniform1i(glGetUniformLocation(shader->GetProgram(), "texture1"), 1);
 			shader->set_geosphereScale(scale);
 			shader->set_geosphereAtmosTopRad(atmosRadius*radius/scale);
 			shader->set_geosphereAtmosFogDensity(atmosDensity);
@@ -1421,6 +1442,7 @@ void GeoSphere::Render(Renderer *renderer, vector3d campos, const float radius, 
 	for (int i=0; i<6; i++) {
 		m_patches[i]->Render(campos, frustum);
 	}
+	glActiveTexture(GL_TEXTURE0);
 	Render::State::UseProgram(0);
 
 	glDisable(GL_COLOR_MATERIAL);

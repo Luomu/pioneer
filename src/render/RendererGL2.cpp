@@ -61,6 +61,7 @@ template<> void Buffer<LineVertex>::Draw(GLenum pt, int start, int count) {
 
 Render::Shader *simpleTextured;
 Render::Shader *flatProg;
+Render::Shader *thrusterProg;
 Buffer<LineVertex> *lineBuffer;
 
 RendererGL2::RendererGL2(int w, int h) :
@@ -68,6 +69,7 @@ RendererGL2::RendererGL2(int w, int h) :
 {
 	simpleTextured = new Render::Shader("simpleTextured");
 	flatProg = new Render::Shader("flat");
+	thrusterProg = new Render::Shader("thruster");
 	lineBuffer = new Buffer<LineVertex>(1000);
 }
 
@@ -75,6 +77,7 @@ RendererGL2::~RendererGL2()
 {
 	delete simpleTextured;
 	delete flatProg;
+	delete thrusterProg;
 	delete lineBuffer;
 }
 
@@ -122,12 +125,12 @@ bool RendererGL2::DrawTriangles(const VertexArray *v, const Material *m, Primiti
 {
 	if (!v || v->position.size() < 3) return false;
 
-	const bool diffuse = !v->diffuse.empty();
-	const bool textured = (m && m->texture0 && v->uv0.size() == v->position.size());
+	bool diffuse = !v->diffuse.empty();
+	bool textured = (m && m->texture0 && v->uv0.size() == v->position.size());
 	const bool normals = !v->normal.empty();
 	const unsigned int numverts = v->position.size();
 	const bool twoSided = (m && m->twoSided);
-	const bool flat = (m && m->type == Material::TYPE_DEFAULT && v->diffuse.empty());
+	bool flat = (m && m->type == Material::TYPE_DEFAULT && v->diffuse.empty());
 
 	if (twoSided)
 		glDisable(GL_CULL_FACE);
@@ -143,6 +146,15 @@ bool RendererGL2::DrawTriangles(const VertexArray *v, const Material *m, Primiti
 		s = Render::planetRingsShader[lights];
 	} else if (textured)
 		s = simpleTextured;
+	if (m) {
+		if (m->type == Material::TYPE_THRUSTER) {
+			assert(diffuse == false);
+			assert(normals == false);
+			assert(textured == true);
+			flat = true;
+			s = thrusterProg;
+		}
+	}
 	if (s)
 		Render::State::UseProgram(s);
 

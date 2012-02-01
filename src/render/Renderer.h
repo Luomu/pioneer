@@ -110,7 +110,8 @@ struct Material {
 	enum MaterialType {
 		TYPE_DEFAULT = 0,
 		TYPE_PLANETRING,
-		TYPE_ATMOSPHERE
+		TYPE_ATMOSPHERE,
+		TYPE_THRUSTER
 	};
 	MaterialType type;
 	Texture *texture0;

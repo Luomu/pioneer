@@ -26,9 +26,6 @@
 
 static TextureCache *s_textureCache;
 static Renderer *s_renderer;
-static Texture *tex = 0;
-static Texture *tex2 = 0;
-static Render::Shader *thrusterProg = 0;
 
 struct RenderState {
 	/* For the root model this will be identity matrix.
@@ -44,6 +41,86 @@ struct RenderState {
 struct LmrUnknownMaterial {};
 
 namespace ShipThruster {
+	static VertexArray *va;
+	static VertexArray *xva;
+	static Material *tmat;
+	static Texture *thrusTex;
+	static Texture *glowTex;
+
+	static void Init() {
+		va = new VertexArray();
+		xva = new VertexArray();
+
+		tmat = new Material();
+		tmat->twoSided = true;
+		tmat->unlit = true;
+		tmat->type = Material::TYPE_THRUSTER;
+		//tmat->diffuse = Color(0.8f, 0.2f, 0.f, 1.f);
+		tmat->diffuse = Color(0.8, 0.5f, 1.f, 1.f);
+		thrusTex = s_textureCache->GetModelTexture(PIONEER_DATA_DIR"/textures/thruster.png");
+		thrusTex->Bind();
+		//XXX implement SetwrapMode
+		glTexParameteri(thrusTex->GetTarget(), GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(thrusTex->GetTarget(), GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		glowTex = s_textureCache->GetModelTexture(PIONEER_DATA_DIR"/textures/ahalo.png");
+		glowTex->Bind();
+		//XXX implement SetwrapMode
+		glTexParameteri(glowTex->GetTarget(), GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(glowTex->GetTarget(), GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glowTex->Unbind();
+
+		//zero at thruster center
+		//+x down
+		//+y right
+		//+z backwards (or thrust direction)
+		const float w = 0.5f;
+
+		vector3f one(0.f, -w, 0.f); //top left
+		vector3f two(0.f,  w, 0.f); //top right
+		vector3f three(0.f,  w, 1.f); //bottom right
+		vector3f four(0.f, -w, 1.f); //bottom left
+
+		//add four intersecting plane to create a "volumetric billboard"
+		for (int i=0; i < 4; i++) {
+			va->Add(one, vector2f(0.f, 1.f));
+			va->Add(two, vector2f(1.f, 1.f));
+			va->Add(three, vector2f(1.f, 0.f));
+
+			va->Add(three, vector2f(1.f, 0.f));
+			va->Add(four, vector2f(0.f, 0.f));
+			va->Add(one, vector2f(0.f, 1.f));
+
+			one.ArbRotate(vector3f(0.f, 0.f, 1.f), DEG2RAD(45.f));
+			two.ArbRotate(vector3f(0.f, 0.f, 1.f), DEG2RAD(45.f));
+			three.ArbRotate(vector3f(0.f, 0.f, 1.f), DEG2RAD(45.f));
+			four.ArbRotate(vector3f(0.f, 0.f, 1.f), DEG2RAD(45.f));
+		}
+
+		//create glow billboard
+		//XXX implement Billboard class
+		const float gw = 0.4f;
+
+		const vector3f gone(-gw, -gw, 0.f); //top left
+		const vector3f gtwo(-gw,  gw, 0.f); //top right
+		const vector3f gthree(gw, gw, 0.f); //bottom right
+		const vector3f gfour(gw, -gw, 0.f); //bottom left
+
+		xva->Add(gone, vector2f(0.f, 1.f));
+		xva->Add(gtwo, vector2f(1.f, 1.f));
+		xva->Add(gthree, vector2f(1.f, 0.f));
+
+		xva->Add(gthree, vector2f(1.f, 0.f));
+		xva->Add(gfour, vector2f(0.f, 0.f));
+		xva->Add(gone, vector2f(0.f, 1.f));
+	}
+
+	static void Uninit() {
+		delete va;
+		delete xva;
+		delete tmat;
+	}
+
 	struct Thruster
 	{
 		Thruster() : pos(0.0), dir(0.0), power(0) {}	// zero this shit to stop denormal-copying on resize
@@ -52,96 +129,11 @@ namespace ShipThruster {
 		vector3f pos;
 		vector3f dir;
 		float power;
+		void Render(Renderer *r, const RenderState *rstate, const LmrObjParams *params);
 	};
 
-	
-	static vector3f ResolveHermiteSpline (const vector3f &p0, const vector3f &p1, const vector3f &n0, const vector3f &n1, float t)
+	void Thruster::Render(Renderer *renderer, const RenderState *rstate, const LmrObjParams *params)
 	{
-		float t2 = t*t, t3 = t*t*t;
-		vector3f tv1, tv2, tv;
-		tv1 = p0 * (2*t3-3*t2+1);
-		tv = n0 * (t3-2*t2+t);
-		tv1 = tv+tv1;
-		tv2 = p1 * (-2*t3+3*t2);
-		tv = n1 *  (t3-t2);
-		tv2 = tv + tv2;
-		return tv1 + tv2;
-	}
-
-	static const int pNumIndex[3] =
-		{ (2*4+1*8)*3, (2*8+5*16)*3, (2*16+13*32)*3 };
-
-	static vector3f pTVertex4pt[2*4+2];
-	static vector3f pTVertex8pt[6*8+2];
-	static vector3f pTVertex16pt[14*16+2];
-
-	static Uint16 pTIndex4pt[(2*4+1*8)*3];
-	static Uint16 pTIndex8pt[(2*8+5*16)*3];
-	static Uint16 pTIndex16pt[(2*16+13*32)*3];
-
-	static vector3f *ppTVertex[3] =
-		{ pTVertex4pt, pTVertex8pt, pTVertex16pt };
-
-	static Uint16 *ppTIndex[3] =
-		{ pTIndex4pt, pTIndex8pt, pTIndex16pt };
-
-
-	static void GenerateThrusters ()
-	{
-		vector3f pos0 = vector3f(0.0f, 0.0f, 0.0f);
-		vector3f pos1 = vector3f(0.0f, 0.0f, 1.0f);
-		vector3f tan0 = vector3f(0.0f, 1.0f, 0.2f);
-		vector3f tan1 = vector3f(0.0f, -0.2f, 1.0f);
-
-		int j, n;
-		for (j=0, n=4; j<3; j++, n<<=1)
-		{
-			vector3f *pCur = ppTVertex[j];
-			float t, incstep = 1.0f / (n-1);
-			int i; for (i=0, t=incstep; i<n-2; i++, t+=incstep)
-			{
-				vector3f *pos = pCur;
-				*pos = ResolveHermiteSpline (pos0, pos1, tan0, tan1, t);
-				pCur++;
-
-				float angstep = 2.0f * 3.141592f / n, ang = angstep;
-				for (int k=1; k<n; k++, ang+=angstep, pCur++)
-				{
-					pCur->x = sin(ang) * pos->y;
-					pCur->y = cos(ang) * pos->y;
-					pCur->z = pos->z;
-				}
-			}
-			*pCur = pos0; pCur++;
-			*pCur = pos1; pCur++;
-
-			int ni=0, k;
-			Uint16 *pIndex = ppTIndex[j];
-
-			for (k=0; k<n; k++) {
-				int k1 = k+1==n ? 0 : k+1;
-				pIndex[ni++] = (n-2)*n; pIndex[ni++] = k; pIndex[ni++] = k1;
-				pIndex[ni++] = (n-2)*n+1; pIndex[ni++] = k1+(n-3)*n; pIndex[ni++] = k+(n-3)*n;
-			}
-			for (i=0; i<n-3; i++)
-			{
-				for (k=0; k<n; k++) {
-					int k1 = k+1==n ? 0 : k+1;
-					pIndex[ni++] = k+i*n; pIndex[ni++] = k+i*n+n; pIndex[ni++] = k1+i*n;
-					pIndex[ni++] = k1+i*n; pIndex[ni++] = k+i*n+n;	pIndex[ni++] = k1+i*n+n;
-				}
-			}
-		}
-	}
-
-	static const float s_black[4] = { 0, 0, 0, 0 };
-	static const float s_alpha[4] = { 0, 0, 0, 0.6 };
-	static bool inittted = false;
-
-	static void RenderThruster(const RenderState *rstate, const LmrObjParams *params, Thruster *pThruster)
-	{
-		if (!inittted) GenerateThrusters();
-		inittted = true;
 		const float scale = 1.0;
 		// to find v(0,0,0) position of root model (when putting thrusters on sub-models)
 		vector3f compos = vector3f(rstate->subTransform[12], rstate->subTransform[13], rstate->subTransform[14]);
@@ -150,11 +142,11 @@ namespace ShipThruster {
 					vector3f(rstate->subTransform[4], rstate->subTransform[5], rstate->subTransform[6]),
 					vector3f(rstate->subTransform[8], rstate->subTransform[9], rstate->subTransform[10]));
 
-		vector3f start, end, dir = pThruster->dir;
-		start = pThruster->pos * scale;
+		vector3f start, end, dir = this->dir;
+		start = this->pos * scale;
 		float power = -dir.Dot(invSubModelMat * vector3f(params->linthrust));
 
-		if (!pThruster->linear_only) {
+		if (!this->linear_only) {
 			vector3f angdir, cpos;
 			const vector3f at = invSubModelMat * vector3f(params->angthrust);
 			cpos = compos + start;
@@ -171,8 +163,8 @@ namespace ShipThruster {
 
 		if (power <= 0.001f) return;
 		power *= scale;
-		float width = sqrt(power)*pThruster->power*0.6f;
-		float len = power*pThruster->power;
+		float width = sqrt(power)*this->power*0.6f;
+		float len = power*this->power;
 		end = dir * len;
 		end += start;
 
@@ -197,64 +189,32 @@ namespace ShipThruster {
 		glMultMatrixf (&m2[0]);
 
 		glScalef (width*0.5f, width*0.5f, len*0.666f);
-		
-		if (Render::IsHDREnabled())
-			glColor4f(0.0f, 40.0f, 100.0f, 0.9f);
-		else
-			glColor4f(0.0f, 0.4f, 1.0f, 0.9f);
 
-		const vector3f big[] = {
-			vector3f(-0.3f, -0.3f, 0.f),
-			vector3f(-0.3f,  0.3f, 0.f),
-			vector3f(0.3f,  0.3f, 0.f),
-			vector3f(0.3f, -0.3f, 0.f),
-		};
-		const float w = 0.5f;
-		const vector3f shit[] = {
-			vector3f(0.f, -w, 0.f),
-			vector3f(0.f,  w, 0.f),
-			vector3f(0.f,  w, 1.f),
-			vector3f(0.f, -w, 1.f)
-		};
-		const vector3f tcoords[] = {
-			vector3f(0.f, 1.f, 0.f),
-			vector3f(1.f, 1.f, 0.f),
-			vector3f(1.f, 0.f, 0.f),
-			vector3f(0.f, 0.f, 0.f)
-		};
+		//render here
+		matrix4x4f mv;
+		glGetFloatv(GL_MODELVIEW_MATRIX, &mv[0]);
+		vector3f viewdir = vector3f(-mv[2], -mv[6], -mv[10]).Normalized();
+		vector3f cdir(0.f, 0.f, -1.f);
+		float glow = 1.0 - Clamp(viewdir.Dot(cdir), 0.f, 1.f);
+		tmat->diffuse.a = pow(glow, 0.4f);
+		tmat->texture0 = thrusTex;
+		renderer->DrawTriangles(va, tmat);
+		tmat->diffuse.a = 1.f;
 
-		if (Render::IsHDREnabled())
-			glColor4f(100.0f, 100.0f, 100.0f, 0.9f);
-		else
-			glColor4f(0.4f, 0.0f, 1.0f, 0.9f);
-		
-		glTexCoordPointer(2, GL_FLOAT, sizeof(vector3f), &tcoords);
-		tex2->Bind();
-		glVertexPointer (3, GL_FLOAT, sizeof(vector3f), &big);
-		int loc = glGetUniformLocation(thrusterProg->GetProgram(), "inverse");
-		glUniform1i(loc, 1);
-		glDrawArrays(GL_QUADS, 0, 4);
+		//extra glow (when looking at thruster port)
+		//this is only really noticeable with main thrusters
+		glow = Clamp(viewdir.Dot(cdir), 0.f, 1.f);
+		tmat->diffuse.a = pow(glow, 4.f);
+		tmat->texture0 = glowTex;
+		renderer->DrawTriangles(xva, tmat);
+		tmat->diffuse.a = 1.0;
 
-		tex->Bind();
-		glUniform1i(loc, 0);
-		glVertexPointer (3, GL_FLOAT, sizeof(vector3f), &shit);
-		glDrawArrays(GL_QUADS, 0, 4);
-		glPushMatrix();
-		glRotatef(45.f, 0.f, 0.f, 1.f);
-		glDrawArrays(GL_QUADS, 0, 4);
-		glRotatef(45.f, 0.f, 0.f, 1.f);
-		glDrawArrays(GL_QUADS, 0, 4);
-		glRotatef(45.f, 0.f, 0.f, 1.f);
-		glDrawArrays(GL_QUADS, 0, 4);
-		glPopMatrix();
-
-		//forgot this scaling
+		//forgot this original scaling...
 		//glScalef (2.0f, 2.0f, 1.5f);
-
 		glPopMatrix ();
 	}
 
-	struct CameraDistance {
+	/*struct CameraDistance {
 		Thruster *thruster;
 		float dist;
 	};
@@ -263,7 +223,7 @@ namespace ShipThruster {
 		{
 			return a.dist > b.dist;
 		}
-	};
+	};*/
 }
 
 class LmrGeomBuffer;
@@ -289,7 +249,6 @@ static lua_State *sLua;
 static int s_numTrisRendered;
 static std::string s_cacheDir;
 static bool s_recompileAllModels = true;
-static TextureCache *s_textureCache;
 
 struct Vertex {
 	Vertex() : v(0.0), n(0.0), tex_u(0.0), tex_v(0.0) {}		// zero this shit to stop denormal-copying on resize
@@ -532,50 +491,29 @@ public:
 
 		Render::UnbindAllBuffers();
 
-		if (m_thrusters.size()) {
-			assert(tex != 0);
-			assert(tex2 != 0);
-			assert(thrusterProg != 0);
-			glDisable(GL_LIGHTING);
-			glEnable(GL_TEXTURE_2D);
-			tex2->Bind();
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			tex->Bind();
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			Render::State::UseProgram(thrusterProg);
-			int loc = glGetUniformLocation(thrusterProg->GetProgram(), "flaretex");
-			glUniform1i(loc, 0);
-			RenderThrusters(rstate, cameraPos, params);
-		}
+		RenderThrusters(s_renderer, rstate, cameraPos, params);
 	}
 
-	void RenderThrusters(const RenderState *rstate, const vector3f &cameraPos, const LmrObjParams *params) {
+	void RenderThrusters(Renderer *renderer, const RenderState *rstate, const vector3f &cameraPos, const LmrObjParams *params) {
+		if (m_thrusters.empty()) return;
+		//Not necessary any more since the thrusters are additively blended
 		// depth sort thrusters so alpha doesn't look fucked up!!!
-		ShipThruster::CameraDistance *dists = static_cast<ShipThruster::CameraDistance*>(alloca (m_thrusters.size() * sizeof(ShipThruster::CameraDistance)));
+		/*ShipThruster::CameraDistance *dists = static_cast<ShipThruster::CameraDistance*>(alloca (m_thrusters.size() * sizeof(ShipThruster::CameraDistance)));
 
 		for (unsigned int i=0; i<m_thrusters.size(); i++) {
 			dists[i].thruster = &m_thrusters[i];
 			dists[i].dist = (m_thrusters[i].pos - cameraPos).Length();
 		}
-		sort(dists, dists + m_thrusters.size(), ShipThruster::CameraDistanceCompare());
+		sort(dists, dists + m_thrusters.size(), ShipThruster::CameraDistanceCompare());*/
 
-		glBlendFunc(GL_ONE, GL_ONE);
+		s_renderer->SetBlendMode(BLEND_ADDITIVE);
 		glDepthMask(GL_FALSE);
-		glDisable(GL_CULL_FACE);
-		glEnableClientState (GL_VERTEX_ARRAY);
-		glDisableClientState (GL_NORMAL_ARRAY);
-		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-		glEnable (GL_BLEND);
 		for (unsigned int i=0; i<m_thrusters.size(); i++) {
-			ShipThruster::RenderThruster (rstate, params, dists[i].thruster);
+			m_thrusters[i].Render(renderer, rstate, params);
+			//dists[i].thruster->Render(renderer, rstate, params);
 		}
-		glDisable (GL_BLEND);
-		glDisableClientState (GL_VERTEX_ARRAY);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	
+		s_renderer->SetBlendMode(BLEND_SOLID);
 		glDepthMask(GL_TRUE);
-		glEnable(GL_CULL_FACE);
 	}
 	void PushThruster(const vector3f &pos, const vector3f &dir, const float power, bool linear_only) {
 		unsigned int i = m_thrusters.size();
@@ -4468,9 +4406,7 @@ void LmrModelCompilerInit(Renderer *renderer, TextureCache *textureCache)
 	s_renderer = renderer;
 	s_textureCache = textureCache;
 
-	tex = s_textureCache->GetModelTexture(PIONEER_DATA_DIR"/textures/thruster.png");
-	tex2 = s_textureCache->GetModelTexture(PIONEER_DATA_DIR"/textures/ahalo.png");
-	thrusterProg = new Render::Shader("thruster");
+	ShipThruster::Init();
 
 	s_cacheDir = GetPiUserDir("model_cache");
 	_detect_model_changes();
@@ -4594,4 +4530,6 @@ void LmrModelCompilerUninit()
 	lua_close(sLua); sLua = 0;
 
 	delete s_staticBufferPool;
+
+	ShipThruster::Uninit();
 }

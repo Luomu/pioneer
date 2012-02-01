@@ -6,6 +6,7 @@
 #include "collider/collider.h"
 #include "perlin.h"
 #include "render/Render.h"
+#include "render/Renderer.h"
 #include "BufferObject.h"
 #include "LuaUtils.h"
 #include "LuaConstants.h"
@@ -23,6 +24,8 @@
  * This documentation is incomplete!
  */
 
+static TextureCache *s_textureCache;
+static Renderer *s_renderer;
 static Texture *tex = 0;
 static Texture *tex2 = 0;
 static Render::Shader *thrusterProg = 0;
@@ -4460,8 +4463,9 @@ static void _write_model_crc_file()
 	}
 }
 
-void LmrModelCompilerInit(TextureCache *textureCache)
+void LmrModelCompilerInit(Renderer *renderer, TextureCache *textureCache)
 {
+	s_renderer = renderer;
 	s_textureCache = textureCache;
 
 	tex = s_textureCache->GetModelTexture(PIONEER_DATA_DIR"/textures/thruster.png");

@@ -23,6 +23,10 @@
  * This documentation is incomplete!
  */
 
+static Texture *tex = 0;
+static Texture *tex2 = 0;
+static Render::Shader *thrusterProg = 0;
+
 struct RenderState {
 	/* For the root model this will be identity matrix.
 	 * For sub-models called with call_model() then this will be the
@@ -196,18 +200,53 @@ namespace ShipThruster {
 		else
 			glColor4f(0.0f, 0.4f, 1.0f, 0.9f);
 
-		glVertexPointer (3, GL_FLOAT, sizeof(vector3f), pTVertex8pt);
-		glDrawElements (GL_TRIANGLES, pNumIndex[1], GL_UNSIGNED_SHORT, pTIndex8pt);
-
-		glScalef (2.0f, 2.0f, 1.5f);
+		const vector3f big[] = {
+			vector3f(-0.3f, -0.3f, 0.f),
+			vector3f(-0.3f,  0.3f, 0.f),
+			vector3f(0.3f,  0.3f, 0.f),
+			vector3f(0.3f, -0.3f, 0.f),
+		};
+		const float w = 0.5f;
+		const vector3f shit[] = {
+			vector3f(0.f, -w, 0.f),
+			vector3f(0.f,  w, 0.f),
+			vector3f(0.f,  w, 1.f),
+			vector3f(0.f, -w, 1.f)
+		};
+		const vector3f tcoords[] = {
+			vector3f(0.f, 1.f, 0.f),
+			vector3f(1.f, 1.f, 0.f),
+			vector3f(1.f, 0.f, 0.f),
+			vector3f(0.f, 0.f, 0.f)
+		};
 
 		if (Render::IsHDREnabled())
 			glColor4f(100.0f, 100.0f, 100.0f, 0.9f);
 		else
 			glColor4f(0.4f, 0.0f, 1.0f, 0.9f);
+		
+		glTexCoordPointer(2, GL_FLOAT, sizeof(vector3f), &tcoords);
+		tex2->Bind();
+		glVertexPointer (3, GL_FLOAT, sizeof(vector3f), &big);
+		int loc = glGetUniformLocation(thrusterProg->GetProgram(), "inverse");
+		glUniform1i(loc, 1);
+		glDrawArrays(GL_QUADS, 0, 4);
 
-		glVertexPointer (3, GL_FLOAT, sizeof(vector3f), pTVertex8pt);
-		glDrawElements (GL_TRIANGLES, pNumIndex[1], GL_UNSIGNED_SHORT, pTIndex8pt);
+		tex->Bind();
+		glUniform1i(loc, 0);
+		glVertexPointer (3, GL_FLOAT, sizeof(vector3f), &shit);
+		glDrawArrays(GL_QUADS, 0, 4);
+		glPushMatrix();
+		glRotatef(45.f, 0.f, 0.f, 1.f);
+		glDrawArrays(GL_QUADS, 0, 4);
+		glRotatef(45.f, 0.f, 0.f, 1.f);
+		glDrawArrays(GL_QUADS, 0, 4);
+		glRotatef(45.f, 0.f, 0.f, 1.f);
+		glDrawArrays(GL_QUADS, 0, 4);
+		glPopMatrix();
+
+		//forgot this scaling
+		//glScalef (2.0f, 2.0f, 1.5f);
 
 		glPopMatrix ();
 	}
@@ -491,8 +530,20 @@ public:
 		Render::UnbindAllBuffers();
 
 		if (m_thrusters.size()) {
+			assert(tex != 0);
+			assert(tex2 != 0);
+			assert(thrusterProg != 0);
 			glDisable(GL_LIGHTING);
-			Render::State::UseProgram(Render::simpleShader);
+			glEnable(GL_TEXTURE_2D);
+			tex2->Bind();
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			tex->Bind();
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			Render::State::UseProgram(thrusterProg);
+			int loc = glGetUniformLocation(thrusterProg->GetProgram(), "flaretex");
+			glUniform1i(loc, 0);
 			RenderThrusters(rstate, cameraPos, params);
 		}
 	}
@@ -507,10 +558,12 @@ public:
 		}
 		sort(dists, dists + m_thrusters.size(), ShipThruster::CameraDistanceCompare());
 
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE);	
+		glBlendFunc(GL_ONE, GL_ONE);
+		glDepthMask(GL_FALSE);
+		glDisable(GL_CULL_FACE);
 		glEnableClientState (GL_VERTEX_ARRAY);
 		glDisableClientState (GL_NORMAL_ARRAY);
-		glDisableClientState (GL_TEXTURE_COORD_ARRAY);
+		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 		glEnable (GL_BLEND);
 		for (unsigned int i=0; i<m_thrusters.size(); i++) {
 			ShipThruster::RenderThruster (rstate, params, dists[i].thruster);
@@ -518,6 +571,8 @@ public:
 		glDisable (GL_BLEND);
 		glDisableClientState (GL_VERTEX_ARRAY);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	
+		glDepthMask(GL_TRUE);
+		glEnable(GL_CULL_FACE);
 	}
 	void PushThruster(const vector3f &pos, const vector3f &dir, const float power, bool linear_only) {
 		unsigned int i = m_thrusters.size();
@@ -4408,6 +4463,10 @@ static void _write_model_crc_file()
 void LmrModelCompilerInit(TextureCache *textureCache)
 {
 	s_textureCache = textureCache;
+
+	tex = s_textureCache->GetModelTexture(PIONEER_DATA_DIR"/textures/thruster.png");
+	tex2 = s_textureCache->GetModelTexture(PIONEER_DATA_DIR"/textures/ahalo.png");
+	thrusterProg = new Render::Shader("thruster");
 
 	s_cacheDir = GetPiUserDir("model_cache");
 	_detect_model_changes();

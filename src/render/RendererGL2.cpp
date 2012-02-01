@@ -61,6 +61,7 @@ template<> void Buffer<LineVertex>::Draw(GLenum pt, int start, int count) {
 
 Render::Shader *simpleTextured;
 Render::Shader *flatProg;
+Render::Shader *flatTextured;
 Render::Shader *thrusterProg;
 Buffer<LineVertex> *lineBuffer;
 
@@ -69,7 +70,7 @@ RendererGL2::RendererGL2(int w, int h) :
 {
 	simpleTextured = new Render::Shader("simpleTextured");
 	flatProg = new Render::Shader("flat");
-	thrusterProg = new Render::Shader("thruster");
+	thrusterProg = new Render::Shader("flat", "#define TEXTURE0 1\n");
 	lineBuffer = new Buffer<LineVertex>(1000);
 }
 

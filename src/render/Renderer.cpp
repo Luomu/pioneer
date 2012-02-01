@@ -59,6 +59,12 @@ void VertexArray::Add(const vector3f &v, const Color &c, const vector2f &uv)
 	uv0.push_back(uv);
 }
 
+void VertexArray::Add(const vector3f &v, const vector2f &uv)
+{
+	position.push_back(v);
+	uv0.push_back(uv);
+}
+
 int Surface::GetNumVerts() const
 {
 	if (vertices)

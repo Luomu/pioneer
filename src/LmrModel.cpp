@@ -191,20 +191,14 @@ namespace ShipThruster {
 
 		glScalef (width*0.5f, width*0.5f, len*0.666f);
 		
-		if (Render::IsHDREnabled())
-			glColor4f(0.0f, 40.0f, 100.0f, 0.9f);
-		else
-			glColor4f(0.0f, 0.4f, 1.0f, 0.9f);
+		glColor4f(0.0f, 0.4f, 1.0f, 0.9f);
 
 		glVertexPointer (3, GL_FLOAT, sizeof(vector3f), pTVertex8pt);
 		glDrawElements (GL_TRIANGLES, pNumIndex[1], GL_UNSIGNED_SHORT, pTIndex8pt);
 
 		glScalef (2.0f, 2.0f, 1.5f);
 
-		if (Render::IsHDREnabled())
-			glColor4f(100.0f, 100.0f, 100.0f, 0.9f);
-		else
-			glColor4f(0.4f, 0.0f, 1.0f, 0.9f);
+		glColor4f(0.4f, 0.0f, 1.0f, 0.9f);
 
 		glVertexPointer (3, GL_FLOAT, sizeof(vector3f), pTVertex8pt);
 		glDrawElements (GL_TRIANGLES, pNumIndex[1], GL_UNSIGNED_SHORT, pTIndex8pt);

@@ -4,12 +4,13 @@
 #include "Player.h"
 #include "StationAdvertForm.h"
 #include "FormController.h"
+#include "Lang.h"
 
 StationBulletinBoardForm::StationBulletinBoardForm(FormController *controller) : FaceForm(controller)
 {
 	m_station = Pi::player->GetDockedWith();
 
-	SetTitle(m_station->GetLabel() + " bulletin board");
+	SetTitle(m_station->GetLabel() + " " + Lang::BULLETIN_BOARD);
 
 	Gui::VScrollPortal *scrollbox = new Gui::VScrollPortal(460);
 	Gui::VScrollBar *scrollbar = new Gui::VScrollBar();
@@ -59,7 +60,7 @@ void StationBulletinBoardForm::UpdateAdverts()
 
 	m_advertbox->SetSizeRequest(450, adverts.size() * YSEP);
 
-	int y = 0;
+	float y = 0;
 	for (std::list<const BBAdvert*>::const_iterator i = adverts.begin(); i != adverts.end(); i++) {
 		Gui::SolidButton *b = new Gui::SolidButton();
 		b->onClick.connect(sigc::bind(sigc::mem_fun(this, &StationBulletinBoardForm::ActivateAdvertForm), *(*i)));

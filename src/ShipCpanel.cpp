@@ -12,8 +12,41 @@
 #include "SystemInfoView.h"
 #include "GalacticView.h"
 #include "GameMenuView.h"
+#include "Lang.h"
+#include "Game.h"
 
-ShipCpanel::ShipCpanel(): Gui::Fixed(float(Gui::Screen::GetWidth()), 80)
+class CameraSwitchWidget : public Gui::Widget {
+public:
+	CameraSwitchWidget(ShipCpanel *panel, WorldView::CamType camType) : m_panel(panel), m_camType(camType) {}
+
+	virtual void Draw() {}
+	virtual void GetSizeRequested(float size[2]) { size[0] = size[1] = 0.0f; }
+
+	virtual void OnActivate() {
+		if (Pi::GetView() == Pi::worldView)
+			m_panel->SwitchToCamera(m_camType);
+	}
+
+private:
+	ShipCpanel *m_panel;
+	WorldView::CamType m_camType;
+};
+
+ShipCpanel::ShipCpanel(Graphics::Renderer *r): Gui::Fixed(float(Gui::Screen::GetWidth()), 80)
+{
+	m_scanner = new ScannerWidget(r);
+
+	InitObject();
+}
+
+ShipCpanel::ShipCpanel(Serializer::Reader &rd, Graphics::Renderer *r): Gui::Fixed(float(Gui::Screen::GetWidth()), 80)
+{
+	m_scanner = new ScannerWidget(r, rd);
+
+	InitObject();
+}
+
+void ShipCpanel::InitObject()
 {
 	Gui::Screen::AddBaseWidget(this, 0, Gui::Screen::GetHeight()-80);
 	SetTransparency(true);
@@ -22,7 +55,6 @@ ShipCpanel::ShipCpanel(): Gui::Fixed(float(Gui::Screen::GetWidth()), 80)
 	Add(img, 0, 0);
 
 	m_currentMapView = MAP_SECTOR;
-	m_scanner = new ScannerWidget();
 	m_useEquipWidget = new UseEquipWidget();
 	m_msglog = new MsgLogWidget();
 
@@ -44,119 +76,133 @@ ShipCpanel::ShipCpanel(): Gui::Fixed(float(Gui::Screen::GetWidth()), 80)
 
 //	Gui::RadioGroup *g = new Gui::RadioGroup();
 	Gui::ImageRadioButton *b = new Gui::ImageRadioButton(0, PIONEER_DATA_DIR "/icons/timeaccel0.png", PIONEER_DATA_DIR "/icons/timeaccel0_on.png");
-	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), 0));
+	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), Game::TIMEACCEL_PAUSED));
 	b->SetShortcut(SDLK_ESCAPE, KMOD_LSHIFT);
 	Add(b, 0, 36);
 	m_timeAccelButtons[0] = b;
 	
 	b = new Gui::ImageRadioButton(0, PIONEER_DATA_DIR "/icons/timeaccel1.png", PIONEER_DATA_DIR "/icons/timeaccel1_on.png");
-	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), 1));
+	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), Game::TIMEACCEL_1X));
 	b->SetShortcut(SDLK_F1, KMOD_LSHIFT);
 	b->SetSelected(true);
 	Add(b, 22, 36);
 	m_timeAccelButtons[1] = b;
 	
 	b = new Gui::ImageRadioButton(0, PIONEER_DATA_DIR "/icons/timeaccel2.png", PIONEER_DATA_DIR "/icons/timeaccel2_on.png");
-	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), 2));
+	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), Game::TIMEACCEL_10X));
 	b->SetShortcut(SDLK_F2, KMOD_LSHIFT);
 	Add(b, 44, 36);
 	m_timeAccelButtons[2] = b;
 	
 	b = new Gui::ImageRadioButton(0, PIONEER_DATA_DIR "/icons/timeaccel3.png", PIONEER_DATA_DIR "/icons/timeaccel3_on.png");
-	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), 3));
+	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), Game::TIMEACCEL_100X));
 	b->SetShortcut(SDLK_F3, KMOD_LSHIFT);
 	Add(b, 66, 36);
 	m_timeAccelButtons[3] = b;
 	
 	b = new Gui::ImageRadioButton(0, PIONEER_DATA_DIR "/icons/timeaccel4.png", PIONEER_DATA_DIR "/icons/timeaccel4_on.png");
-	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), 4));
+	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), Game::TIMEACCEL_1000X));
 	b->SetShortcut(SDLK_F4, KMOD_LSHIFT);
 	Add(b, 88, 36);
 	m_timeAccelButtons[4] = b;
 	
 	b = new Gui::ImageRadioButton(0, PIONEER_DATA_DIR "/icons/timeaccel5.png", PIONEER_DATA_DIR "/icons/timeaccel5_on.png");
-	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), 5));
+	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnClickTimeaccel), Game::TIMEACCEL_10000X));
 	b->SetShortcut(SDLK_F5, KMOD_LSHIFT);
 	Add(b, 110, 36);
 	m_timeAccelButtons[5] = b;
 		
-	Gui::RadioGroup *g = new Gui::RadioGroup();
-	Gui::MultiStateImageButton *cam_button = new Gui::MultiStateImageButton();
-	g->Add(cam_button);
-	cam_button->SetSelected(true);
-	cam_button->AddState(WorldView::CAM_FRONT, PIONEER_DATA_DIR "/icons/cam_front.png", PIONEER_DATA_DIR "/icons/cam_front_on.png", "Front view");
-	cam_button->AddState(WorldView::CAM_REAR, PIONEER_DATA_DIR "/icons/cam_rear.png", PIONEER_DATA_DIR "/icons/cam_rear_on.png", "Rear view");
-	cam_button->AddState(WorldView::CAM_EXTERNAL, PIONEER_DATA_DIR "/icons/cam_external.png", PIONEER_DATA_DIR "/icons/cam_external_on.png", "External view");
-	cam_button->SetShortcut(SDLK_F1, KMOD_NONE);
-	cam_button->onClick.connect(sigc::mem_fun(this, &ShipCpanel::OnChangeCamView));
-	Add(cam_button, 2, 56);
+	m_leftButtonGroup = new Gui::RadioGroup();
+	m_camButton = new Gui::MultiStateImageButton();
+	m_leftButtonGroup->Add(m_camButton);
+	m_camButton->SetSelected(true);
+	m_camButton->AddState(WorldView::CAM_FRONT, PIONEER_DATA_DIR "/icons/cam_front.png", PIONEER_DATA_DIR "/icons/cam_front_on.png", Lang::FRONT_VIEW);
+	m_camButton->AddState(WorldView::CAM_REAR, PIONEER_DATA_DIR "/icons/cam_rear.png", PIONEER_DATA_DIR "/icons/cam_rear_on.png", Lang::REAR_VIEW);
+	m_camButton->AddState(WorldView::CAM_EXTERNAL, PIONEER_DATA_DIR "/icons/cam_external.png", PIONEER_DATA_DIR "/icons/cam_external_on.png", Lang::EXTERNAL_VIEW);
+	m_camButton->AddState(WorldView::CAM_SIDEREAL, PIONEER_DATA_DIR "/icons/cam_sidereal.png", PIONEER_DATA_DIR "/icons/cam_sidereal_on.png", Lang::SIDEREAL_VIEW);
+	m_camButton->SetShortcut(SDLK_F1, KMOD_NONE);
+	m_camButton->onClick.connect(sigc::mem_fun(this, &ShipCpanel::OnChangeCamView));
+	Add(m_camButton, 2, 56);
 
 	Gui::MultiStateImageButton *map_button = new Gui::MultiStateImageButton();
-	g->Add(map_button);
+	m_leftButtonGroup->Add(map_button);
 	map_button->SetSelected(false);
 	map_button->SetShortcut(SDLK_F2, KMOD_NONE);
-	map_button->AddState(0, PIONEER_DATA_DIR "/icons/cpan_f2_map.png", PIONEER_DATA_DIR "/icons/cpan_f2_map_on.png", "Navigation and star maps");
+	map_button->AddState(0, PIONEER_DATA_DIR "/icons/cpan_f2_map.png", PIONEER_DATA_DIR "/icons/cpan_f2_map_on.png", Lang::NAVIGATION_STAR_MAPS);
 	map_button->onClick.connect(sigc::mem_fun(this, &ShipCpanel::OnChangeToMapView));
 	Add(map_button, 34, 56);
 
 	Gui::MultiStateImageButton *info_button = new Gui::MultiStateImageButton();
-	g->Add(info_button);
+	m_leftButtonGroup->Add(info_button);
 	info_button->SetSelected(false);
 	info_button->SetShortcut(SDLK_F3, KMOD_NONE);
-	info_button->AddState(0, PIONEER_DATA_DIR "/icons/cpan_f3_shipinfo.png", PIONEER_DATA_DIR "/icons/cpan_f3_shipinfo_on.png", "Ship information");
+	info_button->AddState(0, PIONEER_DATA_DIR "/icons/cpan_f3_shipinfo.png", PIONEER_DATA_DIR "/icons/cpan_f3_shipinfo_on.png", Lang::SHIP_INFORMATION);
 	info_button->onClick.connect(sigc::mem_fun(this, &ShipCpanel::OnChangeInfoView));
 	Add(info_button, 66, 56);
 
 	Gui::MultiStateImageButton *comms_button = new Gui::MultiStateImageButton();
-	g->Add(comms_button);
+	m_leftButtonGroup->Add(comms_button);
 	comms_button->SetSelected(false);
 	comms_button->SetShortcut(SDLK_F4, KMOD_NONE);
-	comms_button->AddState(0, PIONEER_DATA_DIR "/icons/comms_f4.png", PIONEER_DATA_DIR "/icons/comms_f4_on.png", "Comms");
+	comms_button->AddState(0, PIONEER_DATA_DIR "/icons/comms_f4.png", PIONEER_DATA_DIR "/icons/comms_f4_on.png", Lang::COMMS);
 	comms_button->onClick.connect(sigc::mem_fun(this, &ShipCpanel::OnClickComms));
 	Add(comms_button, 98, 56);
 
 	m_clock = (new Gui::Label(""))->Color(1.0f,0.7f,0.0f);
 	Add(m_clock, 4, 18);
 	
-	g = new Gui::RadioGroup();
-	b = new Gui::ImageRadioButton(g, PIONEER_DATA_DIR "/icons/map_sector_view.png", PIONEER_DATA_DIR "/icons/map_sector_view_on.png");
-	g->SetSelected(0);
+	m_rightButtonGroup = new Gui::RadioGroup();
+	b = new Gui::ImageRadioButton(m_rightButtonGroup, PIONEER_DATA_DIR "/icons/map_sector_view.png", PIONEER_DATA_DIR "/icons/map_sector_view_on.png");
+	m_rightButtonGroup->SetSelected(0);
 	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnChangeMapView), MAP_SECTOR));
 	b->SetShortcut(SDLK_F5, KMOD_NONE);
-	b->SetToolTip("Galaxy sector view");
+	b->SetToolTip(Lang::GALAXY_SECTOR_VIEW);
 	Add(b, 674, 56);
 	m_mapViewButtons[0] = b;
-	b = new Gui::ImageRadioButton(g, PIONEER_DATA_DIR "/icons/map_system_view.png", PIONEER_DATA_DIR "/icons/map_system_view_on.png");
+	b = new Gui::ImageRadioButton(m_rightButtonGroup, PIONEER_DATA_DIR "/icons/map_system_view.png", PIONEER_DATA_DIR "/icons/map_system_view_on.png");
 	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnChangeMapView), MAP_SYSTEM));
 	b->SetShortcut(SDLK_F6, KMOD_NONE);
-	b->SetToolTip("System orbit view");
+	b->SetToolTip(Lang::SYSTEM_ORBIT_VIEW);
 	Add(b, 706, 56);
 	m_mapViewButtons[1] = b;
-	b = new Gui::ImageRadioButton(g, PIONEER_DATA_DIR "/icons/map_sysinfo_view.png", PIONEER_DATA_DIR "/icons/map_sysinfo_view_on.png");
+	b = new Gui::ImageRadioButton(m_rightButtonGroup, PIONEER_DATA_DIR "/icons/map_sysinfo_view.png", PIONEER_DATA_DIR "/icons/map_sysinfo_view_on.png");
 	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnChangeMapView), MAP_INFO));
 	b->SetShortcut(SDLK_F7, KMOD_NONE);
-	b->SetToolTip("Star system information");
+	b->SetToolTip(Lang::STAR_SYSTEM_INFORMATION);
 	Add(b, 738, 56);
 	m_mapViewButtons[2] = b;
-	b = new Gui::ImageRadioButton(g, PIONEER_DATA_DIR "/icons/map_galactic_view.png", PIONEER_DATA_DIR "/icons/map_galactic_view_on.png");
+	b = new Gui::ImageRadioButton(m_rightButtonGroup, PIONEER_DATA_DIR "/icons/map_galactic_view.png", PIONEER_DATA_DIR "/icons/map_galactic_view_on.png");
 	b->onSelect.connect(sigc::bind(sigc::mem_fun(this, &ShipCpanel::OnChangeMapView), MAP_GALACTIC));
 	b->SetShortcut(SDLK_F8, KMOD_NONE);
-	b->SetToolTip("Galactic view");
+	b->SetToolTip(Lang::GALACTIC_VIEW);
 	Add(b, 770, 56);
 	m_mapViewButtons[3] = b;
 
 	img = new Gui::Image(PIONEER_DATA_DIR "/icons/alert_green.png");
-	img->SetToolTip("No alert");
+	img->SetToolTip(Lang::NO_ALERT);
 	Add(img, 780, 37);
 	m_alertLights[0] = img;
 	img = new Gui::Image(PIONEER_DATA_DIR "/icons/alert_yellow.png");
-	img->SetToolTip("Ship nearby");
+	img->SetToolTip(Lang::SHIP_NEARBY);
 	Add(img, 780, 37);
 	m_alertLights[1] = img;
 	img = new Gui::Image(PIONEER_DATA_DIR "/icons/alert_red.png");
-	img->SetToolTip("Fire detected");
+	img->SetToolTip(Lang::LASER_FIRE_DETECTED);
 	Add(img, 780, 37);
 	m_alertLights[2] = img;
+
+	CameraSwitchWidget *camSwitcher = new CameraSwitchWidget(this, WorldView::CAM_FRONT);
+	camSwitcher->SetShortcut(SDLK_1, KMOD_LSHIFT);
+	Add(camSwitcher,0,0);
+	camSwitcher = new CameraSwitchWidget(this, WorldView::CAM_REAR);
+	camSwitcher->SetShortcut(SDLK_2, KMOD_LSHIFT);
+	Add(camSwitcher,0,0);
+	camSwitcher = new CameraSwitchWidget(this, WorldView::CAM_EXTERNAL);
+	camSwitcher->SetShortcut(SDLK_3, KMOD_LSHIFT);
+	Add(camSwitcher,0,0);
+	camSwitcher = new CameraSwitchWidget(this, WorldView::CAM_SIDEREAL);
+	camSwitcher->SetShortcut(SDLK_4, KMOD_LSHIFT);
+	Add(camSwitcher,0,0);
 
 	m_connOnDockingClearanceExpired =
 		Pi::onDockingClearanceExpired.connect(sigc::mem_fun(this, &ShipCpanel::OnDockingClearanceExpired));
@@ -164,12 +210,16 @@ ShipCpanel::ShipCpanel(): Gui::Fixed(float(Gui::Screen::GetWidth()), 80)
 
 ShipCpanel::~ShipCpanel()
 {
+	delete m_leftButtonGroup;
+	delete m_rightButtonGroup;
 	Remove(m_scanner);
 	Remove(m_useEquipWidget);
 	Remove(m_msglog);
+	Remove(m_mfsel);
 	delete m_scanner;
 	delete m_useEquipWidget;
 	delete m_msglog;
+	delete m_mfsel;
 	m_connOnDockingClearanceExpired.disconnect();
 }
 
@@ -208,13 +258,13 @@ void ShipCpanel::OnMultiFuncUngrabFocus(multifuncfunc_t f)
 
 void ShipCpanel::OnDockingClearanceExpired(const SpaceStation *s)
 {
-	MsgLog()->ImportantMessage(s->GetLabel(), "Docking clearance expired. If you wish to dock you must repeat your request.");
+	MsgLog()->ImportantMessage(s->GetLabel(), Lang::DOCKING_CLEARANCE_EXPIRED);
 }
 
 void ShipCpanel::Update()
 {
-	int timeAccel = Pi::GetTimeAccelIdx();
-	int requested = Pi::GetRequestedTimeAccelIdx();
+	int timeAccel = Pi::game->GetTimeAccel();
+	int requested = Pi::game->GetRequestedTimeAccel();
 
 	for (int i=0; i<6; i++) {
 		m_timeAccelButtons[i]->SetSelected(timeAccel == i);
@@ -231,7 +281,7 @@ void ShipCpanel::Update()
 
 void ShipCpanel::Draw()
 {
-	std::string time = format_date(Pi::GetGameTime());
+	std::string time = format_date(Pi::game->GetTime());
 	m_clock->SetText(time);
 
 	View *cur = Pi::GetView();
@@ -243,10 +293,16 @@ void ShipCpanel::Draw()
 	Gui::Fixed::Draw();
 }
 
-void ShipCpanel::OnChangeCamView(Gui::MultiStateImageButton *b)
+void ShipCpanel::SwitchToCamera(WorldView::CamType t)
 {
 	Pi::BoinkNoise();
-	Pi::worldView->SetCamType(WorldView::CamType(b->GetState()));
+	m_camButton->SetActiveState(int(t));
+	Pi::worldView->SetCamType(t);
+}
+
+void ShipCpanel::OnChangeCamView(Gui::MultiStateImageButton *b)
+{
+	SwitchToCamera(WorldView::CamType(b->GetState()));
 	Pi::SetView(Pi::worldView);
 }
 
@@ -290,16 +346,20 @@ void ShipCpanel::HideMapviewButtons()
 	for (int i=0; i<4; i++) m_mapViewButtons[i]->Hide();
 }
 
-void ShipCpanel::OnClickTimeaccel(int val)
+void ShipCpanel::OnClickTimeaccel(Game::TimeAccel val)
 {
 	Pi::BoinkNoise();
-	if ((Pi::GetTimeAccelIdx() == val) && (val == 0)) {
+	if ((Pi::game->GetTimeAccel() == val) && (val == Game::TIMEACCEL_PAUSED)) {
 		if (Pi::GetView() != Pi::gameMenuView)
 			Pi::SetView(Pi::gameMenuView);
 		else
 			Pi::SetView(Pi::worldView);
-	} else
-		Pi::RequestTimeAccel(val);
+	}
+	else {
+		if (Pi::GetView() == Pi::gameMenuView)
+			Pi::SetView(Pi::worldView);
+		Pi::game->RequestTimeAccel(val, Pi::KeyState(SDLK_LCTRL) || Pi::KeyState(SDLK_RCTRL));
+	}
 }
 
 void ShipCpanel::OnClickComms(Gui::MultiStateImageButton *b)
@@ -331,4 +391,14 @@ void ShipCpanel::SetAlertState(Ship::AlertState as)
 			m_alertLights[2]->Show();
 			break;
 	}
+}
+
+void ShipCpanel::TimeStepUpdate(float step)
+{
+	m_scanner->TimeStepUpdate(step);
+}
+
+void ShipCpanel::Save(Serializer::Writer &wr)
+{
+	m_scanner->Save(wr);
 }

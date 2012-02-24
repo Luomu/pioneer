@@ -16,16 +16,19 @@ public:
 	virtual void Draw3D();
 	virtual void OnSwitchTo() {}
 private:
+	static const double PICK_OBJECT_RECT_SIZE;
 	void PutOrbit(SBody *b, vector3d offset);
 	void PutBody(SBody *b, vector3d offset);
 	void PutLabel(SBody *b, vector3d offset);
+	void PutSelectionBox(const SBody *b, const vector3d &rootPos, const Color &col);
+	void PutSelectionBox(const vector3d &worldPos, const Color &col);
 	void GetTransformTo(SBody *b, vector3d &pos);
 	void OnClickObject(SBody *b);
 	void OnClickAccel(float step);
 	void ResetViewpoint();
 	void MouseButtonDown(int button, int x, int y);
 
-	StarSystem *m_system;
+	RefCountedPtr<StarSystem> m_system;
 	SBody *m_selectedObject;
 	float m_rot_x, m_rot_z;
 	float m_zoom;

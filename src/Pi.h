@@ -1,17 +1,17 @@
 #ifndef _PI_H
 #define _PI_H
 
-#include "libs.h"
+#include "utils.h"
 #include "gui/Gui.h"
 #include "View.h"
 #include "mtrand.h"
 #include "gameconsts.h"
-#include "Serializer.h"
 #include "GameConfig.h"
 #include "LuaEventQueue.h"
 #include "LuaSerializer.h"
 #include "LuaTimer.h"
 #include "CargoBody.h"
+#include "Space.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -29,15 +29,20 @@ class SpaceStation;
 class GalacticView;
 class Ship;
 class GameMenuView;
-struct lua_State;
+class LuaConsole;
+class LuaNameGen;
+namespace Graphics { class Renderer; }
 namespace Sound { class MusicPlayer; }
+class TextureCache;
 
-#if OBJECTVIEWER
+#if WITH_OBJECTVIEWER
 class ObjectViewerView;
 #endif
 
 struct DetailLevel {
 	int planets;
+	int textures;
+	int fracmult;
 	int cities;
 };
 
@@ -47,37 +52,31 @@ enum MsgLevel {
 };
 
 class Frame;
-
-#define PHYSICS_HZ (60.0f)
+class Game;
 
 class Pi {
 public:
 	static void Init();
+	static void RedirectStdio();
 	static void InitGame();
+	static void StarportStart(Uint32 starport);
 	static void StartGame();
-	static void UninitGame();
 	static void EndGame();
 	static void Start();
 	static void MainLoop();
 	static void TombStoneLoop();
+	static void HandleMenuKey(int n);
 	static void OnChangeDetailLevel();
+	static void ToggleLuaConsole();
 	static void Quit() __attribute((noreturn));
-	static void Serialize(Serializer::Writer &wr);
-	static void Unserialize(Serializer::Reader &rd);
 	static float GetFrameTime() { return frameTime; }
-	static double GetGameTime() { return gameTime; }
-	static void SetTimeAccel(int v);
-	static void RequestTimeAccel(int v);
-	static int GetRequestedTimeAccelIdx() { return requestedTimeAccelIdx; }
-	static int GetTimeAccelIdx() { return timeAccelIdx; }
-	static float GetTimeAccel() { return timeAccelRates[timeAccelIdx]; }
-	static float GetTimeStep() { return timeAccelRates[timeAccelIdx]*(1.0f/PHYSICS_HZ); }
 	static float GetGameTickAlpha() { return gameTickAlpha; }
 	static int GetScrWidth() { return scrWidth; }
 	static int GetScrHeight() { return scrHeight; }
 	static float GetScrAspect() { return scrAspect; }
 	static int KeyState(SDLKey k) { return keyState[k]; }
 	static int KeyModState() { return keyModState; }
+	static bool IsConsoleActive();
 	static int JoystickButtonState(int joystick, int button);
 	static int JoystickHatState(int joystick, int hat);
 	static float JoystickAxisState(int joystick, int axis);
@@ -91,7 +90,6 @@ public:
 	}
 	static void SetMouseGrab(bool on);
 	static void BoinkNoise();
-	static bool IsGameStarted() { return isGameStarted; }
 	static float CalcHyperspaceRange(int hyperclass, int total_mass_in_tonnes);
 	static void Message(const std::string &message, const std::string &from = "", enum MsgLevel level = MSG_NORMAL);
 
@@ -104,38 +102,45 @@ public:
 	static sigc::signal<void> onPlayerChangeEquipment;
 	static sigc::signal<void, const SpaceStation*> onDockingClearanceExpired;
 
-	static LuaManager luaManager;
+	static LuaManager *luaManager;
 
-	static LuaSerializer luaSerializer;
-	static LuaTimer luaTimer;
+	static LuaSerializer *luaSerializer;
+	static LuaTimer *luaTimer;
 
-	static LuaEventQueue<> luaOnGameStart;
-	static LuaEventQueue<> luaOnGameEnd;
-	static LuaEventQueue<Ship> luaOnEnterSystem;
-	static LuaEventQueue<Ship> luaOnLeaveSystem;
-	static LuaEventQueue<Body> luaOnFrameChanged;
-	static LuaEventQueue<Ship,Body> luaOnShipDestroyed;
-	static LuaEventQueue<Ship,Body> luaOnShipHit;
-	static LuaEventQueue<Ship,Body> luaOnShipCollided;
-	static LuaEventQueue<Ship,SpaceStation> luaOnShipDocked;
-	static LuaEventQueue<Ship,SpaceStation> luaOnShipUndocked;
-	static LuaEventQueue<Ship,Body> luaOnShipLanded;
-	static LuaEventQueue<Ship,Body> luaOnShipTakeOff;
-	static LuaEventQueue<Ship,const char *> luaOnShipAlertChanged;
-	static LuaEventQueue<Ship,CargoBody> luaOnJettison;
-	static LuaEventQueue<Ship> luaOnAICompleted;
-	static LuaEventQueue<SpaceStation> luaOnCreateBB;
-	static LuaEventQueue<SpaceStation> luaOnUpdateBB;
-	static LuaEventQueue<> luaOnSongFinished;
+	static LuaEventQueue<> *luaOnGameStart;
+	static LuaEventQueue<> *luaOnGameEnd;
+	static LuaEventQueue<Ship> *luaOnEnterSystem;
+	static LuaEventQueue<Ship> *luaOnLeaveSystem;
+	static LuaEventQueue<Body> *luaOnFrameChanged;
+	static LuaEventQueue<Ship,Body> *luaOnShipDestroyed;
+	static LuaEventQueue<Ship,Body> *luaOnShipHit;
+	static LuaEventQueue<Ship,Body> *luaOnShipCollided;
+	static LuaEventQueue<Ship,SpaceStation> *luaOnShipDocked;
+	static LuaEventQueue<Ship,SpaceStation> *luaOnShipUndocked;
+	static LuaEventQueue<Ship,Body> *luaOnShipLanded;
+	static LuaEventQueue<Ship,Body> *luaOnShipTakeOff;
+	static LuaEventQueue<Ship,const char *> *luaOnShipAlertChanged;
+	static LuaEventQueue<Ship,CargoBody> *luaOnJettison;
+	static LuaEventQueue<Body,const char *> *luaOnCargoUnload;
+	static LuaEventQueue<Ship,const char *> *luaOnAICompleted;
+	static LuaEventQueue<SpaceStation> *luaOnCreateBB;
+	static LuaEventQueue<SpaceStation> *luaOnUpdateBB;
+	static LuaEventQueue<> *luaOnSongFinished;
+	static LuaEventQueue<Ship> *luaOnShipFlavourChanged;
+	static LuaEventQueue<Ship,const char *> *luaOnShipEquipmentChanged;
+	static LuaEventQueue<Ship,const char *> *luaOnShipFuelChanged;
+
+	static LuaNameGen *luaNameGen;
+
+	static TextureCache *textureCache;
 
 	static MTRand rng;
 	static int statSceneTris;
 
 	static void SetView(View *v);
 	static View *GetView() { return currentView; }
-	static StarSystem *GetSelectedSystem();
 
-#if DEVKEYS
+#if WITH_DEVKEYS
 	static bool showDebugInfo;
 #endif
 	static Player *player;
@@ -147,15 +152,17 @@ public:
 	static WorldView *worldView;
 	static SpaceStationView *spaceStationView;
 	static InfoView *infoView;
+	static LuaConsole *luaConsole;
 	static ShipCpanel *cpan;
 	static GLUquadric *gluQuadric;
-	static StarSystem *currentSystem;
-	static lua_State *luaPersistent;
 	static Sound::MusicPlayer &GetMusicPlayer() { return musicPlayer; }
+	static Graphics::Renderer* renderer; // blargh
 
-#if OBJECTVIEWER
+#if WITH_OBJECTVIEWER
 	static ObjectViewerView *objectViewerView;
 #endif
+
+	static Game *game;
 
 	static int CombatRating(int kills);
 	static const char * const combatRating[];
@@ -163,21 +170,21 @@ public:
 	static struct DetailLevel detail;
 	static GameConfig config;
 private:
-	static void InitOpenGL();
 	static void HandleEvents();
 	static void InitJoysticks();
 
+	static bool menuDone;
+
 	static View *currentView;
 
-	static double gameTime;
 	/** So, the game physics rate (50Hz) can run slower
 	  * than the frame rate. gameTickAlpha is the interpolation
 	  * factor between one physics tick and another [0.0-1.0]
 	  */
 	static float gameTickAlpha;
-	static StarSystem *selectedSystem;
 	static int timeAccelIdx;
 	static int requestedTimeAccelIdx;
+	static bool forceTimeAccel;
 	static float frameTime;
 	static int scrWidth, scrHeight;
 	static float scrAspect;
@@ -188,7 +195,6 @@ private:
 	static int mouseMotion[2];
 	static bool doingMouseGrab;
 	static const float timeAccelRates[];
-	static bool isGameStarted;
 
 	static bool joystickEnabled;
 	static bool mouseYInvert;

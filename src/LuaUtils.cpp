@@ -47,10 +47,29 @@ int pi_lua_panic(lua_State *L)
 	errorMsg += lua_tostring(L, -1);
 	errorMsg += "\n";
 	Error("%s", errorMsg.c_str());
-	return 0;
+	// Error() is noreturn
+
+	// XXX when Lua management is good enough, we can probably remove panic
+	//     entirely in favour of pcall and a nicer error handling system
+	RETURN_ZERO_NONGNU_ONLY;
 }
 
-void pi_lua_dofile_recursive(lua_State *l, std::string basepath)
+void pi_lua_protected_call(lua_State* L, int nargs, int nresults) {
+	int handleridx = lua_gettop(L) - nargs;
+	lua_getfield(L, LUA_REGISTRYINDEX, "PiDebug");
+	lua_getfield(L, -1, "error_handler");
+	lua_insert(L, handleridx);
+	lua_pop(L, 1); // pop PiDebug table
+	int ret = lua_pcall(L, nargs, nresults, handleridx);
+	lua_remove(L, handleridx); // pop error_handler
+	if (ret) {
+		std::string errorMsg = lua_tostring(L, -1);
+		lua_pop(L, 1);
+		Error("%s", errorMsg.c_str());
+	}
+}
+
+void pi_lua_dofile_recursive(lua_State *l, const std::string &basepath)
 {
 	DIR *dir;
 	struct dirent *entry;
@@ -119,4 +138,24 @@ int pi_load_lua(lua_State *l) {
 	const char *path = luaL_checkstring(l, 1);
 	pi_lua_dofile_recursive(l, path);
 	return 0;
+}
+
+void pi_lua_warn(lua_State *l, const char *format, ...)
+{
+	char buf[1024];
+	va_list ap;
+	va_start(ap, format);
+	vsnprintf(buf, sizeof(buf), format, ap);
+	va_end(ap);
+	fprintf(stderr, "Lua Warning: %s\n", buf);
+
+	lua_Debug info;
+	int level = 0;
+	while (lua_getstack(l, level, &info)) {
+		lua_getinfo(l, "nSl", &info);
+		fprintf(stderr, "  [%d] %s:%d -- %s [%s]\n",
+			level, info.short_src, info.currentline,
+			(info.name ? info.name : "<unknown>"), info.what);
+		++level;
+	}
 }

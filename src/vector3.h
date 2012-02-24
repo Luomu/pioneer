@@ -3,9 +3,14 @@
 
 #include <math.h>
 #include <stdio.h>
+#include "FloatComparison.h"
 
 // Need this pragma due to operator[] implementation.
 #pragma pack(4)
+
+template <typename T> struct other_floating_type {};
+template <> struct other_floating_type<float> { typedef double type; };
+template <> struct other_floating_type<double> { typedef float type; };
 
 template <typename T>
 class vector3 {
@@ -15,12 +20,14 @@ public:
 	// Constructor definitions are outside class declaration to enforce that
 	// only float and double versions are possible.
 	vector3();
-	vector3(const vector3<float > &v);
-	vector3(const vector3<double> &v);
+	vector3(const vector3<T> &v);
+	vector3(const T  vals[3]);
 	vector3(T val);
 	vector3(T _x, T _y, T _z);
-	vector3(const float  vals[3]);
-	vector3(const double vals[3]);
+
+	// disallow implicit conversion between floating point sizes
+	explicit vector3(const vector3<typename other_floating_type<T>::type> &v);
+	explicit vector3(const typename other_floating_type<T>::type vals[3]);
 
 	const T& operator[](const size_t i) const { return (const_cast<const T *>(&x))[i]; }
 	T& operator[](const size_t i) { return (&x)[i]; }
@@ -34,8 +41,10 @@ public:
 	vector3 &operator/=(const double a) { const T inva = T(1.0/a); x*=inva; y*=inva; z*=inva; return *this; }
 	vector3 operator-(const vector3 &a) const { return vector3(x-a.x, y-a.y, z-a.z); }
 	vector3 operator-() const { return vector3(-x, -y, -z); }
-	bool operator==(const vector3 &a) const { return ((a.x==x)&&(a.y==y)&&(a.z==z)); }
-	bool operator!=(const vector3 &a) const { return ((a.x!=x)||(a.y!=y)||(a.z!=z)); }
+
+	bool ExactlyEqual(const vector3 &a) const {
+		return is_equal_exact(a.x, x) && is_equal_exact(a.y, y) && is_equal_exact(a.z, z);
+	}
 
 	friend vector3 operator*(const vector3 &a, const float  scalar) { return vector3(T(a.x*scalar), T(a.y*scalar), T(a.z*scalar)); }
 	friend vector3 operator*(const vector3 &a, const double scalar) { return vector3(T(a.x*scalar), T(a.y*scalar), T(a.z*scalar)); }
@@ -50,9 +59,13 @@ public:
 	T LengthSqr() const { return x*x + y*y + z*z; }
 	vector3 Normalized() const { const T l = 1.0f / sqrt(x*x + y*y + z*z); return vector3(x*l, y*l, z*l); }
 	vector3 NormalizedSafe() const {
-		T l = sqrt(x*x + y*y + z*z);
-		if (l==0.0) return vector3(1,0,0);
-		return vector3(x/l, y/l, z/l);
+		const T lenSqr = x*x + y*y + z*z;
+		if (lenSqr < 1e-18) // sqrt(lenSqr) < 1e-9
+			return vector3(1,0,0);
+		else {
+			const T l = sqrt(lenSqr);
+			return vector3(x/l, y/l, z/l);
+		}
 	}
 
 	void Print() const { printf("v(%f,%f,%f)\n", x, y, z); }

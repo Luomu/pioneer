@@ -7,11 +7,14 @@
 #include "Polit.h"
 #include "Space.h"
 #include "SystemPath.h"
+#include "Lang.h"
+#include "StringF.h"
+#include "Game.h"
+#include "graphics/Renderer.h"
 
 SystemInfoView::SystemInfoView()
 {
 	SetTransparency(true);
-	m_system = 0;
 	m_refresh = false;
 }
 
@@ -23,8 +26,9 @@ void SystemInfoView::OnBodySelected(SBody *b)
 	}
 
 	SystemPath path = m_system->GetPathOf(b);
-	if (Pi::currentSystem->GetPath() == m_system->GetPath()) {
-		Body* body = Space::FindBodyForPath(&path);
+	RefCountedPtr<StarSystem> currentSys = Pi::game->GetSpace()->GetStarSystem();
+	if (currentSys && currentSys->GetPath() == m_system->GetPath()) {
+		Body* body = Pi::game->GetSpace()->FindBodyForPath(&path);
 		if(body != 0)
 			Pi::player->SetNavTarget(body);
 	}
@@ -38,12 +42,12 @@ void SystemInfoView::OnBodyViewed(SBody *b)
 
 	m_infoBox->DeleteAllChildren();
 	
-	Gui::Fixed *fixed = new Gui::Fixed(600, 200);
-	m_infoBox->PackStart(fixed);
+	Gui::Fixed *outer = new Gui::Fixed(600, 200);
+	m_infoBox->PackStart(outer);
 	Gui::VBox *col1 = new Gui::VBox();
 	Gui::VBox *col2 = new Gui::VBox();
-	fixed->Add(col1, 0, 0);
-	fixed->Add(col2, 300, 0);
+	outer->Add(col1, 0, 0);
+	outer->Add(col2, 300, 0);
 
 #define _add_label_and_value(label, value) { \
 	Gui::Label *l = (new Gui::Label(label))->Color(1.0f,1.0f,0.0f); \
@@ -58,26 +62,32 @@ void SystemInfoView::OnBodyViewed(SBody *b)
 		m_infoBox->PackStart(l);
 	}
 
-	_add_label_and_value("Mass", stringf(64, "%.3f %s masses", b->mass.ToDouble(), 
-		(b->GetSuperType() == SBody::SUPERTYPE_STAR ? "Solar" : "Earth")));
+	_add_label_and_value(Lang::MASS, stringf(Lang::N_WHATEVER_MASSES, formatarg("mass", b->mass.ToDouble()), 
+		formatarg("units", std::string(b->GetSuperType() == SBody::SUPERTYPE_STAR ? Lang::SOLAR : Lang::EARTH))));
 
-	_add_label_and_value("Surface temperature", stringf(64, "%d C", b->averageTemp-273));
+	if (b->type != SBody::TYPE_STARPORT_ORBITAL) {
+		_add_label_and_value(Lang::SURFACE_TEMPERATURE, stringf(Lang::N_CELSIUS, formatarg("temperature", b->averageTemp-273)));
+		_add_label_and_value(Lang::SURFACE_GRAVITY, stringf("%0{f.3} m/s^2", G * b->GetMass()/pow(b->GetRadius(), 2)));
+	}
 
 	if (b->parent) {
 		float days = float(b->orbit.period) / float(60*60*24);
 		if (days > 1000) {
-			data = stringf(64, "%.1f years", days/365);
+			data = stringf(Lang::N_YEARS, formatarg("years", days/365));
 		} else {
-			data = stringf(64, "%.1f days", b->orbit.period / (60*60*24));
+			data = stringf(Lang::N_DAYS, formatarg("days", b->orbit.period / (60*60*24)));
 		}
-		_add_label_and_value("Orbital period", data);
-		_add_label_and_value("Periapsis distance", stringf(64, "%.3f AU", b->orbMin.ToDouble()));
-		_add_label_and_value("Apoapsis distance", stringf(64, "%.3f AU", b->orbMax.ToDouble()));
-		_add_label_and_value("Eccentricity", stringf(64, "%.2f", b->orbit.eccentricity));
-		_add_label_and_value("Axial tilt", stringf(64, "%.1f degrees", b->axialTilt.ToDouble() * (180.0/M_PI) ));
-		const float dayLen = float(b->GetRotationPeriod());
-		if (dayLen) {
-			_add_label_and_value("Day length", stringf(64, "%.1f earth days", dayLen/(60*60*24)));
+		_add_label_and_value(Lang::ORBITAL_PERIOD, data);
+		_add_label_and_value(Lang::PERIAPSIS_DISTANCE, stringf("%0{f.3} AU", b->orbMin.ToDouble()));
+		_add_label_and_value(Lang::APOAPSIS_DISTANCE, stringf("%0{f.3} AU", b->orbMax.ToDouble()));
+		_add_label_and_value(Lang::ECCENTRICITY, stringf("%0{f.2}", b->orbit.eccentricity));
+		if (b->type != SBody::TYPE_STARPORT_ORBITAL) {
+			_add_label_and_value(Lang::AXIAL_TILT, stringf(Lang::N_DEGREES, formatarg("angle", b->axialTilt.ToDouble() * (180.0/M_PI))));
+			if (b->rotationPeriod != 0) {
+				_add_label_and_value(
+					std::string(Lang::DAY_LENGTH)+std::string(Lang::ROTATIONAL_PERIOD),
+					stringf(Lang::N_EARTH_DAYS, formatarg("days", b->rotationPeriod.ToDouble())));
+			}
 		}
 		int numSurfaceStarports = 0;
 		std::string nameList;
@@ -88,7 +98,7 @@ void SystemInfoView::OnBodyViewed(SBody *b)
 			}
 		}
 		if (numSurfaceStarports) {
-			_add_label_and_value("Starports", nameList);
+			_add_label_and_value(Lang::STARPORTS, nameList);
 		}
 	}
 
@@ -99,7 +109,7 @@ void SystemInfoView::OnBodyViewed(SBody *b)
 void SystemInfoView::UpdateEconomyTab()
 {
 	/* Economy info page */
-	StarSystem *s = m_system;
+	StarSystem *s = m_system.Get();
 	std::string data;
 	
 /*	if (s->m_econType) {
@@ -116,53 +126,53 @@ void SystemInfoView::UpdateEconomyTab()
 */
 	/* imports and exports */
 	std::vector<std::string> crud;
-	data = "#ff0Major Imports:\n";
+	data = std::string("#ff0")+std::string(Lang::MAJOR_IMPORTS)+std::string("\n");
 	for (int i=1; i<Equip::TYPE_MAX; i++) {
 		if (s->GetCommodityBasePriceModPercent(i) > 10)
-			crud.push_back(std::string("#fff")+EquipType::types[i].name);
+			crud.push_back(std::string("#fff")+Equip::types[i].name);
 	}
 	if (crud.size()) data += string_join(crud, "\n")+"\n";
-	else data += "#777None\n";
+	else data += std::string("#777")+std::string(Lang::NONE)+std::string("\n");
 	m_econMajImport->SetText(data);
 
 	crud.clear();
-	data = "#ff0Minor Imports:\n";
+	data = std::string("#ff0")+std::string(Lang::MINOR_IMPORTS)+std::string("\n");
 	for (int i=1; i<Equip::TYPE_MAX; i++) {
 		if ((s->GetCommodityBasePriceModPercent(i) > 2) && (s->GetCommodityBasePriceModPercent(i) <= 10))
-			crud.push_back(std::string("#777")+EquipType::types[i].name);
+			crud.push_back(std::string("#777")+Equip::types[i].name);
 	}
 	if (crud.size()) data += string_join(crud, "\n")+"\n";
-	else data += "#777None\n";
+	else data += std::string("#777")+std::string(Lang::NONE)+std::string("\n");
 	m_econMinImport->SetText(data);
 
 	crud.clear();
-	data = "#ff0Major Exports:\n";
+	data = std::string("#ff0")+std::string(Lang::MAJOR_EXPORTS)+std::string("\n");
 	for (int i=1; i<Equip::TYPE_MAX; i++) {
 		if (s->GetCommodityBasePriceModPercent(i) < -10)
-			crud.push_back(std::string("#fff")+EquipType::types[i].name);
+			crud.push_back(std::string("#fff")+Equip::types[i].name);
 	}
 	if (crud.size()) data += string_join(crud, "\n")+"\n";
-	else data += "#777None\n";
+	else data += std::string("#777")+std::string(Lang::NONE)+std::string("\n");
 	m_econMajExport->SetText(data);
 
 	crud.clear();
-	data = "#ff0Minor Exports:\n";
+	data = std::string("#ff0")+std::string(Lang::MINOR_EXPORTS)+std::string("\n");
 	for (int i=1; i<Equip::TYPE_MAX; i++) {
 		if ((s->GetCommodityBasePriceModPercent(i) < -2) && (s->GetCommodityBasePriceModPercent(i) >= -10))
-			crud.push_back(std::string("#777")+EquipType::types[i].name);
+			crud.push_back(std::string("#777")+Equip::types[i].name);
 	}
 	if (crud.size()) data += string_join(crud, "\n")+"\n";
-	else data += "#777None\n";
+	else data += std::string("#777")+std::string(Lang::NONE)+std::string("\n");
 	m_econMinExport->SetText(data);
 
 	crud.clear();
-	data = "#ff0Illegal Goods:\n";
+	data = std::string("#ff0")+std::string(Lang::ILLEGAL_GOODS)+std::string("\n");
 	for (int i=1; i<Equip::TYPE_MAX; i++) {
 		if (!Polit::IsCommodityLegal(s, Equip::Type(i)))
-			crud.push_back(std::string("#777")+EquipType::types[i].name);
+			crud.push_back(std::string("#777")+Equip::types[i].name);
 	}
 	if (crud.size()) data += string_join(crud, "\n")+"\n";
-	else data += "#777None\n";
+	else data += std::string("#777")+std::string(Lang::NONE)+std::string("\n");
 	m_econIllegal->SetText(data);
 
 	m_econInfoTab->ResizeRequest();
@@ -178,6 +188,7 @@ void SystemInfoView::PutBodies(SBody *body, Gui::Fixed *container, int dir, floa
 	if (body->type == SBody::TYPE_STARPORT_SURFACE) return;
 	if (body->type != SBody::TYPE_GRAVPOINT) {
 		BodyIcon *ib = new BodyIcon( (PIONEER_DATA_DIR "/" + std::string(body->GetIcon())).c_str() );
+		ib->SetRenderer(m_renderer);
 		m_bodyIcons.push_back(std::pair<std::string, BodyIcon*>(body->name, ib));
 		ib->GetSize(size);
 		if (prevSize < 0) prevSize = size[!dir];
@@ -214,20 +225,23 @@ void SystemInfoView::OnClickBackground(Gui::MouseButtonEvent *e)
 	}
 }
 
-void SystemInfoView::SystemChanged(StarSystem *s)
+void SystemInfoView::SystemChanged(const SystemPath &path)
 {
 	DeleteAllChildren();
+	m_tabs = 0;
 
-	m_system = s;
-	if (!s) return;			// Does happen
+	if (!path.IsSystemPath())
+		return;
+	
+	m_system = StarSystem::GetCached(path);
 
 	m_sbodyInfoTab = new Gui::Fixed(float(Gui::Screen::GetWidth()), float(Gui::Screen::GetHeight()-100));
 
-	if (s->m_unexplored) {
+	if (m_system->m_unexplored) {
 		Add(m_sbodyInfoTab, 0, 0);
 
 		std::string _info =
-			"Unexplored System. Star information has been gathered by remote telescope, but no planetary information is available.";
+			Lang::UNEXPLORED_SYSTEM_STAR_INFO_ONLY;
 
 		Gui::Label *l = (new Gui::Label(_info))->Color(1.0f,1.0f,0.0f);
 		m_sbodyInfoTab->Add(l, 35, 300);
@@ -240,9 +254,9 @@ void SystemInfoView::SystemChanged(StarSystem *s)
 	Gui::Fixed *demographicsTab = new Gui::Fixed();
 	
 	m_tabs = new Gui::Tabbed();
-	m_tabs->AddPage(new Gui::Label("Planetary info"), m_sbodyInfoTab);
-	m_tabs->AddPage(new Gui::Label("Economic info"), m_econInfoTab);
-	m_tabs->AddPage(new Gui::Label("Demographics"), demographicsTab);
+	m_tabs->AddPage(new Gui::Label(Lang::PLANETARY_INFO), m_sbodyInfoTab);
+	m_tabs->AddPage(new Gui::Label(Lang::ECONOMIC_INFO), m_econInfoTab);
+	m_tabs->AddPage(new Gui::Label(Lang::DEMOGRAPHICS), demographicsTab);
 	Add(m_tabs, 0, 0);
 
 	m_sbodyInfoTab->onMouseButtonEvent.connect(sigc::mem_fun(this, &SystemInfoView::OnClickBackground));
@@ -253,31 +267,35 @@ void SystemInfoView::SystemChanged(StarSystem *s)
 		float pos[2] = { 0, 0 };
 		float psize = -1;
 		majorBodies = starports = 0;
-		PutBodies(s->rootBody, m_econInfoTab, 1, pos, majorBodies, starports, psize);
+		PutBodies(m_system->rootBody, m_econInfoTab, 1, pos, majorBodies, starports, psize);
 
 		majorBodies = starports = 0;
 		pos[0] = pos[1] = 0;
 		psize = -1;
-		PutBodies(s->rootBody, m_sbodyInfoTab, 1, pos, majorBodies, starports, psize);
+		PutBodies(m_system->rootBody, m_sbodyInfoTab, 1, pos, majorBodies, starports, psize);
 
 		majorBodies = starports = 0;
 		pos[0] = pos[1] = 0;
 		psize = -1;
-		PutBodies(s->rootBody, demographicsTab, 1, pos, majorBodies, starports, psize);
+		PutBodies(m_system->rootBody, demographicsTab, 1, pos, majorBodies, starports, psize);
 	}
-	
-	std::string _info = stringf(2048, "Stable system with %d major %s and %d starport%s.\n\n%s",
-		majorBodies, majorBodies == 1 ? "body" : "bodies",
-		starports, starports == 1 ? "" : "s",
-		std::string(s->GetLongDescription()).c_str());
-	
+
+	std::string _info = stringf(
+		Lang::STABLE_SYSTEM_WITH_N_MAJOR_BODIES_STARPORTS,
+		formatarg("bodycount", majorBodies),
+		formatarg("body(s)", std::string(majorBodies == 1 ? Lang::BODY : Lang::BODIES)),
+		formatarg("portcount", starports),
+		formatarg("starport(s)", std::string(starports == 1 ? Lang::STARPORT : Lang::COUNT_STARPORTS)));
+	_info += "\n\n";
+	_info += m_system->GetLongDescription();
+
 	{
 		// astronomical body info tab
 		m_infoBox = new Gui::VBox();
 
 		Gui::HBox *scrollBox = new Gui::HBox();
 		scrollBox->SetSpacing(5);
-		m_sbodyInfoTab->Add(scrollBox, 35, 300);
+		m_sbodyInfoTab->Add(scrollBox, 35, 250);
 
 		Gui::VScrollBar *scroll = new Gui::VScrollBar();
 		Gui::VScrollPortal *portal = new Gui::VScrollPortal(730);
@@ -333,32 +351,31 @@ void SystemInfoView::SystemChanged(StarSystem *s)
 	
 		const float YSEP = floor(Gui::Screen::GetFontHeight() * 1.5f);
 
-		col1->Add((new Gui::Label("System type:"))->Color(1,1,0), 0, 0);
+		col1->Add((new Gui::Label(Lang::SYSTEM_TYPE))->Color(1,1,0), 0, 0);
 		col2->Add(new Gui::Label(m_system->GetShortDescription()), 0, 0);
 		
-		col1->Add((new Gui::Label("Government type:"))->Color(1,1,0), 0, YSEP);
-		col2->Add(new Gui::Label(Polit::GetGovernmentDesc(m_system)), 0, YSEP);
+		col1->Add((new Gui::Label(Lang::GOVERNMENT_TYPE))->Color(1,1,0), 0, YSEP);
+		col2->Add(new Gui::Label(Polit::GetGovernmentDesc(m_system.Get())), 0, YSEP);
 		
-		col1->Add((new Gui::Label("Economy type:"))->Color(1,1,0), 0, 2*YSEP);
-		col2->Add(new Gui::Label(Polit::GetEconomicDesc(m_system)), 0, 2*YSEP);
+		col1->Add((new Gui::Label(Lang::ECONOMY_TYPE))->Color(1,1,0), 0, 2*YSEP);
+		col2->Add(new Gui::Label(Polit::GetEconomicDesc(m_system.Get())), 0, 2*YSEP);
 		
-		col1->Add((new Gui::Label("Allegiance:"))->Color(1,1,0), 0, 3*YSEP);
-		col2->Add(new Gui::Label(Polit::GetAllegianceDesc(m_system)), 0, 3*YSEP);
+		col1->Add((new Gui::Label(Lang::ALLEGIANCE))->Color(1,1,0), 0, 3*YSEP);
+		col2->Add(new Gui::Label(Polit::GetAllegianceDesc(m_system.Get())), 0, 3*YSEP);
 		
-		col1->Add((new Gui::Label("Population:"))->Color(1,1,0), 0, 4*YSEP);
+		col1->Add((new Gui::Label(Lang::POPULATION))->Color(1,1,0), 0, 4*YSEP);
 		std::string popmsg;
 		fixed pop = m_system->m_totalPop;
-		if (pop >= fixed(1,1)) { popmsg = stringf(256, "Over %d billion", pop.ToInt32()); }
-		else if (pop >= fixed(1,1000)) { popmsg = stringf(256, "Over %d million", (pop*1000).ToInt32()); }
-		else if (pop != fixed(0)) { popmsg = "Only a few thousand"; }
-		else { popmsg = "No registered inhabitants"; }
+		if (pop >= fixed(1,1)) { popmsg = stringf(Lang::OVER_N_BILLION, formatarg("population", pop.ToInt32())); }
+		else if (pop >= fixed(1,1000)) { popmsg = stringf(Lang::OVER_N_MILLION, formatarg("population", (pop*1000).ToInt32())); }
+		else if (pop != fixed(0)) { popmsg = Lang::A_FEW_THOUSAND; }
+		else { popmsg = Lang::NO_REGISTERED_INHABITANTS; }
 		col2->Add(new Gui::Label(popmsg), 0, 4*YSEP);
 
-		SystemPath path = m_system->GetPath();
-		col1->Add((new Gui::Label("Sector coordinates:"))->Color(1,1,0), 0, 5*YSEP);
-		col2->Add(new Gui::Label(stringf(128, "%d, %d", path.sectorX, path.sectorY)), 0, 5*YSEP);
-		col1->Add((new Gui::Label("System number:"))->Color(1,1,0), 0, 6*YSEP);
-		col2->Add(new Gui::Label(stringf(128, "%d", path.systemIndex)), 0, 6*YSEP);
+		col1->Add((new Gui::Label(Lang::SECTOR_COORDINATES))->Color(1,1,0), 0, 5*YSEP);
+		col2->Add(new Gui::Label(stringf("%0{d}, %1{d}, %2{d}", path.sectorX, path.sectorY, path.sectorZ)), 0, 5*YSEP);
+		col1->Add((new Gui::Label(Lang::SYSTEM_NUMBER))->Color(1,1,0), 0, 6*YSEP);
+		col2->Add(new Gui::Label(stringf("%0", path.systemIndex)), 0, 6*YSEP);
 	}
 
 	UpdateIconSelections();
@@ -368,29 +385,28 @@ void SystemInfoView::SystemChanged(StarSystem *s)
 
 void SystemInfoView::Draw3D()
 {
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glClearColor(0,0,0,0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	m_renderer->SetTransform(matrix4x4f::Identity());
+	m_renderer->ClearScreen();
 }
 
 void SystemInfoView::Update()
 {
 	if (m_refresh) {
-		SystemChanged(Pi::GetSelectedSystem());
+		SystemChanged(Pi::sectorView->GetSelectedSystem());
 		m_refresh = false;
 	}
 }
 
 void SystemInfoView::OnSwitchTo()
 {
-	if (Pi::GetSelectedSystem() != m_system)
+	if (!m_system || !Pi::sectorView->GetSelectedSystem().IsSameSystem(m_system->GetPath()))
 		m_refresh = true;
 }
 
 void SystemInfoView::NextPage()
 {
-	m_tabs->OnActivate();
+	if (m_tabs)
+		m_tabs->OnActivate();
 }
 
 void SystemInfoView::UpdateIconSelections()
@@ -399,17 +415,20 @@ void SystemInfoView::UpdateIconSelections()
 	for (std::vector<std::pair<std::string, BodyIcon*> >::iterator it = m_bodyIcons.begin();
 		 it != m_bodyIcons.end(); ++it) {
 			 (*it).second->SetSelected(false);
-		if (Pi::currentSystem->GetPath() == m_system->GetPath() &&
+
+		RefCountedPtr<StarSystem> currentSys = Pi::game->GetSpace()->GetStarSystem();
+		if (currentSys && currentSys->GetPath() == m_system->GetPath() &&
 			Pi::player->GetNavTarget() &&
-			(*it).first == Pi::player->GetNavTarget()->GetLabel())
+			(*it).first == Pi::player->GetNavTarget()->GetLabel()) {
+
 			(*it).second->SetSelected(true);
+		}
 	}
 }
 
 SystemInfoView::BodyIcon::BodyIcon(const char *img) :
 	Gui::ImageRadioButton(0, img, img)
 {
-
 }
 
 void SystemInfoView::BodyIcon::Draw()
@@ -418,13 +437,14 @@ void SystemInfoView::BodyIcon::Draw()
 	if (!GetSelected()) return;
 	float size[2];
 	GetSize(size);
-	glColor3f(0.f, 1.f, 0.f);
-	glBegin(GL_LINE_LOOP);
-	glVertex2f(0.f, 0.f);
-	glVertex2f(size[0], 0.f);
-	glVertex2f(size[0], size[1]);
-	glVertex2f(0.f, size[1]);
-	glEnd();
+	Color green = Color(0.f, 1.f, 0.f, 1.f);
+	const vector2f vts[] = {
+		vector2f(0.f, 0.f),
+		vector2f(size[0], 0.f),
+		vector2f(size[0], size[1]),
+		vector2f(0.f, size[1]),
+	};
+	m_renderer->DrawLines2D(4, vts, green, Graphics::LINE_LOOP);
 }
 
 void SystemInfoView::BodyIcon::OnActivate()

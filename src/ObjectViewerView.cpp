@@ -5,10 +5,12 @@
 #include "Player.h"
 #include "Space.h"
 #include "GeoSphere.h"
-#include "GeoSphereStyle.h"
+#include "terrain/Terrain.h"
 #include "Planet.h"
+#include "Light.h"
+#include "graphics/Renderer.h"
 
-#if OBJECTVIEWER
+#if WITH_OBJECTVIEWER
 
 ObjectViewerView::ObjectViewerView(): View()
 {
@@ -59,41 +61,38 @@ ObjectViewerView::ObjectViewerView(): View()
 	vbox->PackEnd(m_sbodyMetallicity);
 
 	Gui::LabelButton *b = new Gui::LabelButton(new Gui::Label("Change planet terrain type"));
-	b->onClick.connect(sigc::mem_fun(this, &ObjectViewerView::OnChangeGeoSphereStyle));
+	b->onClick.connect(sigc::mem_fun(this, &ObjectViewerView::OnChangeTerrain));
 	vbox->PackEnd(b);
 }
 
 void ObjectViewerView::Draw3D()
 {
-	static float rot;
-	rot += 0.1;
-	glClearColor(0,0,0,0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
+	m_renderer->ClearScreen();
 	float znear, zfar;
-	Pi::worldView->GetNearFarClipPlane(&znear, &zfar);
-	float fracH = znear / Pi::GetScrAspect();
-	glFrustum(-znear, znear, -fracH, fracH, znear, zfar);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glEnable(GL_LIGHT0);
+	m_renderer->GetNearFarRange(znear, zfar);
+	m_renderer->SetPerspectiveProjection(75.f, Pi::GetScrAspect(), znear, zfar);
+	m_renderer->SetTransform(matrix4x4f::Identity());
 
-	Render::State::SetZnearZfar(znear, zfar);
+	Light light;
+	light.SetType(Light::LIGHT_DIRECTIONAL);
 
-	if (Pi::MouseButtonState(3)) {
+	if (Pi::MouseButtonState(SDL_BUTTON_RIGHT)) {
 		int m[2];
 		Pi::GetMouseMotion(m);
 		m_camRot = matrix4x4d::RotateXMatrix(-0.002*m[1]) *
 				matrix4x4d::RotateYMatrix(-0.002*m[0]) * m_camRot;
 	}
 		
-	float lightPos[4] = { .577, .577, .577, 0 };
-	glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
-	
 	Body *body = Pi::player->GetNavTarget();
 	if (body) {
-		body->Render(vector3d(0,0,-viewingDist), m_camRot);
+		if (body->IsType(Object::STAR))
+			light.SetPosition(vector3f(0.f));
+		else {
+			light.SetPosition(vector3f(0.577f));
+		}
+		m_renderer->SetLights(1, &light);
+	
+		body->Render(m_renderer, vector3d(0,0,-viewingDist), m_camRot);
 	}
 }
 
@@ -118,25 +117,23 @@ void ObjectViewerView::Update()
 		if (body->IsType(Object::PLANET)) {
 			Planet *planet = static_cast<Planet*>(body);
 			const SBody *sbody = planet->GetSBody();
-			m_sbodyVolatileGas->SetText(stringf(64, "%.3f", sbody->m_volatileGas.ToFloat()));
-			m_sbodyVolatileLiquid->SetText(stringf(64, "%.3f", sbody->m_volatileLiquid.ToFloat()));
-			m_sbodyVolatileIces->SetText(stringf(64, "%.3f", sbody->m_volatileIces.ToFloat()));
-			m_sbodyLife->SetText(stringf(64, "%.3f", sbody->m_life.ToFloat()));
-			m_sbodyVolcanicity->SetText(stringf(64, "%.3f", sbody->m_volcanicity.ToFloat()));
-			m_sbodyMetallicity->SetText(stringf(64, "%.3f", sbody->m_metallicity.ToFloat()));
-			m_sbodySeed->SetText(stringf(64, "%d", sbody->seed));
-			m_sbodyMass->SetText(stringf(64, "%f", sbody->mass.ToFloat()));
-			m_sbodyRadius->SetText(stringf(64, "%f", sbody->radius.ToFloat()));
+			m_sbodyVolatileGas->SetText(stringf("%0{f.3}", sbody->m_volatileGas.ToFloat()));
+			m_sbodyVolatileLiquid->SetText(stringf("%0{f.3}", sbody->m_volatileLiquid.ToFloat()));
+			m_sbodyVolatileIces->SetText(stringf("%0{f.3}", sbody->m_volatileIces.ToFloat()));
+			m_sbodyLife->SetText(stringf("%0{f.3}", sbody->m_life.ToFloat()));
+			m_sbodyVolcanicity->SetText(stringf("%0{f.3}", sbody->m_volcanicity.ToFloat()));
+			m_sbodyMetallicity->SetText(stringf("%0{f.3}", sbody->m_metallicity.ToFloat()));
+			m_sbodySeed->SetText(stringf("%0{u}", sbody->seed));
+			m_sbodyMass->SetText(stringf("%0{f}", sbody->mass.ToFloat()));
+			m_sbodyRadius->SetText(stringf("%0{f}", sbody->radius.ToFloat()));
 		}
 	}
 	snprintf(buf, sizeof(buf), "View dist: %s     Object: %s", format_distance(viewingDist).c_str(), (body ? body->GetLabel().c_str() : "<none>"));
 	m_infoLabel->SetText(buf);
 }
 
-void ObjectViewerView::OnChangeGeoSphereStyle()
+void ObjectViewerView::OnChangeTerrain()
 {
-	SBody sbody;
-
 	const fixed volatileGas = fixed(65536.0*atof(m_sbodyVolatileGas->GetText().c_str()), 65536);
 	const fixed volatileLiquid = fixed(65536.0*atof(m_sbodyVolatileLiquid->GetText().c_str()), 65536);
 	const fixed volatileIces = fixed(65536.0*atof(m_sbodyVolatileIces->GetText().c_str()), 65536);
@@ -146,30 +143,26 @@ void ObjectViewerView::OnChangeGeoSphereStyle()
 	const fixed mass = fixed(65536.0*atof(m_sbodyMass->GetText().c_str()), 65536);
 	const fixed radius = fixed(65536.0*atof(m_sbodyRadius->GetText().c_str()), 65536);
 
-	sbody.parent = 0;
-	sbody.name = "Test";
-	/* These should be the only SBody attributes GeoSphereStyle uses */
-	sbody.type = SBody::TYPE_PLANET_TERRESTRIAL;
-	sbody.seed = atoi(m_sbodySeed->GetText().c_str());
-	sbody.radius = radius;
-	sbody.mass = mass;
-	sbody.averageTemp = 273;
-	sbody.m_metallicity = metallicity;
-	sbody.m_volatileGas = volatileGas;
-	sbody.m_volatileLiquid = volatileLiquid;
-	sbody.m_volatileIces = volatileIces;
-	sbody.m_volcanicity = volcanicity;
-	sbody.m_life = life;
-	sbody.heightMapFilename = 0;
-
+	// XXX this is horrendous, but probably safe for the moment. all bodies,
+	// terrain, whatever else holds a const pointer to the same toplevel
+	// sbody. one day objectviewer should be far more contained and not
+	// actually modify the space
 	Body *body = Pi::player->GetNavTarget();
-	if (body->IsType(Object::PLANET)) {
-		Planet *planet = static_cast<Planet*>(body);
-		GeoSphere *gs = planet->m_geosphere;
-		gs->m_style = GeoSphereStyle(&sbody);
-		// force rebuild
-		gs->OnChangeDetailLevel();
-	}
+	SBody *sbody = const_cast<SBody*>(body->GetSBody());
+
+	sbody->seed = atoi(m_sbodySeed->GetText().c_str());
+	sbody->radius = radius;
+	sbody->mass = mass;
+	sbody->m_metallicity = metallicity;
+	sbody->m_volatileGas = volatileGas;
+	sbody->m_volatileLiquid = volatileLiquid;
+	sbody->m_volatileIces = volatileIces;
+	sbody->m_volcanicity = volcanicity;
+	sbody->m_life = life;
+
+	// force reload
+	if (body->IsType(Object::TERRAINBODY))
+		static_cast<TerrainBody*>(body)->GetGeoSphere()->OnChangeDetailLevel();
 }
 
 #endif

@@ -7,7 +7,8 @@
 class VectorFont : public Font
 {
 public:
-	VectorFont(FontManager &fm, const std::string &config_file);
+	VectorFont(const FontConfig &fc);
+	virtual ~VectorFont();
 
 	void RenderGlyph(int chr);
 	void RenderString(const char *str);

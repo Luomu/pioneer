@@ -5,7 +5,7 @@
 #include "gui/Gui.h"
 #include "View.h"
 
-#if OBJECTVIEWER
+#if WITH_OBJECTVIEWER
 
 class Body;
 
@@ -30,7 +30,7 @@ private:
 	Gui::TextEntry *m_sbodyLife;
 	Gui::TextEntry *m_sbodyVolcanicity;
 	Gui::TextEntry *m_sbodyMetallicity;
-	void OnChangeGeoSphereStyle();
+	void OnChangeTerrain();
 };
 
 #endif

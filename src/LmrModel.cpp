@@ -1,18 +1,33 @@
 #include "libs.h"
 #include <map>
-#include "FontManager.h"
+#include "FontCache.h"
 #include "VectorFont.h"
 #include "LmrModel.h"
 #include "collider/collider.h"
 #include "perlin.h"
-#include "Render.h"
 #include "BufferObject.h"
 #include "LuaUtils.h"
-#include "TextureManager.h"
+#include "LuaConstants.h"
+#include "EquipType.h"
+#include "EquipSet.h"
+#include "ShipType.h"
+#include "TextureCache.h"
+#include "graphics/Graphics.h"
+#include "graphics/Material.h"
+#include "graphics/Renderer.h"
+#include "graphics/Shader.h"
+#include "graphics/VertexArray.h"
 #include <set>
 #include <algorithm>
 
-#define MODEL "Model"
+/*
+ * Interface: LMR
+ *
+ * Script interface to the model system.
+ *
+ * This documentation is incomplete!
+ */
+
 struct RenderState {
 	/* For the root model this will be identity matrix.
 	 * For sub-models called with call_model() then this will be the
@@ -27,104 +42,96 @@ struct RenderState {
 struct LmrUnknownMaterial {};
 
 namespace ShipThruster {
+	//vertices for thruster flare & glow
+	static Graphics::VertexArray *tVerts;
+	static Graphics::VertexArray *gVerts;
+	static Graphics::Material tMat;
+	static Graphics::Material glowMat;
+	//cool purple-ish
+	static Color color(0.7f, 0.6f, 1.f, 1.f);
+
+	static void Init(TextureCache *tcache) {
+		tVerts = new Graphics::VertexArray(Graphics::ATTRIB_POSITION | Graphics::ATTRIB_UV0);
+		gVerts = new Graphics::VertexArray(Graphics::ATTRIB_POSITION | Graphics::ATTRIB_UV0);
+
+		//set up materials
+		tMat.texture0 = tcache->GetBillboardTexture(PIONEER_DATA_DIR"/textures/thruster.png");
+		tMat.unlit = true;
+		tMat.twoSided = true;
+		tMat.diffuse = color;
+		glowMat.texture0 = tcache->GetBillboardTexture(PIONEER_DATA_DIR"/textures/halo.png");
+		glowMat.unlit = true;
+		glowMat.twoSided = true;
+		glowMat.diffuse = color;
+
+		//zero at thruster center
+		//+x down
+		//+y right
+		//+z backwards (or thrust direction)
+		const float w = 0.5f;
+
+		vector3f one(0.f, -w, 0.f); //top left
+		vector3f two(0.f,  w, 0.f); //top right
+		vector3f three(0.f,  w, 1.f); //bottom right
+		vector3f four(0.f, -w, 1.f); //bottom left
+
+		//uv coords
+		const vector2f topLeft(0.f, 1.f);
+		const vector2f topRight(1.f, 1.f);
+		const vector2f botLeft(0.f, 0.f);
+		const vector2f botRight(1.f, 0.f);
+
+		//add four intersecting planes to create a volumetric effect
+		for (int i=0; i < 4; i++) {
+			tVerts->Add(one, topLeft);
+			tVerts->Add(two, topRight);
+			tVerts->Add(three, botRight);
+
+			tVerts->Add(three, botRight);
+			tVerts->Add(four, botLeft);
+			tVerts->Add(one, topLeft);
+
+			one.ArbRotate(vector3f(0.f, 0.f, 1.f), DEG2RAD(45.f));
+			two.ArbRotate(vector3f(0.f, 0.f, 1.f), DEG2RAD(45.f));
+			three.ArbRotate(vector3f(0.f, 0.f, 1.f), DEG2RAD(45.f));
+			four.ArbRotate(vector3f(0.f, 0.f, 1.f), DEG2RAD(45.f));
+		}
+
+		//create glow billboard for linear thrusters
+		const float gw = 1.0f; //0.4
+
+		const vector3f gone(-gw, -gw, 0.f); //top left
+		const vector3f gtwo(-gw,  gw, 0.f); //top right
+		const vector3f gthree(gw, gw, 0.f); //bottom right
+		const vector3f gfour(gw, -gw, 0.f); //bottom left
+
+		gVerts->Add(gone, topLeft);
+		gVerts->Add(gtwo, topRight);
+		gVerts->Add(gthree, botRight);
+
+		gVerts->Add(gthree, botRight);
+		gVerts->Add(gfour, botLeft);
+		gVerts->Add(gone, topLeft);
+	}
+
+	static void Uninit() {
+		delete tVerts;
+		delete gVerts;
+	}
+
 	struct Thruster
 	{
-		Thruster() : pos(0.0), dir(0.0), power(0) {}	// zero this shit to stop denormal-copying on resize
+		Thruster() : m_pos(0.0), m_dir(0.0), m_power(0) {}	// zero this shit to stop denormal-copying on resize
 		// cannot be used as an angular thruster
-		bool linear_only;
-		vector3f pos;
-		vector3f dir;
-		float power;
+		bool m_linear_only;
+		vector3f m_pos;
+		vector3f m_dir;
+		float m_power;
+		void Render(Graphics::Renderer *r, const RenderState *rstate, const LmrObjParams *params);
 	};
 
-	
-	static vector3f ResolveHermiteSpline (const vector3f &p0, const vector3f &p1, const vector3f &n0, const vector3f &n1, float t)
+	void Thruster::Render(Graphics::Renderer *renderer, const RenderState *rstate, const LmrObjParams *params)
 	{
-		float t2 = t*t, t3 = t*t*t;
-		vector3f tv1, tv2, tv;
-		tv1 = p0 * (2*t3-3*t2+1);
-		tv = n0 * (t3-2*t2+t);
-		tv1 = tv+tv1;
-		tv2 = p1 * (-2*t3+3*t2);
-		tv = n1 *  (t3-t2);
-		tv2 = tv + tv2;
-		return tv1 + tv2;
-	}
-
-	static const int pNumIndex[3] =
-		{ (2*4+1*8)*3, (2*8+5*16)*3, (2*16+13*32)*3 };
-
-	static vector3f pTVertex4pt[2*4+2];
-	static vector3f pTVertex8pt[6*8+2];
-	static vector3f pTVertex16pt[14*16+2];
-
-	static Uint16 pTIndex4pt[(2*4+1*8)*3];
-	static Uint16 pTIndex8pt[(2*8+5*16)*3];
-	static Uint16 pTIndex16pt[(2*16+13*32)*3];
-
-	static vector3f *ppTVertex[3] =
-		{ pTVertex4pt, pTVertex8pt, pTVertex16pt };
-
-	static Uint16 *ppTIndex[3] =
-		{ pTIndex4pt, pTIndex8pt, pTIndex16pt };
-
-
-	static void GenerateThrusters ()
-	{
-		vector3f pos0 = vector3f(0.0f, 0.0f, 0.0f);
-		vector3f pos1 = vector3f(0.0f, 0.0f, 1.0f);
-		vector3f tan0 = vector3f(0.0f, 1.0f, 0.2f);
-		vector3f tan1 = vector3f(0.0f, -0.2f, 1.0f);
-
-		int j, n;
-		for (j=0, n=4; j<3; j++, n<<=1)
-		{
-			vector3f *pCur = ppTVertex[j];
-			float t, incstep = 1.0f / (n-1);
-			int i; for (i=0, t=incstep; i<n-2; i++, t+=incstep)
-			{
-				vector3f *pos = pCur;
-				*pos = ResolveHermiteSpline (pos0, pos1, tan0, tan1, t);
-				pCur++;
-
-				float angstep = 2.0f * 3.141592f / n, ang = angstep;
-				for (int k=1; k<n; k++, ang+=angstep, pCur++)
-				{
-					pCur->x = sin(ang) * pos->y;
-					pCur->y = cos(ang) * pos->y;
-					pCur->z = pos->z;
-				}
-			}
-			*pCur = pos0; pCur++;
-			*pCur = pos1; pCur++;
-
-			int ni=0, k;
-			Uint16 *pIndex = ppTIndex[j];
-
-			for (k=0; k<n; k++) {
-				int k1 = k+1==n ? 0 : k+1;
-				pIndex[ni++] = (n-2)*n; pIndex[ni++] = k; pIndex[ni++] = k1;
-				pIndex[ni++] = (n-2)*n+1; pIndex[ni++] = k1+(n-3)*n; pIndex[ni++] = k+(n-3)*n;
-			}
-			for (i=0; i<n-3; i++)
-			{
-				for (k=0; k<n; k++) {
-					int k1 = k+1==n ? 0 : k+1;
-					pIndex[ni++] = k+i*n; pIndex[ni++] = k+i*n+n; pIndex[ni++] = k1+i*n;
-					pIndex[ni++] = k1+i*n; pIndex[ni++] = k+i*n+n;	pIndex[ni++] = k1+i*n+n;
-				}
-			}
-		}
-	}
-
-	static const float s_black[4] = { 0, 0, 0, 0 };
-	static const float s_alpha[4] = { 0, 0, 0, 0.6 };
-	static bool inittted = false;
-
-	static void RenderThruster(const RenderState *rstate, const LmrObjParams *params, Thruster *pThruster)
-	{
-		if (!inittted) GenerateThrusters();
-		inittted = true;
 		const float scale = 1.0;
 		// to find v(0,0,0) position of root model (when putting thrusters on sub-models)
 		vector3f compos = vector3f(rstate->subTransform[12], rstate->subTransform[13], rstate->subTransform[14]);
@@ -133,11 +140,11 @@ namespace ShipThruster {
 					vector3f(rstate->subTransform[4], rstate->subTransform[5], rstate->subTransform[6]),
 					vector3f(rstate->subTransform[8], rstate->subTransform[9], rstate->subTransform[10]));
 
-		vector3f start, end, dir = pThruster->dir;
-		start = pThruster->pos * scale;
+		vector3f start, end, dir = m_dir;
+		start = m_pos * scale;
 		float power = -dir.Dot(invSubModelMat * vector3f(params->linthrust));
 
-		if (!pThruster->linear_only) {
+		if (!m_linear_only) {
 			vector3f angdir, cpos;
 			const vector3f at = invSubModelMat * vector3f(params->angthrust);
 			cpos = compos + start;
@@ -154,8 +161,8 @@ namespace ShipThruster {
 
 		if (power <= 0.001f) return;
 		power *= scale;
-		float width = sqrt(power)*pThruster->power*0.6f;
-		float len = power*pThruster->power;
+		float width = sqrt(power)*m_power*0.6f;
+		float len = power*m_power;
 		end = dir * len;
 		end += start;
 
@@ -168,9 +175,9 @@ namespace ShipThruster {
 		m[0] = v1.x; m[4] = v2.x; m[8] = dir.x;
 		m[1] = v1.y; m[5] = v2.y; m[9] = dir.y;
 		m[2] = v1.z; m[6] = v2.z; m[10] = dir.z;
-		m2 = /*objorient **/ m;
+		m2 = m;
 
-		pos = /*objorient **/ start;
+		pos = start;
 
 		m2[12] = pos.x;
 		m2[13] = pos.y;
@@ -180,59 +187,71 @@ namespace ShipThruster {
 		glMultMatrixf (&m2[0]);
 
 		glScalef (width*0.5f, width*0.5f, len*0.666f);
-		
-		glMaterialfv (GL_FRONT, GL_AMBIENT_AND_DIFFUSE, s_alpha);
-		glMaterialfv (GL_FRONT, GL_SPECULAR, s_black);
-		if (Render::IsHDREnabled()) {
-			float col[4] = { 0.0f, 4.0f, 10.0f, 1.0f };
-			glMaterialfv (GL_FRONT, GL_EMISSION, col);
-		} else {
-			float col[4] = { 0.0f, 0.4f, 1.0f, 1.0f };
-			glMaterialfv (GL_FRONT, GL_EMISSION, col);
-		}
 
-		glVertexPointer (3, GL_FLOAT, sizeof(vector3f), pTVertex8pt);
-		glDrawElements (GL_TRIANGLES, pNumIndex[1], GL_UNSIGNED_SHORT, pTIndex8pt);
+		matrix4x4f mv;
+		glGetFloatv(GL_MODELVIEW_MATRIX, &mv[0]);
+		vector3f viewdir = vector3f(-mv[2], -mv[6], -mv[10]).Normalized();
+		vector3f cdir(0.f, 0.f, -1.f);
+		//fade thruster out, when directly facing it
+		tMat.diffuse.a = 1.0 - powf(Clamp(viewdir.Dot(cdir), 0.f, 1.f), len*2);
 
-		glScalef (2.0f, 2.0f, 1.5f);
-		if (Render::IsHDREnabled()) {
-			float col[4] = { 4.0f, 0.0f, 10.0f, 1.0f };
-			glMaterialfv (GL_FRONT, GL_EMISSION, col);
-		} else {
-			float col[4] = { 0.4f, 0.0f, 1.0f, 1.0f };
-			glMaterialfv (GL_FRONT, GL_EMISSION, col);
-		}
-		glVertexPointer (3, GL_FLOAT, sizeof(vector3f), pTVertex8pt);
-		glDrawElements (GL_TRIANGLES, pNumIndex[1], GL_UNSIGNED_SHORT, pTIndex8pt);
-
+		renderer->DrawTriangles(tVerts, &tMat);
 		glPopMatrix ();
-	}
 
-	struct CameraDistance {
-		Thruster *thruster;
-		float dist;
-	};
-	struct CameraDistanceCompare : public std::binary_function<CameraDistance, CameraDistance, bool> {
-		bool operator()(CameraDistance a, CameraDistance b)
-		{
-			return a.dist > b.dist;
+		// linear thrusters get a secondary glow billboard
+		if (m_linear_only) {
+			glowMat.diffuse.a = powf(Clamp(viewdir.Dot(cdir), 0.f, 1.f), len);
+
+			glPushMatrix();
+			matrix4x4f rot;
+			glGetFloatv(GL_MODELVIEW_MATRIX, &rot[0]);
+			rot.ClearToRotOnly();
+			rot = rot.InverseOf();
+			const float sz = 0.20f*width;
+			const vector3f rotv1 = rot * vector3f(sz, sz, 0.0f);
+			const vector3f rotv2 = rot * vector3f(sz, -sz, 0.0f);
+			const vector3f rotv3 = rot * vector3f(-sz, -sz, 0.0f);
+			const vector3f rotv4 = rot * vector3f(-sz, sz, 0.0f);
+
+			//this might seem a bit confusing, but:
+			//update glow billboard vertices so they face the camera
+			vector3f vert = start+rotv4;
+
+			gVerts->position[0] = vector3f(vert.x, vert.y, vert.z);
+			gVerts->position[5] = vector3f(vert.x, vert.y, vert.z);
+
+			vert = start+rotv3;
+			gVerts->position[1] = vector3f(vert.x, vert.y, vert.z);
+
+			vert = start+rotv2;
+			gVerts->position[2] = vector3f(vert.x, vert.y, vert.z);
+			gVerts->position[3] = vector3f(vert.x, vert.y, vert.z);
+
+			vert = start+rotv1;
+			gVerts->position[4] = vector3f(vert.x, vert.y, vert.z);
+
+			renderer->DrawTriangles(gVerts, &glowMat);
+
+			glPopMatrix();
 		}
-	};
+	}
 }
 
 class LmrGeomBuffer;
 
 SHADER_CLASS_BEGIN(LmrShader)
 	SHADER_UNIFORM_INT(usetex)
+	SHADER_UNIFORM_INT(useglow)
 	SHADER_UNIFORM_SAMPLER(tex)
+	SHADER_UNIFORM_SAMPLER(texGlow)
 SHADER_CLASS_END()
 
 static LmrShader *s_sunlightShader[4];
 static LmrShader *s_pointlightShader[4];
 static float s_scrWidth = 800.0f;
 static bool s_buildDynamic;
-static FontManager s_fontManager;
-static VectorFont *s_font;
+static FontCache s_fontCache;
+static RefCountedPtr<VectorFont> s_font;
 static float NEWMODEL_ZBIAS = 0.0002f;
 static LmrGeomBuffer *s_curBuf;
 static const LmrObjParams *s_curParams;
@@ -241,6 +260,8 @@ static lua_State *sLua;
 static int s_numTrisRendered;
 static std::string s_cacheDir;
 static bool s_recompileAllModels = true;
+static TextureCache *s_textureCache;
+static Graphics::Renderer *s_renderer;
 
 struct Vertex {
 	Vertex() : v(0.0), n(0.0), tex_u(0.0), tex_v(0.0) {}		// zero this shit to stop denormal-copying on resize
@@ -260,32 +281,35 @@ void LmrNotifyScreenWidth(float width)
 
 int LmrModelGetStatsTris() { return s_numTrisRendered; }
 void LmrModelClearStatsTris() { s_numTrisRendered = 0; }
-	
-void UseProgram(LmrShader *shader, bool Textured = false) {
-	if (Render::AreShadersEnabled()) {
-		Render::State::UseProgram(shader);
+
+//binds shader and sets lmr specific uniforms
+void UseProgram(LmrShader *shader, bool Textured = false, bool Glowmap = false) {
+	if (Graphics::AreShadersEnabled()) {
+		shader->Use();
 		if (Textured) shader->set_tex(0);
 		shader->set_usetex(Textured ? 1 : 0);
+		if (Glowmap) shader->set_texGlow(1);
+		shader->set_useglow(Glowmap ? 1 : 0);
 	}
 }
 
-#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+#define BUFFER_OFFSET(i) (reinterpret_cast<const GLvoid *>(i))
 
 static void _fwrite_string(const std::string &str, FILE *f)
 {
 	int len = str.size()+1;
-	fwrite((void*)&len, 1, 4, f);
-	fwrite((void*)str.c_str(), 1, len, f);
+	fwrite(&len, sizeof(len), 1, f);
+	fwrite(str.c_str(), sizeof(char), len, f);
 }
 
 static std::string _fread_string(FILE *f)
 {
 	int len = 0;
-	fread((void*)&len, 1, 4, f);
+	fread_or_die(&len, sizeof(len), 1, f);
 	char *buf = new char[len];
-	fread((void*)buf, 1, len, f);
+	fread_or_die(buf, sizeof(char), len, f);
 	std::string str = std::string(buf);
-	delete buf;
+	delete[] buf;
 	return str;
 }
 	
@@ -295,6 +319,7 @@ public:
 		curOp.type = OP_NONE;
 		curTriFlag = 0;
 		curTexture = 0;
+		curGlowmap = 0;
 		curTexMatrix = matrix4x4f::Identity();
 		m_model = model;
 		m_isStatic = isStatic;
@@ -339,7 +364,7 @@ public:
 		int activeLights = 0;
 		s_numTrisRendered += m_indices.size()/3;
 		
-		LmrShader *curShader = s_sunlightShader[Render::State::GetNumLights()-1];
+		LmrShader *curShader = s_sunlightShader[Graphics::State::GetNumLights()-1];
 
 		BindBuffers();
 
@@ -351,9 +376,14 @@ public:
 			switch (op.type) {
 			case OP_DRAW_ELEMENTS:
 				if (op.elems.texture != 0 ) {
-					UseProgram(curShader, true);
+					UseProgram(curShader, true, op.elems.glowmap != 0);
+					glActiveTexture(GL_TEXTURE0);
 					glEnable(GL_TEXTURE_2D);
-					op.elems.texture->BindTexture();
+					op.elems.texture->Bind();
+					if (op.elems.glowmap != 0) {
+						glActiveTexture(GL_TEXTURE1);
+						op.elems.glowmap->Bind();
+					}
 				} else {
 					UseProgram(curShader, false);
 				}
@@ -372,17 +402,27 @@ public:
 					glDrawElements(GL_TRIANGLES, op.elems.count, GL_UNSIGNED_SHORT, &m_indices[op.elems.start]);
 				}
 				if ( op.elems.texture != 0 ) {
+					glActiveTexture(GL_TEXTURE0);
 					glDisable(GL_TEXTURE_2D);
 				}
 				break;
-			case OP_DRAW_BILLBOARDS:
-				// XXX not using vbo yet
-				Render::UnbindAllBuffers();
-				op.billboards.texture->BindTexture();
-				Render::PutPointSprites(op.billboards.count, &m_vertices[op.billboards.start].v, op.billboards.size,
-						op.billboards.col, sizeof(Vertex));
+			case OP_DRAW_BILLBOARDS: {
+				Graphics::UnbindAllBuffers();
+				//XXX have to copy positions to a temporary array as
+				//renderer::drawpointsprites does not have a stride parameter
+				std::vector<vector3f> verts;
+				verts.reserve(op.billboards.count);
+				for (int j = 0; j < op.billboards.count; j++) {
+					verts.push_back(m_vertices[op.billboards.start + j].v);
+				}
+				Graphics::Material mat;
+				mat.unlit = true;
+				mat.texture0 = op.billboards.texture;
+				mat.diffuse = Color(op.billboards.col[0], op.billboards.col[1], op.billboards.col[2], op.billboards.col[3]);
+				s_renderer->DrawPointSprites(op.billboards.count, &verts[0], &mat, op.billboards.size);
 				BindBuffers();
 				break;
+			}
 			case OP_SET_MATERIAL:
 				{
 					const LmrMaterial &m = m_model->m_materials[op.col.material_idx];
@@ -390,18 +430,18 @@ public:
 					glMaterialfv (GL_FRONT, GL_SPECULAR, m.specular);
 					glMaterialfv (GL_FRONT, GL_EMISSION, m.emissive);
 					glMaterialf (GL_FRONT, GL_SHININESS, m.shininess);
-					if (m.diffuse[3] == 1.0) {
-						glDisable(GL_BLEND);
+					if (m.diffuse[3] >= 1.0) {
+						s_renderer->SetBlendMode(Graphics::BLEND_SOLID);
 					} else {
-						glEnable(GL_BLEND);
+						s_renderer->SetBlendMode(Graphics::BLEND_ALPHA);
 					}
 				}
 				break;
 			case OP_ZBIAS:
-				if (op.zbias.amount == 0) {
+				if (is_zero_general(op.zbias.amount)) {
 					glDepthRange(0.0, 1.0);
 				} else {
-					vector3f tv = cameraPos - vector3f(op.zbias.pos);
+				//	vector3f tv = cameraPos - vector3f(op.zbias.pos);
 				//	if (vector3f::Dot(tv, vector3f(op.zbias.norm)) < 0.0f) {
 						glDepthRange(0.0, 1.0 - op.zbias.amount*NEWMODEL_ZBIAS);
 				//	} else {
@@ -440,10 +480,10 @@ public:
 					}
 					activeLights = 0;
 				} else {
-					int numLights = Render::State::GetNumLights();
+					int numLights = Graphics::State::GetNumLights();
 					for (int j=0; j<numLights; j++) glEnable(GL_LIGHT0 + j);
 					for (int j=4; j<8; j++) glDisable(GL_LIGHT0 + j);
-					curShader = s_sunlightShader[Render::State::GetNumLights()-1];
+					curShader = s_sunlightShader[Graphics::State::GetNumLights()-1];
 				}
 				break;
 			case OP_USE_LIGHT:
@@ -472,49 +512,47 @@ public:
 		glDisableClientState (GL_NORMAL_ARRAY);
 		glDisableClientState (GL_TEXTURE_COORD_ARRAY);
 
-		if (m_thrusters.size()) {
-			Render::UnbindAllBuffers();
-			UseProgram(s_sunlightShader[Render::State::GetNumLights()-1], false);
-			RenderThrusters(rstate, cameraPos, params);
-		}
+		Graphics::UnbindAllBuffers();
+
+		RenderThrusters(rstate, cameraPos, params);
 	}
 
 	void RenderThrusters(const RenderState *rstate, const vector3f &cameraPos, const LmrObjParams *params) {
-		// depth sort thrusters so alpha doesn't look fucked up!!!
-		ShipThruster::CameraDistance *dists = static_cast<ShipThruster::CameraDistance*>(alloca (m_thrusters.size() * sizeof(ShipThruster::CameraDistance)));
+		if (m_thrusters.empty()) return;
 
-		for (unsigned int i=0; i<m_thrusters.size(); i++) {
-			dists[i].thruster = &m_thrusters[i];
-			dists[i].dist = (m_thrusters[i].pos - cameraPos).Length();
-		}
-		sort(dists, dists + m_thrusters.size(), ShipThruster::CameraDistanceCompare());
-
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE);	
+		glDisable(GL_LIGHTING);
+		s_renderer->SetBlendMode(Graphics::BLEND_ADDITIVE);
+		s_renderer->SetDepthWrite(false);
 		glEnableClientState (GL_VERTEX_ARRAY);
+		glEnableClientState (GL_TEXTURE_COORD_ARRAY);
 		glDisableClientState (GL_NORMAL_ARRAY);
-		glDisableClientState (GL_TEXTURE_COORD_ARRAY);
-		glEnable (GL_BLEND);
+		glDisable(GL_CULL_FACE);
+		glEnable(GL_TEXTURE_2D);
 		for (unsigned int i=0; i<m_thrusters.size(); i++) {
-			ShipThruster::RenderThruster (rstate, params, dists[i].thruster);
+			m_thrusters[i].Render(s_renderer, rstate, params);
 		}
-		glDisable (GL_BLEND);
+		glDisable(GL_TEXTURE_2D);
+		glColor3f(1.f, 1.f, 1.f);
+		s_renderer->SetBlendMode(Graphics::BLEND_SOLID);
+		s_renderer->SetDepthWrite(true);
+		glEnable(GL_CULL_FACE);
 		glDisableClientState (GL_VERTEX_ARRAY);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	
+		glDisableClientState (GL_TEXTURE_COORD_ARRAY);
 	}
 	void PushThruster(const vector3f &pos, const vector3f &dir, const float power, bool linear_only) {
 		unsigned int i = m_thrusters.size();
 		m_thrusters.resize(i+1);
-		m_thrusters[i].pos = pos;
-		m_thrusters[i].dir = dir;
-		m_thrusters[i].power = power;
-		m_thrusters[i].linear_only = linear_only;
+		m_thrusters[i].m_pos = pos;
+		m_thrusters[i].m_dir = dir;
+		m_thrusters[i].m_power = power;
+		m_thrusters[i].m_linear_only = linear_only;
 	}
 	int PushVertex(const vector3f &pos, const vector3f &normal) {
-		vector3d tex = curTexMatrix * pos;
+		vector3f tex = curTexMatrix * pos;
 		return PushVertex(pos, normal, tex.x, tex.y);
 	}
 	void SetVertex(int idx, const vector3f &pos, const vector3f &normal) {
-		vector3d tex = curTexMatrix * pos;
+		vector3f tex = curTexMatrix * pos;
 		SetVertex(idx, pos, normal, tex.x, tex.y);
 	}
 	int PushVertex(const vector3f &pos, const vector3f &normal, GLfloat tex_u, GLfloat tex_v) {
@@ -534,9 +572,17 @@ public:
 	}
 	void SetTexture(const char *tex) {
 		if (tex) {
-			curTexture = TextureManager::GetTexture(tex);
+			curTexture = s_textureCache->GetModelTexture(tex);
 		} else {
 			curTexture = 0;
+			curGlowmap = 0; //won't have these without textures
+		}
+	}
+	void SetGlowMap(const char *tex) {
+		if (tex) {
+			curGlowmap = s_textureCache->GetModelTexture(tex);
+		} else {
+			curGlowmap = 0;
 		}
 	}
 	void SetTexMatrix(const matrix4x4f &texMatrix) { curTexMatrix = texMatrix; } 
@@ -614,7 +660,7 @@ public:
 		curOp.type = OP_DRAW_BILLBOARDS;
 		curOp.billboards.start = m_vertices.size();
 		curOp.billboards.count = numPoints;
-		curOp.billboards.texture = TextureManager::GetTexture(buf, true);
+		curOp.billboards.texture = s_textureCache->GetBillboardTexture(buf);
 		curOp.billboards.size = size;
 		curOp.billboards.col[0] = color.x;
 		curOp.billboards.col[1] = color.y;
@@ -688,7 +734,7 @@ public:
 				c->pVertex[3*vtxBase + 3*i] = v.x;
 				c->pVertex[3*vtxBase + 3*i+1] = v.y;
 				c->pVertex[3*vtxBase + 3*i+2] = v.z;
-				c->m_aabb.Update(v);
+				c->m_aabb.Update(vector3d(v));
 			}
 		}
 		if (m_indices.size()) {
@@ -722,7 +768,7 @@ private:
 		if (m_isStatic) {
 			if (m_bo) m_bo->BindBuffersForDraw();
 		} else {
-			Render::UnbindAllBuffers();
+			Graphics::UnbindAllBuffers();
 			if (m_vertices.size()) {
 				glNormalPointer(GL_FLOAT, sizeof(Vertex), &m_vertices[0].n);
 				glVertexPointer(3, GL_FLOAT, sizeof(Vertex), &m_vertices[0].v);
@@ -740,6 +786,7 @@ private:
 			curOp.elems.elemMin = 1<<30;
 			curOp.elems.elemMax = 0;
 			curOp.elems.texture = curTexture;
+			curOp.elems.glowmap = curGlowmap;
 		}
 		curOp.elems.count += numIndices;
 	}
@@ -758,11 +805,11 @@ private:
 	struct Op {
 		enum OpType type;
 		union {
-			struct { Texture *texture; int start, count, elemMin, elemMax; } elems;
+			struct { ModelTexture *texture; ModelTexture *glowmap; int start, count, elemMin, elemMax; } elems;
 			struct { int material_idx; } col;
 			struct { float amount; float pos[3]; float norm[3]; } zbias;
 			struct { LmrModel *model; float transform[16]; float scale; } callmodel;
-			struct { Texture *texture; int start, count; float size; float col[4]; } billboards;
+			struct { BillboardTexture *texture; int start, count; float size; float col[4]; } billboards;
 			struct { bool local; } lighting_type;
 			struct { int num; float quadratic_attenuation; float pos[4], col[4]; } light;
 		};
@@ -770,7 +817,8 @@ private:
 	/* this crap is only used at build time... could move this elsewhere */
 	Op curOp;
 	Uint16 curTriFlag;
-	Texture *curTexture;
+	ModelTexture *curTexture;
+	ModelTexture *curGlowmap;
 	matrix4x4f curTexMatrix;
 	// 
 	std::vector<Vertex> m_vertices;
@@ -791,11 +839,11 @@ public:
 		int numTriflags = m_triflags.size();
 		int numThrusters = m_thrusters.size();
 		int numOps = m_ops.size();
-		fwrite((void*)&numVertices, 1, 4, f);
-		fwrite((void*)&numIndices, 1, 4, f);
-		fwrite((void*)&numTriflags, 1, 4, f);
-		fwrite((void*)&numThrusters, 1, 4, f);
-		fwrite((void*)&numOps, 1, 4, f);
+		fwrite(&numVertices, sizeof(numVertices), 1, f);
+		fwrite(&numIndices, sizeof(numIndices), 1, f);
+		fwrite(&numTriflags, sizeof(numTriflags), 1, f);
+		fwrite(&numThrusters, sizeof(numThrusters), 1, f);
+		fwrite(&numOps, sizeof(numOps), 1, f);
 		if (numVertices) fwrite(&m_vertices[0], sizeof(Vertex), numVertices, f);
 		if (numIndices) fwrite(&m_indices[0], sizeof(Uint16), numIndices, f);
 		if (numTriflags) fwrite(&m_triflags[0], sizeof(Uint16), numTriflags, f);
@@ -808,6 +856,8 @@ public:
 				}
 				else if ((m_ops[i].type == OP_DRAW_ELEMENTS) && (m_ops[i].elems.texture)) {
 					_fwrite_string(m_ops[i].elems.texture->GetFilename(), f);
+					if (m_ops[i].elems.glowmap)
+						_fwrite_string(m_ops[i].elems.glowmap->GetFilename(), f);
 				}
 				else if ((m_ops[i].type == OP_DRAW_BILLBOARDS) && (m_ops[i].billboards.texture)) {
 					_fwrite_string(m_ops[i].billboards.texture->GetFilename(), f);
@@ -816,12 +866,12 @@ public:
 		}
 	}
 	void LoadFromCache(FILE *f) {
-		int numVertices, numIndices, numTriflags, numOps, numThrusters;
-		fread((void*)&numVertices, 1, 4, f);
-		fread((void*)&numIndices, 1, 4, f);
-		fread((void*)&numTriflags, 1, 4, f);
-		fread((void*)&numThrusters, 1, 4, f);
-		fread((void*)&numOps, 1, 4, f);
+		int numVertices, numIndices, numTriflags, numThrusters, numOps;
+		fread_or_die(&numVertices, sizeof(numVertices), 1, f);
+		fread_or_die(&numIndices, sizeof(numIndices), 1, f);
+		fread_or_die(&numTriflags, sizeof(numTriflags), 1, f);
+		fread_or_die(&numThrusters, sizeof(numThrusters), 1, f);
+		fread_or_die(&numOps, sizeof(numOps), 1, f);
 		assert(numVertices <= 65536);
 		assert(numIndices < 1000000);
 		assert(numTriflags < 1000000);
@@ -829,31 +879,33 @@ public:
 		assert(numOps < 1000);
 		if (numVertices) {
 			m_vertices.resize(numVertices);
-			fread(&m_vertices[0], sizeof(Vertex), numVertices, f);
+			fread_or_die(&m_vertices[0], sizeof(Vertex), numVertices, f);
 		}
 		if (numIndices) {
 			m_indices.resize(numIndices);
-			fread(&m_indices[0], sizeof(Uint16), numIndices, f);
+			fread_or_die(&m_indices[0], sizeof(Uint16), numIndices, f);
 		}
 		if (numTriflags) {
 			m_triflags.resize(numTriflags);
-			fread(&m_triflags[0], sizeof(Uint16), numTriflags, f);
+			fread_or_die(&m_triflags[0], sizeof(Uint16), numTriflags, f);
 		}
 		if (numThrusters) {
 			m_thrusters.resize(numThrusters);
-			fread(&m_thrusters[0], sizeof(ShipThruster::Thruster), numThrusters, f);
+			fread_or_die(&m_thrusters[0], sizeof(ShipThruster::Thruster), numThrusters, f);
 		}
 		m_ops.resize(numOps);
 		for (int i=0; i<numOps; i++) {
-			fread(&m_ops[i], sizeof(Op), 1, f);
+			fread_or_die(&m_ops[i], sizeof(Op), 1, f);
 			if (m_ops[i].type == OP_CALL_MODEL) {
 				m_ops[i].callmodel.model = s_models[_fread_string(f)];
 			}
 			else if ((m_ops[i].type == OP_DRAW_ELEMENTS) && (m_ops[i].elems.texture)) {
-				m_ops[i].elems.texture = TextureManager::GetTexture(_fread_string(f));
+				m_ops[i].elems.texture = s_textureCache->GetModelTexture(_fread_string(f));
+				if (m_ops[i].elems.glowmap)
+					m_ops[i].elems.glowmap = s_textureCache->GetModelTexture(_fread_string(f));
 			}
 			else if ((m_ops[i].type == OP_DRAW_BILLBOARDS) && (m_ops[i].billboards.texture)) {
-				m_ops[i].billboards.texture = TextureManager::GetTexture(_fread_string(f));
+				m_ops[i].billboards.texture = s_textureCache->GetBillboardTexture(_fread_string(f));
 			}
 		}
 	}
@@ -864,6 +916,9 @@ LmrModel::LmrModel(const char *model_name)
 	m_name = model_name;
 	m_drawClipRadius = 1.0f;
 	m_scale = 1.0f;
+
+	{
+	LUA_DEBUG_START(sLua);
 
 	char buf[256];
 	snprintf(buf, sizeof(buf), "%s_info", model_name);
@@ -932,6 +987,9 @@ LmrModel::LmrModel(const char *model_name)
 	m_hasDynamicFunc = lua_isfunction(sLua, -1);
 	lua_pop(sLua, 1);
 
+	LUA_DEBUG_END(sLua, 0);
+	}
+
 	for (int i=0; i<m_numLods; i++) {
 		m_staticGeometry[i] = new LmrGeomBuffer(this, true);
 		m_dynamicGeometry[i] = new LmrGeomBuffer(this, false);
@@ -950,20 +1008,20 @@ LmrModel::LmrModel(const char *model_name)
 			m_staticGeometry[i]->PostBuild();
 		}
 		int numMaterials;
-		fread((void*)&numMaterials, 1, 4, f);
-		if (numMaterials != m_materials.size()) {
+		fread_or_die(&numMaterials, sizeof(numMaterials), 1, f);
+		if (size_t(numMaterials) != m_materials.size()) {
 			fclose(f);
 			goto rebuild_model;
 		}
-		if (numMaterials) fread((void*)&m_materials[0], sizeof(LmrMaterial), numMaterials, f);
+		if (numMaterials) fread_or_die(&m_materials[0], sizeof(LmrMaterial), numMaterials, f);
 
 		int numLights;
-		fread((void*)&numLights, 1, 4, f);
-		if (numLights != m_lights.size()) {
+		fread_or_die(&numLights, sizeof(numLights), 1, f);
+		if (size_t(numLights) != m_lights.size()) {
 			fclose(f);
 			goto rebuild_model;
 		}
-		if (numLights) fread((void*)&m_lights[0], sizeof(LmrLight), numLights, f);
+		if (numLights) fread_or_die(&m_lights[0], sizeof(LmrLight), numLights, f);
 
 		fclose(f);
 	} else {
@@ -972,6 +1030,7 @@ rebuild_model:
 		FILE *f = fopen(cache_file.c_str(), "wb");
 		
 		for (int i=0; i<m_numLods; i++) {
+			LUA_DEBUG_START(sLua);
 			m_staticGeometry[i]->PreBuild();
 			s_curBuf = m_staticGeometry[i];
 			lua_pushcfunction(sLua, pi_lua_panic);
@@ -984,14 +1043,15 @@ rebuild_model:
 			s_curBuf = 0;
 			m_staticGeometry[i]->PostBuild();
 			m_staticGeometry[i]->SaveToCache(f);
+			LUA_DEBUG_END(sLua, 0);
 		}
 		
 		const int numMaterials = m_materials.size();
-		fwrite((void*)&numMaterials, 1, 4, f);
-		if (numMaterials) fwrite((void*)&m_materials[0], sizeof(LmrMaterial), numMaterials, f);
+		fwrite(&numMaterials, sizeof(numMaterials), 1, f);
+		if (numMaterials) fwrite(&m_materials[0], sizeof(LmrMaterial), numMaterials, f);
 		const int numLights = m_lights.size();
-		fwrite((void*)&numLights, 1, 4, f);
-		if (numLights) fwrite((void*)&m_lights[0], sizeof(LmrLight), numLights, f);
+		fwrite(&numLights, sizeof(numLights), 1, f);
+		if (numLights) fwrite(&m_lights[0], sizeof(LmrLight), numLights, f);
 		
 		fclose(f);
 	}
@@ -1010,59 +1070,41 @@ void LmrGetModelsWithTag(const char *tag, std::vector<LmrModel*> &outModels)
 {
 	for (std::map<std::string, LmrModel*>::iterator i = s_models.begin();
 			i != s_models.end(); ++i) {
-		LmrModel *model = (*i).second;
-		
-		char buf[256];
-		snprintf(buf, sizeof(buf), "%s_info", model->GetName());
-		lua_getglobal(sLua, buf);
-		lua_getfield(sLua, -1, "tags");
-		if (lua_istable(sLua, -1)) {
-			for(int j=1;; j++) {
-				lua_pushinteger(sLua, j);
-				lua_gettable(sLua, -2);
-				if (lua_isstring(sLua, -1)) {
-					const char *s = luaL_checkstring(sLua, -1);
-					if (0 == strcmp(tag, s)) {
-						outModels.push_back(model);
-						lua_pop(sLua, 1);
-						break;
-					}
-				} else if (lua_isnil(sLua, -1)) {
-					lua_pop(sLua, 1);
-					break;
-				}
-				lua_pop(sLua, 1);
-			}
-		}
-		lua_pop(sLua, 2);
+		if (i->second->HasTag(tag))
+			outModels.push_back(i->second);
 	}
 }
 
 float LmrModel::GetFloatAttribute(const char *attr_name) const
 {
+	LUA_DEBUG_START(sLua);
 	char buf[256];
 	snprintf(buf, sizeof(buf), "%s_info", m_name.c_str());
 	lua_getglobal(sLua, buf);
 	lua_getfield(sLua, -1, attr_name);
 	float result = luaL_checknumber(sLua, -1);
 	lua_pop(sLua, 2);
+	LUA_DEBUG_END(sLua, 0);
 	return result;
 }
 
 int LmrModel::GetIntAttribute(const char *attr_name) const
 {
+	LUA_DEBUG_START(sLua);
 	char buf[256];
 	snprintf(buf, sizeof(buf), "%s_info", m_name.c_str());
 	lua_getglobal(sLua, buf);
 	lua_getfield(sLua, -1, attr_name);
-	int result = luaL_checkint(sLua, -1);
+	int result = luaL_checkinteger(sLua, -1);
 	lua_pop(sLua, 2);
+	LUA_DEBUG_END(sLua, 0);
 	return result;
 }
 
 bool LmrModel::GetBoolAttribute(const char *attr_name) const
 {
 	char buf[256];
+	LUA_DEBUG_START(sLua);
 	snprintf(buf, sizeof(buf), "%s_info", m_name.c_str());
 	lua_getglobal(sLua, buf);
 	lua_getfield(sLua, -1, attr_name);
@@ -1073,15 +1115,55 @@ bool LmrModel::GetBoolAttribute(const char *attr_name) const
 		result = lua_toboolean(sLua, -1) != 0;
 	}	
 	lua_pop(sLua, 2);
+	LUA_DEBUG_END(sLua, 0);
 	return result;
 }
 
 void LmrModel::PushAttributeToLuaStack(const char *attr_name) const
 {
+	LUA_DEBUG_START(sLua);
 	char buf[256];
 	snprintf(buf, sizeof(buf), "%s_info", m_name.c_str());
 	lua_getglobal(sLua, buf);
 	lua_getfield(sLua, -1, attr_name);
+	lua_remove(sLua, -2);
+	LUA_DEBUG_END(sLua, 1);
+}
+
+bool LmrModel::HasTag(const char *tag) const
+{
+	bool has_tag = false;
+
+	LUA_DEBUG_START(sLua);
+
+	char buf[256];
+	snprintf(buf, sizeof(buf), "%s_info", m_name.c_str());
+
+	lua_getglobal(sLua, buf);
+	lua_getfield(sLua, -1, "tags");
+	if (lua_istable(sLua, -1)) {
+		for(int j=1;; j++) {
+			lua_pushinteger(sLua, j);
+			lua_gettable(sLua, -2);
+			if (lua_isstring(sLua, -1)) {
+				const char *s = luaL_checkstring(sLua, -1);
+				if (0 == strcmp(tag, s)) {
+					has_tag = true;
+					lua_pop(sLua, 1);
+					break;
+				}
+			} else if (lua_isnil(sLua, -1)) {
+				lua_pop(sLua, 1);
+				break;
+			}
+			lua_pop(sLua, 1);
+		}
+	}
+	lua_pop(sLua, 2);
+
+	LUA_DEBUG_END(sLua, 0);
+
+	return has_tag;
 }
 
 void LmrModel::Render(const matrix4x4f &trans, const LmrObjParams *params)
@@ -1099,7 +1181,6 @@ void LmrModel::Render(const RenderState *rstate, const vector3f &cameraPos, cons
 	glScalef(m_scale, m_scale, m_scale);
 	glEnable(GL_NORMALIZE);
 	glEnable(GL_LIGHTING);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	
 
 	float pixrad = 0.5f * s_scrWidth * rstate->combinedScale * m_drawClipRadius / cameraPos.Length();
 	//printf("%s: %fpx\n", m_name.c_str(), pixrad);
@@ -1120,14 +1201,20 @@ void LmrModel::Render(const RenderState *rstate, const vector3f &cameraPos, cons
 	}
 	s_curBuf = 0;
 
+	Graphics::UnbindAllBuffers();
+	//XXX hack. Unuse any shader. Can be removed when LMR uses Renderer.
+	if (Graphics::AreShadersEnabled())
+		s_sunlightShader[0]->Unuse();
+
 	glDisable(GL_NORMALIZE);
-	glDisable(GL_BLEND);
+	s_renderer->SetBlendMode(Graphics::BLEND_SOLID);
 	glPopMatrix();
 }
 
 void LmrModel::Build(int lod, const LmrObjParams *params)
 {
 	if (m_hasDynamicFunc) {
+		LUA_DEBUG_START(sLua);
 		m_dynamicGeometry[lod]->PreBuild();
 		s_curBuf = m_dynamicGeometry[lod];
 		s_curParams = params;
@@ -1141,6 +1228,7 @@ void LmrModel::Build(int lod, const LmrObjParams *params)
 		s_curBuf = 0;
 		s_curParams = 0;
 		m_dynamicGeometry[lod]->PostBuild();
+		LUA_DEBUG_END(sLua, 0);
 	}
 }
 
@@ -1156,8 +1244,8 @@ void LmrModel::GetCollMeshGeometry(LmrCollMesh *mesh, const matrix4x4f &transfor
 LmrCollMesh::LmrCollMesh(LmrModel *m, const LmrObjParams *params)
 {
 	memset(this, 0, sizeof(LmrCollMesh));
-	m_aabb.min = vector3f(FLT_MAX, FLT_MAX, FLT_MAX);
-	m_aabb.max = vector3f(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+	m_aabb.min = vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	m_aabb.max = vector3d(-DBL_MAX, -DBL_MAX, -DBL_MAX);
 	m->GetCollMeshGeometry(this, matrix4x4f::Identity(), params);
 	m_radius = m_aabb.GetBoundingRadius();
 	geomTree = new GeomTree(nv, m_numTris, pVertex, pIndex, pFlag);
@@ -1168,7 +1256,7 @@ int LmrCollMesh::GetTrisWithGeomflag(unsigned int flags, int num, vector3d *outV
 {
 	int found = 0;
 	for (int i=0; (i<m_numTris) && (found<num); i++) {
-		if (pFlag[i] == int(flags)) {
+		if (pFlag[i] == flags) {
 			*(outVtx++) = vector3d(&pVertex[3*pIndex[3*i]]);
 			*(outVtx++) = vector3d(&pVertex[3*pIndex[3*i+1]]);
 			*(outVtx++) = vector3d(&pVertex[3*pIndex[3*i+2]]);
@@ -1187,7 +1275,7 @@ LmrCollMesh::~LmrCollMesh()
 	free(pFlag);
 }
 
-LmrModel *LmrLookupModelByName(const char *name) throw (LmrModelNotFoundException)
+LmrModel *LmrLookupModelByName(const char *name)
 {
 	std::map<std::string, LmrModel*>::iterator i = s_models.find(name);
 
@@ -1198,6 +1286,34 @@ LmrModel *LmrLookupModelByName(const char *name) throw (LmrModelNotFoundExceptio
 }	
 
 namespace ModelFuncs {
+	/*
+	 * Function: call_model
+	 *
+	 * Use another model as a submodel.
+	 *
+	 * > call_model(modelname, pos, xaxis, yaxis, scale)
+	 *
+	 * Parameters:
+	 *
+	 *   modelname - submodel to call, must be already loaded
+	 *   pos - position to load the submodel at
+	 *   xaxis - submodel orientation along x axis
+	 *   yaxis - submodel orientation along y axis
+	 *   scale - submodel scale
+	 *
+	 * Example:
+	 *
+	 * > call_model('front_wheel',v(0,0,-50),v(0,0,1),v(1,0,0),1.0)
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int call_model(lua_State *L)
 	{
 		const char *obj_name = luaL_checkstring(L, 1);
@@ -1227,9 +1343,38 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: set_light
+	 *
+	 * Set parameters for a local light. Up to four lights are available.
+	 * You can use it by calling use_light after set_local_lighting(true)
+	 * has been called.
+	 *
+	 * > set_light(number, attenuation, position, color)
+	 *
+	 * Parameters:
+	 *
+	 *   number - number of the light to modify, 1 to 4
+	 *   attenuation - quadratic attenuation
+	 *   position - xyz position
+	 *   color - rgb
+	 *
+	 * Example:
+	 *
+	 * > set_light(1, 0.00005, v(0,0,0), v(1,0.2,0))
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int set_light(lua_State *L)
 	{
-		int num = luaL_checkint(L, 1)-1;
+		int num = luaL_checkinteger(L, 1)-1;
 		if ((num < 0) || (num > 3)) {
 			luaL_error(L, "set_light should have light number from 1 to 4.");
 		}
@@ -1240,13 +1385,58 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: use_light
+	 *
+	 * Use one of the local lights.
+	 *
+	 * > use_light(number)
+	 *
+	 * Parameters:
+	 *
+	 *   number - local light number, 1 to 4
+	 *
+	 * Example:
+	 *
+	 * > use_light(1)
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int use_light(lua_State *L)
 	{
-		int num = luaL_checkint(L, 1)-1;
+		int num = luaL_checkinteger(L, 1)-1;
 		s_curBuf->PushUseLight(num);
 		return 0;
 	}
 
+	/*
+	 * Function: set_local_lighting
+	 *
+	 * Enable use of lights local to the model. They do not affect
+	 * the surroundings, and are meant for lighting structure interiors.
+	 *
+	 * > set_local_lighting(state)
+	 *
+	 * Parameters:
+	 *
+	 *   state - true or false
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int set_local_lighting(lua_State *L)
 	{
 		const bool doIt = lua_toboolean(L, 1) != 0;
@@ -1254,6 +1444,27 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: set_insideout
+	 *
+	 * Flip faces. When enabled, subsequent drawing will be inside-out (reversed triangle
+	 * winding and normals)
+	 *
+	 * >  set_insideout(state)
+	 *
+	 * Parameters:
+	 *
+	 *   state - true or false
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int insideout(lua_State *L)
 	{
 		const bool doIt = lua_toboolean(L, 1) != 0;
@@ -1261,9 +1472,39 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: lathe
+	 *
+	 * Cylindrical shape that can be tapered at different lengths
+	 *
+	 * >  lathe(sides, start, end, up, steps)
+	 *
+	 * Parameters:
+	 *
+	 *   sides - number of sides, at least 3
+	 *   start - position vector to start at
+	 *   end - position vector to finish at
+	 *   up - up direction vector, can be used to rotate shape
+	 *   steps - table of position, radius pairs. Positions are from 0.0
+	 *           (start of the cylinder) to 1.0 (end). If you want a closed
+	 *           cylinder have a zero-radius positions at the start and the end.
+	 *
+	 * Example:
+	 *
+	 * > lathe(8, v(0,0,0), v(0,10,0), v(1,0,0), {0.0,0.0, 0.0,1.0, 0.4,1.2, 0.6,1.2, 1.0,1.0, 1.0,0.0})
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int lathe(lua_State *L)
 	{
-		const int steps = luaL_checknumber(L, 1);
+		const int steps = luaL_checkinteger(L, 1);
 		const vector3f *start = MyLuaVec::checkVec(L, 2);
 		const vector3f *end = MyLuaVec::checkVec(L, 3);
 		const vector3f *updir = MyLuaVec::checkVec(L, 4);
@@ -1296,9 +1537,9 @@ namespace ModelFuncs {
 		for (int i=0; i<num-3; i+=2) {
 			const float rad1 = jizz[i+1];
 			const float rad2 = jizz[i+3];
-			const vector3d _start = *start + (*end-*start)*jizz[i];
-			const vector3d _end = *start + (*end-*start)*jizz[i+2];
-			bool shitty_normal = (jizz[i] == jizz[i+2]);
+			const vector3f _start = *start + (*end-*start)*jizz[i];
+			const vector3f _end = *start + (*end-*start)*jizz[i+2];
+			bool shitty_normal = is_equal_absolute(jizz[i], jizz[i+2], 1e-4f);
 
 			const int basevtx = vtxStart + steps*i;
 			float ang = 0;
@@ -1326,6 +1567,34 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: extrusion
+	 *
+	 * Extrude an outline/cross-section. Ends will be closed.
+	 *
+	 * >  extrusion(start, end, up, radius, shape)
+	 *
+	 * Parameters:
+	 *
+	 *   start - position vector to start at
+	 *   end - position vector to end at
+	 *   up - up vector, can be used to rotate shape
+	 *   radius - scale of the extrusion
+	 *   shape - table of position vectors to define the outline, maximum 32
+	 *
+	 * Example:
+	 *
+	 * > extrusion(v(0,0,20), v(0,0,-20), v(0,1,0), 1.0, v(-20,0,0), v(20,0,0), v(20,200,0), v(-20,200,0))
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int extrusion(lua_State *L)
 	{
 		const vector3f *start = MyLuaVec::checkVec(L, 1);
@@ -1529,7 +1798,54 @@ namespace ModelFuncs {
 		return 0;
 	}
 	
+	/*
+	 * Function: flat
+	 *
+	 * Multi-point patch shape.
+	 *
+	 * > flat(divs, normal, points)
+	 *
+	 * Parameters:
+	 *
+	 *   divs - number of subdivisions
+	 *   normal - face direction vector
+	 *   points - outline path segments as separate vector tables. Number of table elements
+	 *            determines the segment type (linear, quadratic, cubic). Points can be mixed.
+	 *            32 point maximum.
+	 *
+	 * Example:
+	 *
+	 * > --rectangle of four linear points
+	 * > flat(6, v(0,1,0), {v(-2,0,0)}, {v(2,0,0)}, {v(2,2,0)}, {v(-2,2,0)})
+	 * > --smoother, and top replaced with a curve
+	 * > flat(16, v(0,1,0),{v(-2,0,0)}, {v(2,0,0)}, {v(2,2,0)}, {v(2,2,0), v(0,4,0), v(-2,2,0)})
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int flat(lua_State *L) { return _flat(L, false); }
+
+	/*
+	 * Function: xref_flat
+	 *
+	 * Symmetry version of <flat>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_flat(lua_State *L) { return _flat(L, true); }
 
 	static vector3f eval_quadric_bezier_triangle(const vector3f p[6], float s, float t, float u)
@@ -1555,7 +1871,7 @@ namespace ModelFuncs {
 	static void _bezier_triangle(lua_State *L, bool xref)
 	{
 		vector3f pts[10];
-		const int divs = luaL_checkint(L, 1) + 1;
+		const int divs = luaL_checkinteger(L, 1) + 1;
 		assert(divs > 0);
 		if (BEZIER_ORDER == 2) {
 			for (int i=0; i<6; i++) {
@@ -1623,9 +1939,97 @@ namespace ModelFuncs {
 		}
 	}
 
+	/*
+	 * Function: cubic_bezier_tri
+	 *
+	 * Bezier triangle, cubic interpolation
+	 *
+	 * > cubic_bezier_tri(divs, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10)
+	 *
+	 * Parameters:
+	 *
+	 *   divs - number of subdivisions
+	 *   v1-v10 - ten control points. v1, v4 and v10 are the triangle corners. v6 is the triangle center.
+	 *
+	 * Example:
+	 *
+	 * > --triangle with curved sides and depressed center
+	 * > cubic_bezier_tri(16, v(-4,0,0), v(-1,0,0), v(1,0,0), v(4,0,0),
+	 * >    v(-2,1,0), v(0,1,10), v(2,1,0),
+	 * >    v(-1,2,0), v(1,2,0),
+	 * >    v(0,5,0))
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int cubic_bezier_triangle(lua_State *L) { _bezier_triangle<3>(L, false); return 0; }
+
+	/*
+	 * Function: xref_cubic_bezier_tri
+	 *
+	 * Symmetry version of <cubic_bezier_tri>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_cubic_bezier_triangle(lua_State *L) { _bezier_triangle<3>(L, true); return 0; }
+
+	/*
+	 * Function: quadric_bezier_tri
+	 *
+	 * Bezier triangle, quadratic interpolation
+	 *
+	 * > quadric_bezier_tri(divs, v1, v2, v3, v4, v5, v6)
+	 *
+	 * Parameters:
+	 *
+	 *   divs - number of subdivisions
+	 *   v1-v6 - six control points, v1, v3 and v6 form the corners
+	 *
+	 * Example:
+	 *
+	 * > --triangle with concave sides
+	 * > quadric_bezier_tri(16, v(-4,0,0), v(0,1,0), v(4,0,0), v(-1,2,0), v(1,2,0), v(0,4,0))
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int quadric_bezier_triangle(lua_State *L) { _bezier_triangle<2>(L, false); return 0; }
+
+	/*
+	 * Function: xref_quadric_bezier_tri
+	 *
+	 * Symmetry version of <quadric_bezier_tri>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_quadric_bezier_triangle(lua_State *L) { _bezier_triangle<2>(L, true); return 0; }
 
 
@@ -1645,8 +2049,8 @@ namespace ModelFuncs {
 	static void _quadric_bezier_quad(lua_State *L, bool xref)
 	{
 		vector3f pts[9];
-		const int divs_u = luaL_checkint(L, 1);
-		const int divs_v = luaL_checkint(L, 2);
+		const int divs_u = luaL_checkinteger(L, 1);
+		const int divs_v = luaL_checkinteger(L, 2);
 		for (int i=0; i<9; i++) {
 			pts[i] = *MyLuaVec::checkVec(L, i+3);
 		}
@@ -1693,7 +2097,54 @@ namespace ModelFuncs {
 		}
 	}
 	
+
+	/*
+	 * Function: quadric_bezier_quad
+	 *
+	 * Smoothly interpolated patch shape (quadratic interpolation)
+	 *
+	 * > quadric_bezier_quad(u, v, v1, v2, v3, v4, v5, v6, v7, v8, v9)
+	 *
+	 * Parameters:
+	 *
+	 *   u - 'horizontal' subdivisions
+	 *   v - 'vertical' subdivisions
+	 *   v1-v9 - nine control points. v1, v3, v7 and v9 form the corners.
+	 *
+	 * Example:
+	 *
+	 * > --patch with a sunken center
+	 * > quadric_bezier_quad(8, 8,
+	 *      v(0,0,0), v(1,0,0), v(2,0,0),
+	 *      v(0,0,1), v(1,-3,1), v(2,0,1),
+	 *      v(0,0,2), v(1,0,2), v(2,0,2))
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int quadric_bezier_quad(lua_State *L) { _quadric_bezier_quad(L, false); return 0; }
+
+	/*
+	 * Function: xref_quadric_bezier_quad
+	 *
+	 * Symmetry version of <quadric_bezier_quad>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_quadric_bezier_quad(lua_State *L) { _quadric_bezier_quad(L, true); return 0; }
 
 	static vector3f eval_cubic_bezier_u_v(const vector3f p[16], float u, float v)
@@ -1718,8 +2169,8 @@ namespace ModelFuncs {
 	static void _cubic_bezier_quad(lua_State *L, bool xref)
 	{
 		vector3f pts[16];
-		const int divs_v = luaL_checkint(L, 1);
-		const int divs_u = luaL_checkint(L, 2);
+		const int divs_v = luaL_checkinteger(L, 1);
+		const int divs_u = luaL_checkinteger(L, 2);
 		if (lua_istable(L, 3)) {
 			for (int i=0; i<16; i++) {
 				lua_pushinteger(L, i+1);
@@ -1776,9 +2227,94 @@ namespace ModelFuncs {
 		}
 	}
 
+	/*
+	 * Function: cubic_bezier_quad
+	 *
+	 * Smoothly interpolated patch shape (cubic interpolation)
+	 *
+	 * > cubic_bezier_quad(u, v, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16)
+	 *
+	 * Parameters:
+	 *
+	 *   u - 'horizontal' subdivisions
+	 *   v - 'vertical' subdivisions
+	 *   v1-v16 - sixteen control points. v1, v4, 13 and v16 form the corners.
+	 *
+	 * Example:
+	 *
+	 * > --patch with a raised center
+	 * > cubic_bezier_quad(8, 8,
+	 * >   v(0,0,0), v(1,0,0), v(2,0,0), v(3,0,0),
+	 * >   v(0,1,0), v(1,1,3), v(2,1,3), v(3,1,0),
+	 * >   v(0,2,0), v(1,2,3), v(2,2,3), v(3,2,0),
+	 * >   v(0,3,0), v(1,3,0), v(2,3,0), v(3,3,0))
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int cubic_bezier_quad(lua_State *L) { _cubic_bezier_quad(L, false); return 0; }
+
+	/*
+	 * Function: xref_cubic_bezier_quad
+	 *
+	 * Symmetry version of <cubic_bezier_quad>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_cubic_bezier_quad(lua_State *L) { _cubic_bezier_quad(L, true); return 0; }
 
+	/*
+	 * Function: set_material
+	 *
+	 * Set or update material properties. Materials are activated with <use_material>.
+	 * Pioneer materials use the phong lighting model.
+	 *
+	 * >  set_material(name, red, green, blue, alpha, specular_red, specular_green, specular_blue, shininess, emissive_red, emissive_gree, emissive_blue)
+	 *
+	 * Parameters:
+	 *
+	 *   name - one of the names defined in model's materials table
+	 *   red - diffuse color, red component
+	 *   green - diffuse color, green component
+	 *   blue - diffuse color, blue component
+	 *   alpha - amount of material's translucency
+	 *   specular_red - specular highlight color, red component
+	 *   specular_green - specular highlight color, green component
+	 *   specular_blue - specular highlight color, blue component
+	 *   shininess - strength of specular highlights
+	 *   emissive_red - self illumination, red component
+	 *   emissive_green - self illumination, green component
+	 *   emissive_blue - self illumination, blue component
+	 *
+	 * Example:
+	 *
+	 * > set_material('wall', 1.0,1.0,1.0,1.0, 0.3,0.3,0.3,5.0, 0.0,0.0,0.0)
+	 * > set_material('windows', 0,0,0,1, 1,1,1,50, .5,.5,0)
+	 * > set_material('blue', 0.0,0.0,0.8,1.0) --just rgba
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int set_material(lua_State *L)
 	{
 		const char *mat_name = luaL_checkstring(L, 1);
@@ -1800,6 +2336,30 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: use_material
+	 *
+	 * Activate a material to be used with subsequent drawing commands
+	 *
+	 * >  use_material(name)
+	 *
+	 * Parameters:
+	 *
+	 *   name - material defined in model's materials table
+	 *
+	 * Example:
+	 *
+	 * > use_material('wall')
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int use_material(lua_State *L)
 	{
 		const char *mat_name = luaL_checkstring(L, 1);
@@ -1812,6 +2372,35 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: texture
+	 *
+	 * Apply a texture map to subsequent geometry. Additionally define
+	 * texture UV coordinates by projection.
+	 *
+	 * > texture(name, pos, uaxis, vaxis)
+	 *
+	 * Parameters:
+	 *
+	 *   name - texture file name. texture(nil) disables texture.
+	 *   pos  - vector position
+	 *   uaxis - U vector
+	 *   vaxis - V vector
+	 *
+	 * Example:
+	 *
+	 * > texture("hull.png")
+	 * > texture("wall.png", v(0,0,0), v(1,0,0), v(0,0,1))
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int texture(lua_State *L)
 	{
 		const int nargs = lua_gettop(L);
@@ -1842,6 +2431,43 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+/*
+ * Function: texture_glow
+ *
+ * Set a glow map. Meant to be used alongside a texture(). The glow
+ * map will override the material's emissive value. The glow texture will
+ * be additively blended.
+ *
+ * > texture_glow('glowmap.png')
+ *
+ * Parameters:
+ *
+ *   name - RGB texture file name
+ *
+ * Availability:
+ *
+ *   alpha 15
+ *
+ * Status:
+ *
+ *   experimental
+ */
+	static int texture_glow(lua_State *L)
+	{
+		if (lua_isnil(L, 1)) {
+			s_curBuf->SetGlowMap(0);
+		} else {
+			lua_getglobal(L, "CurrentDirectory");
+			std::string dir = luaL_checkstring(L, -1);
+			lua_pop(L, 1);
+
+			const char *texfile = luaL_checkstring(L, 1);
+			std::string t = dir + std::string("/") + texfile;
+			s_curBuf->SetGlowMap(t.c_str());
+		}
+		return 0;
+	}
+
 		static matrix4x4f _textTrans;
 		static vector3f _textNorm;
 		static void _text_index_callback(int num, Uint16 *vals) {
@@ -1857,6 +2483,39 @@ namespace ModelFuncs {
 				s_curBuf->PushVertex(p, _textNorm);
 			}
 		}
+
+	/*
+	 * Function: text
+	 *
+	 * Draw three-dimensional text. For ship registration ID, landing bay numbers...
+	 * 
+	 * Long strings can create a large number of triangles so try to be
+	 * economical.
+	 *
+	 * > text(text, pos, normal, textdir, scale, centering)
+	 *
+	 * Parameters:
+	 *
+	 *   text - string of text
+	 *   pos - vector position of lower left corner (if centering is off)
+	 *   normal - face normal
+	 *   textdir - text rotation
+	 *   scale - text scale
+	 *   centering - optional table with a named boolean, {center=true/false}, default off
+	 *
+	 * Example:
+	 *
+	 * > text("BLOB", v(0,0,0), v(0,0,1), v(1,0,0), 10.0, { center=true }) --horizontal text
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int text(lua_State *L)
 	{
 		const char *str = luaL_checkstring(L, 1);
@@ -1902,22 +2561,86 @@ namespace ModelFuncs {
 		return 0;
 	}
 	
+	/*
+	 * Function: geomflag
+	 *
+	 * Set flags for subsequent geometry. Used for collision detection special
+	 * cases, such as space station docking bays.
+	 *
+	 * Model collision should not be disabled entirely or crashes can happen.
+	 *
+	 * > geomflag(flag)
+	 *
+	 * Parameters:
+	 *
+	 *   flag - 0x0:  remove special flag
+	 *          0x10: first docking bay
+	 *          0x11: second docking bay
+	 *          0x12: third docking bay
+	 *          0x14: fourth docking bay
+	 *          0x8000:  disable collision detection
+	 *
+	 * Example:
+	 *
+	 * > geomflag(0x14)
+	 * > extrusion(v(-100,0,0), v(-100,0,100), v(0,1,0), 1.0, v(-50,0,0), v(50,0,0), v(50,10,0), v(-50,10,0))
+	 * > geomflag(0)
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int geomflag(lua_State *L)
 	{
-		Uint16 flag = luaL_checkint(L, 1);
+		Uint16 flag = luaL_checkinteger(L, 1);
 		s_curBuf->SetGeomFlag(flag);
 		return 0;
 	}
 
+	/*
+	 * Function: zbias
+	 *
+	 * Fine-tune depth range. Overlapping geometry can be rendered without 
+	 * z-fighting using this parameter.
+	 *
+	 * > zbias(amount, position, normal)
+	 *
+	 * Parameters:
+	 *
+	 *   amount - adjustment value, use 0 to restore normal operation
+	 *   position - unused
+	 *   normal - unused
+	 *
+	 * Example:
+	 *
+	 * > quad(v(-1,-0.5,0),v(1,-0.5,0),v(1,0.5,0),v(-1,0.5,0))
+	 * > zbias(1.0, v(0,0,0),v(0,0,1))
+	 * > text("Some text", v(0,0,0), v(0,0,1), v(1,0,0), .2, {center=true})
+   * > zbias(0)
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int zbias(lua_State *L)
 	{
-		float amount = luaL_checknumber(L, 1);
-		if (amount == 0) {
+		int amount = luaL_checkinteger(L, 1);
+		if (! amount) {
 			s_curBuf->PushZBias(0, vector3f(0.0), vector3f(0.0));
 		} else {
 			vector3f *pos = MyLuaVec::checkVec(L, 2);
 			vector3f *norm = MyLuaVec::checkVec(L, 3);
-			s_curBuf->PushZBias(amount, *pos, *norm);
+			s_curBuf->PushZBias(float(amount), *pos, *norm);
 		}
 		return 0;
 	}
@@ -1942,9 +2665,37 @@ namespace ModelFuncs {
 		}
 	}
 
+	/*
+	 * Function: circle
+	 *
+	 * Circle (disc)
+	 *
+	 * > circle(steps, center, normal, up, radius)
+	 *
+	 * Parameters:
+	 *
+	 *   steps - number of vertices
+	 *   center - vector position of the center
+	 *   normal - face normal vector
+	 *   up - up direction vector
+	 *   radius - circle radius
+	 *
+	 * Example:
+	 *
+	 * > circle(8, v(0,0,0), v(0,1,0), v(0,0,1), .3)
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int circle(lua_State *L)
 	{
-		int steps = luaL_checkint(L, 1);
+		int steps = luaL_checkinteger(L, 1);
 		const vector3f *center = MyLuaVec::checkVec(L, 2);
 		const vector3f *normal = MyLuaVec::checkVec(L, 3);
 		const vector3f *updir = MyLuaVec::checkVec(L, 4);
@@ -1953,9 +2704,26 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: xref_circle
+	 *
+	 * Symmetry version of <circle>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * > xref_circle(steps, center, normal, up, radius)
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_circle(lua_State *L)
 	{
-		int steps = luaL_checkint(L, 1);
+		int steps = luaL_checkinteger(L, 1);
 		vector3f center = *MyLuaVec::checkVec(L, 2);
 		vector3f normal = *MyLuaVec::checkVec(L, 3);
 		vector3f updir = *MyLuaVec::checkVec(L, 4);
@@ -2026,9 +2794,38 @@ namespace ModelFuncs {
 		s_curBuf->PushTri(vtxStart+5*steps, vtxStart+7*steps, vtxStart+8*steps-1);
 	}
 	
+	/*
+	 * Function: tube
+	 *
+	 * Hollow cylinder with definable wall thickness
+	 *
+	 * > tube(steps, start, end, up, innerradius, outerradius)
+	 *
+	 * Parameters:
+	 *
+	 *   steps - number of cross-section vertices
+	 *   start - start position vector
+	 *   end - end position vector
+	 *   up - up vector to affect rotation
+	 *   innerradius - inner radius
+	 *   outerradius - outer radius, must be more than inner
+	 *
+	 * Example:
+	 *
+	 * > tube(5, vec(0,0,0), vec(0,20,0), vec(0,1,0), 5.0, 8.0)
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int tube(lua_State *L)
 	{
-		int steps = luaL_checkint(L, 1);
+		int steps = luaL_checkinteger(L, 1);
 		const vector3f *start = MyLuaVec::checkVec(L, 2);
 		const vector3f *end = MyLuaVec::checkVec(L, 3);
 		const vector3f *updir = MyLuaVec::checkVec(L, 4);
@@ -2038,9 +2835,26 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: xref_tuble
+	 *
+	 * Symmetry version of <tube>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * > xref_tube(steps, start, end, up, innerradius, outerradius)
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_tube(lua_State *L)
 	{
-		int steps = luaL_checkint(L, 1);
+		int steps = luaL_checkinteger(L, 1);
 		vector3f start = *MyLuaVec::checkVec(L, 2);
 		vector3f end = *MyLuaVec::checkVec(L, 3);
 		vector3f updir = *MyLuaVec::checkVec(L, 4);
@@ -2091,10 +2905,40 @@ namespace ModelFuncs {
 			s_curBuf->PushTri(vtxStart+3*steps, vtxStart+3*steps+i-1, vtxStart+3*steps+i);
 		}
 	}
-	
+
+
+	/*
+	 * Function: tapered_cylinder
+	 *
+	 * A cylinder with one end wider than the other
+	 *
+	 * > tapered_cylinder(steps, start, end, up, radius, end_radius)
+	 *
+	 * Parameters:
+	 *
+	 *   steps - number of cross-section points
+	 *   start - vector start position
+	 *   end - vector end position
+	 *   up - orientation of the ends (does not rotate the entire shape)
+	 *   radius - start radius
+	 *   end_radius - end radius
+	 *
+	 * Example:
+	 *
+	 * > tapered_cylinder(16*lod,v(0,-200,0),v(0,400,0),v(1,0,0),100,50)
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int tapered_cylinder(lua_State *L)
 	{
-		int steps = luaL_checkint(L, 1);
+		int steps = luaL_checkinteger(L, 1);
 		const vector3f *start = MyLuaVec::checkVec(L, 2);
 		const vector3f *end = MyLuaVec::checkVec(L, 3);
 		const vector3f *updir = MyLuaVec::checkVec(L, 4);
@@ -2104,10 +2948,25 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: xref_tapered_cylinder
+	 *
+	 * Symmetry version of <tapered_cylinder>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_tapered_cylinder(lua_State *L)
 	{
 		/* could optimise for x-reflection but fuck it */
-		int steps = luaL_checkint(L, 1);
+		int steps = luaL_checkinteger(L, 1);
 		vector3f start = *MyLuaVec::checkVec(L, 2);
 		vector3f end = *MyLuaVec::checkVec(L, 3);
 		vector3f updir = *MyLuaVec::checkVec(L, 4);
@@ -2156,9 +3015,38 @@ namespace ModelFuncs {
 		}
 	}
 	
+	/*
+	 * Function: cylinder
+	 *
+	 * A cylinder (ends will be closed)
+	 *
+	 * > cylinder(steps, start, end, up, radius)
+	 *
+	 * Parameters:
+	 *
+	 *   steps - number of cross-section vertices
+	 *   start - vector starting position
+	 *   end - vector ending position
+	 *   up - orientation of the start and end caps, default (0,0,1). Does not
+	 *        rotate the entire shape
+	 *   radius - cylinder radius
+	 *
+	 * Example:
+	 *
+	 * > cylinder(8, v(-5,0,0), v(5,0,0), v(0,0,1), 3) --horizontal cylinder
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int cylinder(lua_State *L)
 	{
-		int steps = luaL_checkint(L, 1);
+		int steps = luaL_checkinteger(L, 1);
 		const vector3f *start = MyLuaVec::checkVec(L, 2);
 		const vector3f *end = MyLuaVec::checkVec(L, 3);
 		const vector3f *updir = MyLuaVec::checkVec(L, 4);
@@ -2167,10 +3055,25 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: xref_cylinder
+	 *
+	 * Symmetry version of <cylinder>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_cylinder(lua_State *L)
 	{
 		/* could optimise for x-reflection but fuck it */
-		int steps = luaL_checkint(L, 1);
+		int steps = luaL_checkinteger(L, 1);
 		vector3f start = *MyLuaVec::checkVec(L, 2);
 		vector3f end = *MyLuaVec::checkVec(L, 3);
 		vector3f updir = *MyLuaVec::checkVec(L, 4);
@@ -2210,10 +3113,38 @@ namespace ModelFuncs {
 		s_curBuf->PushTri(vtxStart, vtxStart+steps, vtxStart+2*steps-1);
 	}
 
-	/* Cylinder with no top or bottom caps */
+	/*
+	 * Function: ring
+	 *
+	 * Uncapped cylinder.
+	 *
+	 * > ring(steps, start, end, up, radius)
+	 *
+	 * Parameters:
+	 *
+	 *   steps - number of cross-section vertices
+	 *   start - vector starting position
+	 *   end - vector ending position
+	 *   up - orientation of the start and the end, default (0,0,1). Does not
+	 *        rotate the entire shape
+	 *   radius - cylinder radius
+	 *
+	 * Example:
+	 *
+	 * > ring(8, v(5,0,0), v(5,10,0), v(0,0,1), 3) --10m tall tube
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int ring(lua_State *L)
 	{
-		int steps = luaL_checkint(L, 1);
+		int steps = luaL_checkinteger(L, 1);
 		const vector3f *start = MyLuaVec::checkVec(L, 2);
 		const vector3f *end = MyLuaVec::checkVec(L, 3);
 		const vector3f *updir = MyLuaVec::checkVec(L, 4);
@@ -2222,9 +3153,24 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: xref_ring
+	 *
+	 * Symmetry version of <ring>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_ring(lua_State *L)
 	{
-		int steps = luaL_checkint(L, 1);
+		int steps = luaL_checkinteger(L, 1);
 		vector3f start = *MyLuaVec::checkVec(L, 2);
 		vector3f end = *MyLuaVec::checkVec(L, 3);
 		vector3f updir = *MyLuaVec::checkVec(L, 4);
@@ -2237,6 +3183,32 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: invisible_tri
+	 *
+	 * Invisible triangle useful for defining collision surfaces.
+	 *
+	 * > invisible_tri(v1, v2, v3)
+	 *
+	 * Parameters:
+	 *
+	 *   v1 - vector position of the first vertex
+	 *   v2 - vector position of the second vertex
+	 *   v3 - vector position of the third vertex
+	 *
+	 * Example:
+	 *
+	 * > invisible_tri(v(-100,600,-100),v(100,600,100),v(100,600,-100))
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int invisible_tri(lua_State *L)
 	{
 		const vector3f *v1 = MyLuaVec::checkVec(L, 1);
@@ -2251,6 +3223,32 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: tri
+	 *
+	 * Define one triangle.
+	 *
+	 * > tri(v1, v2, v3)
+	 *
+	 * Parameters:
+	 *
+	 *   v1 - vector position of the first vertex
+	 *   v2 - vector position of the second vertex
+	 *   v3 - vector position of the third vertex
+	 *
+	 * Example:
+	 *
+	 * > tri(v(-4,-4,0), v(4,-4,0), v(4,4,0))
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int tri(lua_State *L)
 	{
 		const vector3f *v1 = MyLuaVec::checkVec(L, 1);
@@ -2265,6 +3263,21 @@ namespace ModelFuncs {
 		return 0;
 	}
 	
+	/*
+	 * Function: xref_tri
+	 *
+	 * Symmetry version of <tri>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_tri(lua_State *L)
 	{
 		vector3f v1 = *MyLuaVec::checkVec(L, 1);
@@ -2284,6 +3297,33 @@ namespace ModelFuncs {
 		return 0;
 	}
 	
+	/*
+	 * Function: quad
+	 *
+	 * Define a quad (plane, one sided).
+	 *
+	 * > quad(v1, v2, v3, v4)
+	 *
+	 * Parameters:
+	 *
+	 *   v1 - vector location of first vertex
+	 *   v2 - vector location of second vertex
+	 *   v3 - vector location of third vertex
+	 *   v4 - vector location of fourth vertex
+	 *
+	 * Example:
+	 *
+	 * > quad(v(-4,-4,0), v(4,-4,0), v(4,4,0), v(-4,4,0))
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int quad(lua_State *L)
 	{
 		const vector3f *v1 = MyLuaVec::checkVec(L, 1);
@@ -2301,6 +3341,21 @@ namespace ModelFuncs {
 		return 0;
 	}
 	
+	/*
+	 * Function: xref_quad
+	 *
+	 * Symmetry version of <quad>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_quad(lua_State *L)
 	{
 		vector3f v1 = *MyLuaVec::checkVec(L, 1);
@@ -2325,6 +3380,37 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: thruster
+	 *
+	 * Define a position for a ship thruster.
+	 * 
+	 * Thrusters are purely a visual effect and do not affect handling characteristics.
+	 *
+	 * > thruster(position, direction, size, linear_only)
+	 *
+	 * Parameters:
+	 *
+	 *   position - position vector
+	 *   direction - direction vector, pointing "away" from the ship, 
+	 *               determines also when the thruster is actually animated
+	 *   size - scale of the thruster flame
+	 *   linear_only - only appear for linear (back, forward) thrust
+	 *
+	 * Example:
+	 *
+	 * > thruster(v(0,5,-10), v(0,1,0), 10) --top thruster
+	 * > thruster(v(0,0,5), v(0,0,1), 30, true) --back thruster
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int thruster(lua_State *L)
 	{
 		const vector3f *pos = MyLuaVec::checkVec(L, 1);
@@ -2338,6 +3424,21 @@ namespace ModelFuncs {
 		return 0;
 	}
 
+	/*
+	 * Function: xref_thruster
+	 *
+	 * Symmetry version of <thruster>. Result will be duplicated and mirrored
+	 * along the X axis.
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int xref_thruster(lua_State *L)
 	{
 		vector3f pos = *MyLuaVec::checkVec(L, 1);
@@ -2353,29 +3454,335 @@ namespace ModelFuncs {
 		return 0;
 	}
 
-	static int get_arg(lua_State *L)
+	/*
+	 * Function: get_time
+	 *
+	 * Get the game time. Use this to run continuous animations.
+	 * For example, blinking lights, rotating radar dishes and church tower
+	 * clock hands.
+	 *
+	 * > local seconds, minutes, hours, days = get_time()
+	 * > local seconds = get_time('SECONDS')
+	 * > local minutes = get_time('MINUTES')
+	 * > local hours = get_time('HOURS')
+	 * > local days = get_time('DAYS')
+	 *
+	 * Parameters:
+	 *
+	 *   units - optional. If specified, there will be one return value, in
+	 *           the specified units. Otherwise, all four units are returned.
+	 *           available units are: 'SECONDS', 'MINUTES', 'HOURS', 'DAYS'
+	 *
+	 * Returns:
+	 *
+	 *   seconds - the time in seconds
+	 *   hours   - the time in hours
+	 *   minutes - the time in minutes
+	 *   days    - the time in days
+	 *
+	 *   The above values include fractional components.
+	 *
+	 * Example:
+	 *
+	 * > local seconds = get_time('SECONDS')
+	 *
+	 * Availability:
+	 *
+	 *   alpha 16
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
+	static int get_time(lua_State *L)
 	{
 		assert(s_curParams != 0);
-		int i = luaL_checkint(L, 1);
-		lua_pushnumber(L, s_curParams->argDoubles[i]);
-		return 1;
+		double t = s_curParams->time;
+		int nparams = lua_gettop(L);
+		if (nparams == 0) {
+			lua_pushnumber(L, t);
+			lua_pushnumber(L, t / 60.0);
+			lua_pushnumber(L, t / 3600.0);
+			lua_pushnumber(L, t / (24*3600.0));
+			return 4;
+		} else if (nparams == 1) {
+			const char *units = luaL_checkstring(L, 1);
+			if (strcmp(units, "SECONDS") == 0)
+				lua_pushnumber(L, t);
+			else if (strcmp(units, "MINUTES") == 0)
+				lua_pushnumber(L, t / 60.0);
+			else if (strcmp(units, "HOURS") == 0)
+				lua_pushnumber(L, t / 3600.0);
+			else if (strcmp(units, "DAYS") == 0)
+				lua_pushnumber(L, t / (24 * 3600.0));
+			else
+				return luaL_error(L,
+					"Unknown unit type '%s' specified for get_time "
+					"(expected 'SECONDS', 'MINUTES', 'HOURS' or 'DAYS').", units);
+			return 1;
+		} else {
+			return luaL_error(L, "Expected 0 or 1 parameters, but got %d.", nparams);
+		}
 	}
-	
-	static int get_arg_string(lua_State *L)
+
+	/*
+	 * Function: get_equipment
+	 *
+	 * Get the type of equipment mounted in a particular slot.
+	 * Only valid for ship models.
+	 *
+	 * > local equip_type = get_equipment(slot, index)
+	 *
+	 * Parameters:
+	 *
+	 *   slot - a slot name, from <Constants.EquipSlot>
+	 *   index - the item index within that slot (optional; 1-based index)
+	 *
+	 * Returns:
+	 *
+	 *   equip_type - a <Constants.EquipType> string, or 'nil' if there is
+	 *                no equipment in that slot.
+	 *
+	 *   If no index is specified, then all equipment in the specified slot
+	 *   is returned (as separate return values)
+	 *
+	 * Example:
+	 *
+	 * > if get_equipment('FUELSCOOP')
+	 * > local missile1, missile2, missile3, missile4 = get_equipment('MISSILE')
+	 * > local missile2 = get_equipment('MISSILE', 2)
+	 *
+	 * Availability:
+	 *
+	 *   alpha 16
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
+	static int get_equipment(lua_State *L)
 	{
 		assert(s_curParams != 0);
-		int i = luaL_checkint(L, 1);
-		if (s_curParams->argStrings[i])
-			lua_pushstring(L, s_curParams->argStrings[i]);
-		else
-			lua_pushstring(L, "");
+		if (s_curParams->equipment) {
+			const char *slotName = luaL_checkstring(L, 1);
+			int index = luaL_optinteger(L, 2, 0);
+			Equip::Slot slot = static_cast<Equip::Slot>(LuaConstants::GetConstant(L, "EquipSlot", slotName));
+
+			if (index > 0) {
+				// index - 1 because Lua uses 1-based indexing
+				Equip::Type equip = s_curParams->equipment->Get(slot, index - 1);
+				if (equip == Equip::NONE)
+					lua_pushnil(L);
+				else
+					lua_pushstring(L, LuaConstants::GetConstantString(L, "EquipType", equip));
+				return 1;
+			} else {
+				const EquipSet &es = *s_curParams->equipment;
+				const int slotSize = es.GetSlotSize(slot);
+				int i = 0, count = 0;
+				Equip::Type equip = Equip::NONE;
+				while (i < slotSize) {
+					equip = es.Get(slot, i++);
+					if (equip != Equip::NONE) {
+						PiVerify(lua_checkstack(L, 1));
+						lua_pushstring(L, LuaConstants::GetConstantString(L, "EquipType", equip));
+						++count;
+					}
+				}
+				return count;
+			}
+		} else
+			return luaL_error(L, "Equipment is only valid for ships.");
+	}
+
+	/*
+	 * Function: get_animation_stage
+	 *
+	 * Get the stage of an animation. The meaning of this depends on the animation.
+	 *
+	 * > local stage = get_animation_stage(animation)
+	 *
+	 * Parameters:
+	 *
+	 *   animation - an animation name, from <Constants.ShipAnimation> for ships
+	 *               or from <Constants.SpaceStationAnimation> for space stations
+	 *
+	 * Returns:
+	 *
+	 *   stage - the stage of the animation (meaning is animation dependent)
+	 *
+	 * Availability:
+	 *
+	 *   alpha 16
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
+	static int get_animation_stage(lua_State *L)
+	{
+		assert(s_curParams != 0);
+		if (s_curParams->animationNamespace) {
+			const char *animName = luaL_checkstring(L, 1);
+			int anim = LuaConstants::GetConstant(L, s_curParams->animationNamespace, animName);
+			assert(anim >= 0 && anim < LmrObjParams::LMR_ANIMATION_MAX);
+			lua_pushinteger(L, s_curParams->animStages[anim]);
+			return 1;
+		} else
+			return luaL_error(L, "You can only use get_animation_stage for model types that are supposed to have animations.");
+	}
+
+	/*
+	 * Function: get_animation_position
+	 *
+	 * Get the position of an animation.
+	 *
+	 * > local pos = get_animation_position(animation)
+	 *
+	 * Parameters:
+	 *
+	 *   animation - an animation name, from <Constants.ShipAnimation> for ships
+	 *               or from <Constants.SpaceStationAnimation> for space stations
+	 *
+	 * Returns:
+	 *
+	 *   pos - the position of the animation (typically from 0 to 1)
+	 *
+	 * Example:
+	 *
+	 * > local pos = get_animation_position('WHEEL_STATE')
+	 * > -- display landing gear in appropriate position
+	 *
+	 * Availability:
+	 *
+	 *   alpha 16
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
+	static int get_animation_position(lua_State *L)
+	{
+		assert(s_curParams != 0);
+		if (s_curParams->animationNamespace) {
+			const char *animName = luaL_checkstring(L, 1);
+			int anim = LuaConstants::GetConstant(L, s_curParams->animationNamespace, animName);
+			assert(anim >= 0 && anim < LmrObjParams::LMR_ANIMATION_MAX);
+			lua_pushnumber(L, s_curParams->animValues[anim]);
+			return 1;
+		} else
+			return luaL_error(L, "You can only use get_animation_position for model types that are supposed to have animations.");
+	}
+
+	/*
+	 * Function: get_flight_state
+	 *
+	 * Get the flight state of the ship.
+	 *
+	 * > local state = get_flight_state()
+	 *
+	 * Returns:
+	 *
+	 *   state - one of the flight state constants from <Constants.ShipFlightState>
+	 *
+	 * Example:
+	 *
+	 * > local flight_state = get_flight_state()
+	 * > if flight_state == 'LANDED' then
+	 * >   -- enable rough landing lights
+	 * > end
+	 *
+	 * Availability:
+	 *
+	 *   alpha 16
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
+	static int get_flight_state(lua_State *L)
+	{
+		assert(s_curParams != 0);
+		// if there is equipment then there should also be a flightState
+		if (s_curParams->equipment) {
+			lua_pushstring(L, LuaConstants::GetConstantString(L, "ShipFlightState", s_curParams->flightState));
+			return 1;
+		} else
+			return luaL_error(L, "Flight state is only valid for ships.");
+	}
+
+	/*
+	 * Function: get_label
+	 *
+	 * Return the main label string to display on an object.
+	 * For ships this is the registration ID, for stations it's the
+	 * station name, for cargo pods it's the contents.
+	 *
+	 * > local label = get_label()
+	 *
+	 * Returns:
+	 *
+	 *   label - the main string to display on the object
+	 *
+	 * Example:
+	 *
+	 * > local regid = get_label()
+	 * > text(regid, v(0,0,0), v(0,0,1), v(1,0,0), 10.0)
+	 *
+	 * Availability:
+	 *
+	 *   alpha 16
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
+	static int get_label(lua_State *L)
+	{
+		assert(s_curParams != 0);
+		lua_pushstring(L, s_curParams->label ? s_curParams->label : "");
 		return 1;
 	}
-	
+
+	/*
+	 * Function: get_arg_material
+	 *
+	 * Return material parameters passed from C++ code
+	 *
+	 * > get_arg_material(index)
+	 *
+	 * Parameters:
+	 *
+	 *   index - argument number. Used arguments are:
+	 *           - 0, primary ship flavour material (shinyness is somewhat random)
+	 *           - 1, secondary ship flavour material (shinyness is somewhat random)
+	 *           - 2, completely white, shine-less material
+	 *
+	 * Example:
+	 *
+	 * > set_material('body', get_arg_material(0))
+	 * > use_material('body')
+	 * > load_obj('hull.obj')
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int get_arg_material(lua_State *L)
 	{
 		assert(s_curParams != 0);
-		int n = luaL_checkint(L, 1);
+		int n = luaL_checkinteger(L, 1);
 		lua_createtable (L, 11, 0);
 
 		const LmrMaterial &mat = s_curParams->pMat[n];
@@ -2401,6 +3808,36 @@ namespace ModelFuncs {
 		return 1;
 	}
 
+	/*
+	 * Function: billboard
+	 *
+	 * Textured plane that always faces the camera.
+	 * 
+	 * Does not use materials, will not affect collisions.
+	 *
+	 * > billboard(texture, size, color, points)
+	 *
+	 * Parameters:
+	 *
+	 *   texture - texture file to use
+	 *   size - billboard size
+	 *   color - rgba vector
+	 *   points - table of vertices to define several billboards and their
+	 *            positions, supply at least one e.g. { v(0,0,0) }
+	 *
+	 * Example:
+	 *
+	 * > billboard('halo.png', 10, v(0,1,0), { v(0,0,0) }) --greenish light sprite
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int billboard(lua_State *L)
 	{
 //		billboard('texname', size, color, { p1, p2, p3, p4 })
@@ -2471,11 +3908,37 @@ namespace ModelFuncs {
 	}
 
 
+	/*
+	 * Function: sphere
+	 *
+	 * Icosahedron style sphere.
+	 *
+	 * > sphere(subdivisions, transform)
+	 *
+	 * Parameters:
+	 *
+	 *   subdivisions - times to subdivide the model, icosahedron has twenty sides
+	 *   transform - optional transform matrix
+	 *
+	 * Example:
+	 *
+	 * > sphere(0) --standard 20 triangles
+	 * > sphere(3) --a lot smoother (1280 triangles)
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int sphere (lua_State *l)
 	{
 		int i, subdivs;
 		matrix4x4f trans;
-		subdivs = luaL_checkint(l, 1);
+		subdivs = luaL_checkinteger(l, 1);
 		if ((subdivs < 0) || (subdivs > 4)) {
 			luaL_error(l, "sphere(subdivs, transform): subdivs must be in range [0,4]");
 		}
@@ -2499,20 +3962,51 @@ namespace ModelFuncs {
 		return 0;
 	}
 
-	//////////////////////////////////////////
+
+	/*
+	 * Function: sphere_slice
+	 *
+	 * Partially sliced sphere. For domes and such.
+	 * 
+	 * The resulting shape will be capped (closed).
+	 *
+	 * > sphere_slice(lat_segs, long_segs, angle1, angle2, transform)
+	 *
+	 * Parameters:
+	 *
+	 *   lat_segs - latitudinal subdivisions
+	 *   long_segs - longitudinal subdivisions
+	 *   angle1 - angle, or amount to slice from bottom, 0.5*pi would be halfway
+	 *   angle2 - slice angle from top
+	 *   transform - matrix transform to translate, rotate or scale the result
+	 *
+	 * Example:
+	 *
+	 * > sphere_slice(6,6,0.5*math.pi,0.0, Matrix.scale(v(2,2,2))) --slice off bottom half
+	 * > sphere_slice(6,6,0.5*math.pi,0.2*math.pi, Matrix.scale(v(2,2,2))) --take off a bit from top as well
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
 	static int sphere_slice(lua_State *l)
 	{
 		int LAT_SEGS;
 		int LONG_SEGS;
 		float sliceAngle1, sliceAngle2;
-		LONG_SEGS = luaL_checkint(l, 1);
-		LAT_SEGS = luaL_checkint(l, 2);
+		LONG_SEGS = luaL_checkinteger(l, 1);
+		LAT_SEGS = luaL_checkinteger(l, 2);
 		sliceAngle1 = luaL_checknumber(l, 3);
 		sliceAngle2 = luaL_checknumber(l, 4);
 			//luaL_error(l, "sphere(subdivs, transform): subdivs must be in range [0,4]");
 		matrix4x4f trans;
 		_get_orientation(l, 5, trans);
-		const vector3d yaxis(trans[4], trans[5], trans[6]);
+		const vector3f yaxis(trans[4], trans[5], trans[6]);
 		float latDiff = (sliceAngle2-sliceAngle1) / float(LAT_SEGS);
 
 		float rot = 0.0;
@@ -2617,6 +4111,44 @@ namespace ObjLoader {
 		return mtl_map;
 	}
 
+	/*
+	 * Function: load_obj
+	 *
+	 * Load a Wavefront OBJ model file.
+	 * 
+	 * If an associated .mtl material definition file is found, Pioneer will
+	 * attempt to interpret it the best it can, including texture usage. Note that
+	 * Pioneer supports only one texture per .obj file.
+	 *
+	 * > load_obj(modelname, transform)
+	 *
+	 * Parameters:
+	 *
+	 *   modelname - .obj file name to load
+	 *   transform - optional transform matrix, for example Matrix.scale(v(2,2,2))
+	 *               will double the model scale along all three axes
+	 *
+	 * Example:
+	 *
+	 * > load_obj_file('wing.obj')
+   * > load_obj_file('wing.obj', Matrix.translate(v(-5,0,0)) --shift left
+	 *
+	 * Availability:
+	 *
+	 *   pre-alpha 10
+	 *
+	 * Status:
+	 *
+	 *   stable
+	 *
+	 */
+	struct objTriplet {	int v, n, uv; };
+	const bool operator< (const objTriplet &t1, const objTriplet &t2) {
+		if (t1.v < t2.v) return true; if (t1.v > t2.v) return false;
+		if (t1.n < t2.n) return true; if (t1.n > t2.n) return false;
+		if (t1.uv < t2.uv) return true; return false;
+	}
+
 	static int load_obj_file(lua_State *L)
 	{
 		const char *obj_name = luaL_checkstring(L, 1);
@@ -2643,7 +4175,7 @@ namespace ObjLoader {
 		std::string texture;
 
 		// maps obj file vtx_idx,norm_idx to a single GeomBuffer vertex index
-		std::map< std::pair<int,int>, int> vtxmap;
+		std::map<objTriplet, int> vtxmap;
 
 		for (int line_no=1; fgets(buf, sizeof(buf), f); line_no++) {
 			if ((buf[0] == 'v') && buf[1] == ' ') {
@@ -2664,6 +4196,8 @@ namespace ObjLoader {
 				// texture
 				vector3f v;
 				PiVerify(2 == sscanf(buf, "vt %f %f", &v.x, &v.y));
+				//max, blender use 0,0 as lower left so flip vertical
+				v.y = 1.0 - v.y;
 				texcoords.push_back(v);
 			}
 			else if ((buf[0] == 'f') && (buf[1] == ' ')) {
@@ -2722,7 +4256,8 @@ namespace ObjLoader {
 				} else {
 					for (int i=0; i<numBits; i++) {
 						// SHARE THE PAIN!
-						std::map< std::pair<int, int>, int>::iterator it = vtxmap.find(std::pair<int,int>(vi[i], ni[i]));
+						objTriplet t = { vi[i], ni[i], ti[i] };
+						std::map<objTriplet, int>::iterator it = vtxmap.find(t);
 						if (it == vtxmap.end()) {
 							// insert the horrible thing
 							int vtxStart = s_curBuf->AllocVertices(1);
@@ -2732,7 +4267,7 @@ namespace ObjLoader {
 							} else {
 								s_curBuf->SetVertex(vtxStart, vertices[vi[i]], normals[ni[i]], texcoords[ti[i]].x, texcoords[ti[i]].y);
 							}
-							vtxmap[std::pair<int,int>(vi[i], ni[i])] = vtxStart;
+							vtxmap[t] = vtxStart;
 							realVtxIdx[i] = vtxStart;
 						} else {
 							realVtxIdx[i] = (*it).second;
@@ -2780,13 +4315,13 @@ namespace ObjLoader {
 namespace UtilFuncs {
 	
 	int noise(lua_State *L) {
-		vector3f v;
+		vector3d v;
 		if (lua_isnumber(L, 1)) {
 			v.x = lua_tonumber(L, 1);
 			v.y = lua_tonumber(L, 2);
 			v.z = lua_tonumber(L, 3);
 		} else {
-			v = *MyLuaVec::checkVec(L, 1);
+			v = vector3d(*MyLuaVec::checkVec(L, 1));
 		}
 		lua_pushnumber(L, noise(v));
 		return 1;
@@ -2849,11 +4384,13 @@ static void _makeModelFilesCRC(const std::string &dir, const std::string &filena
 	} else if (S_ISREG(info.st_mode) && (filename.substr(filename.size()-4) != ".png")) {
 		FILE *f = fopen(filename.c_str(), "rb");
 		if (f) {
-			for (int c = 0;;) {
-				c = fgetc(f);
-				if (c != EOF) s_allModelFilesCRC += c;
-				else break;
-			}
+			fseek(f, 0, SEEK_END);
+			int size = ftell(f);
+			unsigned char *data = reinterpret_cast<unsigned char *>(malloc(size));
+			fseek(f, 0, SEEK_SET);
+			fread(data, 1, size, f);
+			for (int c=0; c<size; c++) s_allModelFilesCRC += data[c];
+			free(data);
 			fclose(f);
 		}
 	}
@@ -2861,7 +4398,6 @@ static void _makeModelFilesCRC(const std::string &dir, const std::string &filena
 
 static void _detect_model_changes()
 {
-
 	// do we need to rebuild the model cache?
 	foreach_file_in(PIONEER_DATA_DIR "/models", &_makeModelFilesCRC);
 
@@ -2869,28 +4405,37 @@ static void _detect_model_changes()
 	if (cache_sum_file) {
 		if ((_fread_string(cache_sum_file) == PIONEER_VERSION) &&
 		    (_fread_string(cache_sum_file) == PIONEER_EXTRAVERSION)) {
-			int crc;
-			fread((void*)&crc, 1, 4, cache_sum_file);
+			Uint32 crc;
+			fread_or_die(&crc, sizeof(crc), 1, cache_sum_file);
 			if (crc == s_allModelFilesCRC) {
 				s_recompileAllModels = false;
 			}
 		}
 		fclose(cache_sum_file);
 	}
+	if (s_recompileAllModels) printf("Rebuilding model cache...\n");
+}
+
+static void _write_model_crc_file()
+{
 	if (s_recompileAllModels) {
-		printf("Rebuilding model cache...\n");
-		cache_sum_file = fopen(join_path(s_cacheDir.c_str(), "cache.sum", 0).c_str(), "wb");
+		FILE *cache_sum_file = fopen(join_path(s_cacheDir.c_str(), "cache.sum", 0).c_str(), "wb");
 		if (cache_sum_file) {
 			_fwrite_string(PIONEER_VERSION, cache_sum_file);
 			_fwrite_string(PIONEER_EXTRAVERSION, cache_sum_file);
-			fwrite((void*)&s_allModelFilesCRC, 1, 4, cache_sum_file);
+			fwrite(&s_allModelFilesCRC, sizeof(s_allModelFilesCRC), 1, cache_sum_file);
 			fclose(cache_sum_file);
 		}
 	}
 }
 
-void LmrModelCompilerInit()
+void LmrModelCompilerInit(Graphics::Renderer *renderer, TextureCache *textureCache)
 {
+	s_renderer = renderer;
+	s_textureCache = textureCache;
+
+	ShipThruster::Init(s_textureCache);
+
 	s_cacheDir = GetPiUserDir("model_cache");
 	_detect_model_changes();
 
@@ -2904,16 +4449,15 @@ void LmrModelCompilerInit()
 	s_pointlightShader[2] = new LmrShader("model-pointlit", "#define NUM_LIGHTS 3\n");
 	s_pointlightShader[3] = new LmrShader("model-pointlit", "#define NUM_LIGHTS 4\n");
 
-	PiVerify(s_font = s_fontManager.GetVectorFont("WorldFont"));
+	PiVerify(s_font = s_fontCache.GetVectorFont("WorldFont"));
 
 	lua_State *L = lua_open();
 	sLua = L;
 	luaL_openlibs(L);
 
+	LUA_DEBUG_START(sLua);
 
-	lua_pushinteger(L, 1234);
-	lua_setglobal(L, "x");
-
+	LuaConstants::Register(L);
 
 	MyLuaVec::Vec_register(L);
 	lua_pop(L, 1); // why again?
@@ -2946,6 +4490,7 @@ void LmrModelCompilerInit()
 	lua_register(L, "xref_circle", ModelFuncs::xref_circle);
 	lua_register(L, "text", ModelFuncs::text);
 	lua_register(L, "texture", ModelFuncs::texture);
+	lua_register(L, "texture_glow", ModelFuncs::texture_glow);
 	lua_register(L, "quadric_bezier_quad", ModelFuncs::quadric_bezier_quad);
 	lua_register(L, "xref_quadric_bezier_quad", ModelFuncs::xref_quadric_bezier_quad);
 	lua_register(L, "cubic_bezier_quad", ModelFuncs::cubic_bezier_quad);
@@ -2957,8 +4502,12 @@ void LmrModelCompilerInit()
 	lua_register(L, "extrusion", ModelFuncs::extrusion);
 	lua_register(L, "thruster", ModelFuncs::thruster);
 	lua_register(L, "xref_thruster", ModelFuncs::xref_thruster);
-	lua_register(L, "get_arg", ModelFuncs::get_arg);
-	lua_register(L, "get_arg_string", ModelFuncs::get_arg_string);
+	lua_register(L, "get_time", ModelFuncs::get_time);
+	lua_register(L, "get_equipment", ModelFuncs::get_equipment);
+	lua_register(L, "get_animation_stage", ModelFuncs::get_animation_stage);
+	lua_register(L, "get_animation_position", ModelFuncs::get_animation_position);
+	lua_register(L, "get_flight_state", ModelFuncs::get_flight_state);
+	lua_register(L, "get_label", ModelFuncs::get_label);
 	lua_register(L, "flat", ModelFuncs::flat);
 	lua_register(L, "xref_flat", ModelFuncs::xref_flat);
 	lua_register(L, "billboard", ModelFuncs::billboard);
@@ -2985,6 +4534,30 @@ void LmrModelCompilerInit()
 		lua_pcall(L, 0, LUA_MULTRET, -2);
 	}
 	lua_pop(sLua, 1);  // remove panic func
+
+	LUA_DEBUG_END(sLua, 0);
 	
+	_write_model_crc_file();
 	s_buildDynamic = true;
+}
+
+
+void LmrModelCompilerUninit()
+{
+	for (int i=0; i<4; i++) {
+		delete s_sunlightShader[i];
+		delete s_pointlightShader[i];
+	}
+	// FontCache should be ok...
+
+	std::map<std::string, LmrModel*>::iterator it_model;
+	for (it_model=s_models.begin(); it_model != s_models.end(); ++it_model)	{
+		delete (*it_model).second;
+	}
+	
+	lua_close(sLua); sLua = 0;
+
+	delete s_staticBufferPool;
+
+	ShipThruster::Uninit();
 }

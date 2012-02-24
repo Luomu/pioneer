@@ -1,6 +1,6 @@
 #include "libs.h"
 #include "Gui.h"
-#include "Render.h"
+#include "graphics/Graphics.h"
 
 namespace Gui {
 
@@ -92,9 +92,16 @@ void Init(int screen_width, int screen_height, int ui_width, int ui_height)
 	Screen::Init(screen_width, screen_height, ui_width, ui_height);
 }
 
+void Uninit()
+{
+	std::list<TimerSignal*>::iterator i;
+	for (i=g_timeSignals.begin(); i!=g_timeSignals.end(); ++i) delete *i;
+
+	Screen::Uninit();
+}
+
 void MainLoopIteration()
 {
-	Render::PrepareFrame();
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glMatrixMode(GL_MODELVIEW);
@@ -113,9 +120,8 @@ void MainLoopIteration()
 
 	SDL_ShowCursor(1);
 	SDL_WM_GrabInput(SDL_GRAB_OFF);
-	Render::PostProcess();
 	Gui::Draw();
-	Render::SwapBuffers();
+	Graphics::SwapBuffers();
 }
 
 namespace Theme {

@@ -28,6 +28,7 @@ public:
 	fixed                  rotationPeriod; // in days
 	fixed                  axialTilt; // in radians
 	std::string            heightMapFilename;
+	int                    heightMapFractal;
 	std::list<CustomSBody> children;
 
 	/* composition */
@@ -56,11 +57,7 @@ public:
 	inline CustomSBody* l_rotation_period(pi_fixed &p) { rotationPeriod = p; return this; }
 	inline CustomSBody* l_axial_tilt(pi_fixed &t) { axialTilt = t; return this; }
 
-	inline CustomSBody* l_height_map(std::string f) {
-        heightMapFilename = PIONEER_DATA_DIR;
-        heightMapFilename += "/" + f;
-        return this; 
-    }
+	CustomSBody *l_height_map(lua_State *L, std::string f, unsigned int n);
 
 	inline CustomSBody* l_metallicity(pi_fixed& f) { metallicity = f; return this; }
 	inline CustomSBody* l_volcanicity(pi_fixed& f) { volcanicity = f; return this; }
@@ -93,7 +90,7 @@ OOLUA_CLASS_NO_BASES(CustomSBody)
 	OOLUA_MEM_FUNC_1_RENAME(longitude, CustomSBody*, l_longitude, float)
 	OOLUA_MEM_FUNC_1_RENAME(rotation_period, CustomSBody*, l_rotation_period, pi_fixed&)
 	OOLUA_MEM_FUNC_1_RENAME(axial_tilt, CustomSBody*, l_axial_tilt, pi_fixed&)
-	OOLUA_MEM_FUNC_1_RENAME(height_map, CustomSBody*, l_height_map, std::string)
+	OOLUA_MEM_FUNC_3_RENAME(height_map, CustomSBody*, l_height_map, lua_State*, std::string, unsigned int)
 	OOLUA_MEM_FUNC_1_RENAME(metallicity, CustomSBody*, l_metallicity, pi_fixed&)
 	OOLUA_MEM_FUNC_1_RENAME(volcanicity, CustomSBody*, l_volcanicity, pi_fixed&)
 	OOLUA_MEM_FUNC_1_RENAME(atmos_density, CustomSBody*, l_atmos_density, pi_fixed&)
@@ -106,7 +103,7 @@ OOLUA_CLASS_END
 class CustomSystem {
 public:
 	static void Init();
-	static const std::list<const CustomSystem*> GetCustomSystemsForSector(int sectorX, int sectorY);
+	static const std::list<const CustomSystem*> GetCustomSystemsForSector(int sectorX, int sectorY, int sectorZ);
 	static const CustomSystem* GetCustomSystem(const char* name);
 	static const SystemPath GetPathForCustomSystem(const CustomSystem* cs);
 	static const SystemPath GetPathForCustomSystem(const char* name);
@@ -115,7 +112,7 @@ public:
     CustomSBody            sBody;
 	SBody::BodyType        primaryType[4];
 	int                    numStars;
-	int                    sectorX, sectorY;
+	int                    sectorX, sectorY, sectorZ;
 	vector3f               pos;
 	Uint32                 seed;
 	Polit::GovType         govType;
@@ -135,7 +132,7 @@ public:
 
 	void l_bodies(lua_State* L, CustomSBody& primary_star, OOLUA::Lua_table t);
 
-	void l_add_to_sector(int x, int y, pi_vector& v);
+	void l_add_to_sector(int x, int y, int z, pi_vector& v);
 };
 
 OOLUA_CLASS_NO_BASES(CustomSystem)
@@ -150,7 +147,7 @@ OOLUA_CLASS_NO_BASES(CustomSystem)
 	OOLUA_MEM_FUNC_1_RENAME(short_desc, CustomSystem*, l_short_desc, std::string)
 	OOLUA_MEM_FUNC_1_RENAME(long_desc, CustomSystem*, l_long_desc, std::string)
 	OOLUA_MEM_FUNC_3_RENAME(bodies, void, l_bodies, lua_State*, CustomSBody&, OOLUA::Lua_table)
-	OOLUA_MEM_FUNC_3_RENAME(add_to_sector, void, l_add_to_sector, int, int, pi_vector&)
+	OOLUA_MEM_FUNC_4_RENAME(add_to_sector, void, l_add_to_sector, int, int, int, pi_vector&)
 OOLUA_CLASS_END
 
 #endif /* _CUSTOMSYSTEM_H */

@@ -12,62 +12,250 @@
 #include "SpaceStation.h"
 #include "Serializer.h"
 #include "collider/collider.h"
-#include "Sfx.h"
 #include "Missile.h"
 #include "HyperspaceCloud.h"
-#include "Render.h"
+#include "graphics/Graphics.h"
 #include "WorldView.h"
 #include "SectorView.h"
+#include "Lang.h"
+#include "Game.h"
+#include "MathUtil.h"
 
-namespace Space {
-
-std::list<Body*> bodies;
-Frame *rootFrame;
-static void UpdateFramesOfReference();
-static void CollideFrame(Frame *f);
-static void PruneCorpses();
-static void ApplyGravity();
-static std::list<Body*> corpses;
-static SystemPath *hyperspacingTo;
-static float hyperspaceAnim;
-static double hyperspaceDuration;
-static double hyperspaceEndTime;
-static std::list<HyperspaceCloud*> storedArrivalClouds;
-
-void Init()
+Space::Space(Game *game)
+	: m_game(game)
+	, m_frameIndexValid(false)
+	, m_bodyIndexValid(false)
+	, m_sbodyIndexValid(false)
+	, m_background(UNIVERSE_SEED)
+#ifndef NDEBUG
+	, m_processingFinalizationQueue(false)
+#endif
 {
-	rootFrame = new Frame(NULL, "System");
-	rootFrame->SetRadius(FLT_MAX);
+	m_rootFrame.Reset(new Frame(0, Lang::SYSTEM));
+	m_rootFrame->SetRadius(FLT_MAX);
 }
 
-void Clear()
+Space::Space(Game *game, const SystemPath &path) : m_game(game), m_frameIndexValid(false), m_bodyIndexValid(false), m_sbodyIndexValid(false)
 {
-	for (std::list<Body*>::iterator i = bodies.begin(); i != bodies.end(); ++i) {
-		(*i)->SetFrame(NULL);
-		if ((*i) != static_cast<Body*>(Pi::player)) {
-			KillBody(*i);
+	m_starSystem = StarSystem::GetCached(path);
+	m_background.Refresh(m_starSystem->m_seed);
+
+	// XXX set radius in constructor
+	m_rootFrame.Reset(new Frame(0, Lang::SYSTEM));
+	m_rootFrame->SetRadius(FLT_MAX);
+
+	GenBody(m_starSystem->rootBody, m_rootFrame.Get());
+	m_rootFrame->UpdateOrbitRails(m_game->GetTime(), m_game->GetTimeStep());
+
+	//DebugDumpFrames();
+}
+
+Space::Space(Game *game, Serializer::Reader &rd) : m_game(game), m_frameIndexValid(false), m_bodyIndexValid(false), m_sbodyIndexValid(false)
+{
+	m_starSystem = StarSystem::Unserialize(rd);
+	m_background.Refresh(m_starSystem->m_seed);
+	RebuildSBodyIndex();
+
+	Serializer::Reader section = rd.RdSection("Frames");
+	m_rootFrame.Reset(Frame::Unserialize(section, this, 0));
+	RebuildFrameIndex();
+
+	Uint32 nbodies = rd.Int32();
+	for (Uint32 i = 0; i < nbodies; i++)
+		m_bodies.push_back(Body::Unserialize(rd, this));
+	RebuildBodyIndex();
+
+	for (BodyIterator i = m_bodies.begin(); i != m_bodies.end(); ++i)
+		(*i)->PostLoadFixup(this);
+	Frame::PostUnserializeFixup(m_rootFrame.Get(), this);
+}
+
+Space::~Space()
+{
+	UpdateBodies(); // make sure anything waiting to be removed gets removed before we go and kill everything else
+	for (std::list<Body*>::iterator i = m_bodies.begin(); i != m_bodies.end(); ++i)
+		KillBody(*i);
+	UpdateBodies();
+}
+
+void Space::Serialize(Serializer::Writer &wr)
+{
+	RebuildFrameIndex();
+	RebuildBodyIndex();
+	RebuildSBodyIndex();
+
+	StarSystem::Serialize(wr, m_starSystem.Get());
+
+	Serializer::Writer section;
+	Frame::Serialize(section, m_rootFrame.Get(), this);
+	wr.WrSection("Frames", section.GetData());
+
+	wr.Int32(m_bodies.size());
+	for (BodyIterator i = m_bodies.begin(); i != m_bodies.end(); ++i)
+		(*i)->Serialize(wr, this);
+}
+
+Frame *Space::GetFrameByIndex(Uint32 idx)
+{
+	assert(m_frameIndexValid);
+	assert(m_frameIndex.size() > idx);
+	return m_frameIndex[idx];
+}
+
+Body *Space::GetBodyByIndex(Uint32 idx)
+{
+	assert(m_bodyIndexValid);
+	assert(m_bodyIndex.size() > idx);
+	return m_bodyIndex[idx];
+}
+
+SBody *Space::GetSBodyByIndex(Uint32 idx)
+{
+	assert(m_sbodyIndexValid);
+	assert(m_sbodyIndex.size() > idx);
+	return m_sbodyIndex[idx];
+}
+
+Uint32 Space::GetIndexForFrame(const Frame *frame)
+{
+	assert(m_frameIndexValid);
+	for (Uint32 i = 0; i < m_frameIndex.size(); i++)
+		if (m_frameIndex[i] == frame) return i;
+	assert(0);
+	return Uint32(-1);
+}
+
+Uint32 Space::GetIndexForBody(const Body *body)
+{
+	assert(m_bodyIndexValid);
+	for (Uint32 i = 0; i < m_bodyIndex.size(); i++)
+		if (m_bodyIndex[i] == body) return i;
+	assert(0);
+	return Uint32(-1);
+}
+
+Uint32 Space::GetIndexForSBody(const SBody *sbody)
+{
+	assert(m_sbodyIndexValid);
+	for (Uint32 i = 0; i < m_sbodyIndex.size(); i++)
+		if (m_sbodyIndex[i] == sbody) return i;
+	assert(0);
+	return Uint32(-1);
+}
+
+void Space::AddFrameToIndex(Frame *frame)
+{
+	assert(frame);
+	m_frameIndex.push_back(frame);
+	for (std::list<Frame*>::iterator i = frame->m_children.begin(); i != frame->m_children.end(); ++i)
+		AddFrameToIndex(*i);
+}
+
+void Space::AddSBodyToIndex(SBody *sbody)
+{
+	assert(sbody);
+	m_sbodyIndex.push_back(sbody);
+	for (Uint32 i = 0; i < sbody->children.size(); i++)
+		AddSBodyToIndex(sbody->children[i]);
+}
+
+void Space::RebuildFrameIndex()
+{
+	m_frameIndex.clear();
+	m_frameIndex.push_back(0);
+
+	if (m_rootFrame)
+		AddFrameToIndex(m_rootFrame.Get());
+	
+	m_frameIndexValid = true;
+}
+
+void Space::RebuildBodyIndex()
+{
+	m_bodyIndex.clear();
+	m_bodyIndex.push_back(0);
+
+	for (BodyIterator i = m_bodies.begin(); i != m_bodies.end(); ++i) {
+		m_bodyIndex.push_back(*i);
+		// also index ships inside clouds
+		// XXX we should not have to know about this. move indexing grunt work
+		// down into the bodies?
+		if ((*i)->IsType(Object::HYPERSPACECLOUD)) {
+			Ship *s = static_cast<HyperspaceCloud*>(*i)->GetShip();
+			if (s) m_bodyIndex.push_back(s);
 		}
 	}
-	PruneCorpses();
 
-	Pi::player->SetFrame(rootFrame);
-	for (std::list<Frame*>::iterator i = rootFrame->m_children.begin(); i != rootFrame->m_children.end(); ++i) delete *i;
-	rootFrame->m_children.clear();
-	rootFrame->m_astroBody = 0;
-	rootFrame->m_sbody = 0;
-
-	if (hyperspacingTo) delete hyperspacingTo;
-	hyperspacingTo = 0;
-	hyperspaceAnim = 0.0f;
-	hyperspaceDuration = 0.0f;
-	hyperspaceEndTime = 0.0f;
+	m_bodyIndexValid = true;
 }
 
-Body *FindNearestTo(const Body *b, Object::Type t)
+void Space::RebuildSBodyIndex()
+{
+	m_sbodyIndex.clear();
+	m_sbodyIndex.push_back(0);
+
+	if (m_starSystem)
+		AddSBodyToIndex(m_starSystem->rootBody);
+
+	m_sbodyIndexValid = true;
+}
+
+void Space::AddBody(Body *b)
+{
+	m_bodies.push_back(b);
+}
+
+void Space::RemoveBody(Body *b)
+{
+#ifndef NDEBUG
+	assert(!m_processingFinalizationQueue);
+#endif
+	m_removeBodies.push_back(b);
+}
+
+void Space::KillBody(Body* b)
+{
+#ifndef NDEBUG
+	assert(!m_processingFinalizationQueue);
+#endif
+	if (!b->IsDead()) {
+		b->MarkDead();
+
+		// player needs to stay alive so things like the death animation
+		// (which uses a camera positioned relative to the player) can
+		// continue to work. it will be cleaned up with the space is torn down
+		// XXX this seems like the wrong way to do it. since its still "alive"
+		// it still collides, moves, etc. better to just snapshot its position
+		// elsewhere
+		if (b != Pi::player)
+			m_killBodies.push_back(b);
+	}
+}
+
+vector3d Space::GetHyperspaceExitPoint(const SystemPath &source)
+{
+	assert(m_starSystem);
+	assert(source.IsSystemPath());
+
+	const SystemPath &dest = m_starSystem->GetPath();
+
+	Sector source_sec(source.sectorX, source.sectorY, source.sectorZ);
+	Sector dest_sec(dest.sectorX, dest.sectorY, dest.sectorZ);
+
+	Sector::System source_sys = source_sec.m_systems[source.systemIndex];
+	Sector::System dest_sys = dest_sec.m_systems[dest.systemIndex];
+
+	const vector3d sourcePos = vector3d(source_sys.p) + vector3d(source.sectorX, source.sectorY, source.sectorZ);
+	const vector3d destPos = vector3d(dest_sys.p) + vector3d(dest.sectorX, dest.sectorY, dest.sectorZ);
+
+	return (sourcePos - destPos).Normalized() * 11.0*AU + MathUtil::RandomPointOnSphere(5.0,20.0)*1000.0; // "hyperspace zone": 11 AU from primary
+}
+
+Body *Space::FindNearestTo(const Body *b, Object::Type t)
 {
 	Body *nearest = 0;
 	double dist = FLT_MAX;
-	for (std::list<Body*>::iterator i = bodies.begin(); i != bodies.end(); ++i) {
+	for (std::list<Body*>::iterator i = m_bodies.begin(); i != m_bodies.end(); ++i) {
 		if ((*i)->IsDead()) continue;
 		if ((*i)->IsType(t)) {
 			double d = (*i)->GetPositionRelTo(b).Length();
@@ -80,113 +268,17 @@ Body *FindNearestTo(const Body *b, Object::Type t)
 	return nearest;
 }
 
-Body *FindBodyForPath(const SystemPath *path)
+Body *Space::FindBodyForPath(const SystemPath *path)
 {
 	// it is a bit dumb that currentSystem is not part of Space...
-	SBody *body = Pi::currentSystem->GetBodyByPath(path);
+	SBody *body = m_starSystem->GetBodyByPath(path);
 
 	if (!body) return 0;
 
-	for (bodiesIter_t i = bodies.begin(); i != bodies.end(); ++i) {
+	for (BodyIterator i = m_bodies.begin(); i != m_bodies.end(); ++i) {
 		if ((*i)->GetSBody() == body) return *i;
 	}
 	return 0;
-}
-
-// XXX this is only called by Missile::Explode. consider moving it there
-void RadiusDamage(Body *attacker, Frame *f, const vector3d &pos, double radius, double kgDamage)
-{
-	for (std::list<Body*>::iterator i = bodies.begin(); i != bodies.end(); ++i) {
-		if ((*i)->GetFrame() != f) continue;
-		double dist = ((*i)->GetPosition() - pos).Length();
-		if (dist < radius) {
-			// linear damage decay with distance
-			(*i)->OnDamage(attacker, kgDamage * (radius - dist) / radius);
-			if ((*i)->IsType(Object::SHIP))
-				Pi::luaOnShipHit.Queue(dynamic_cast<Ship*>(*i), attacker);
-		}
-	}
-}
-
-void DoECM(const Frame *f, const vector3d &pos, int power_val)
-{
-	const float ECM_RADIUS = 4000.0f;
-	for (std::list<Body*>::iterator i = bodies.begin(); i != bodies.end(); ++i) {
-		if ((*i)->GetFrame() != f) continue;
-		if (!(*i)->IsType(Object::MISSILE)) continue;
-
-		double dist = ((*i)->GetPosition() - pos).Length();
-		if (dist < ECM_RADIUS) {
-			// increasing chance of destroying it with proximity
-			if (Pi::rng.Double() > (dist / ECM_RADIUS)) {
-				static_cast<Missile*>(*i)->ECMAttack(power_val);
-			}
-		}
-	}
-
-}
-
-void Serialize(Serializer::Writer &wr)
-{
-	Serializer::Writer wr2;
-	Frame::Serialize(wr2, rootFrame);
-	wr.WrSection("Frames", wr2.GetData());
-
-	wr.Int32(bodies.size());
-	for (bodiesIter_t i = bodies.begin(); i != bodies.end(); ++i) {
-		//printf("Serializing %s\n", (*i)->GetLabel().c_str());
-		(*i)->Serialize(wr);
-	}
-	wr.Int32(storedArrivalClouds.size());
-	for (std::list<HyperspaceCloud*>::iterator i = storedArrivalClouds.begin();
-			i != storedArrivalClouds.end(); ++i) {
-		(*i)->Serialize(wr);
-	}
-	if (hyperspacingTo == 0) {
-		wr.Byte(0);
-	} else {
-		wr.Byte(1);
-		hyperspacingTo->Serialize(wr);
-		wr.Float(hyperspaceAnim);
-		wr.Double(hyperspaceDuration);
-		wr.Double(hyperspaceEndTime);
-	}
-}
-
-void Unserialize(Serializer::Reader &rd)
-{
-	Serializer::IndexSystemBodies(Pi::currentSystem);
-	
-	Serializer::Reader rd2 = rd.RdSection("Frames");
-	rootFrame = Frame::Unserialize(rd2, 0);
-	
-	// XXX not needed. done in Pi::Unserialize
-	Serializer::IndexFrames();
-	int num_bodies = rd.Int32();
-	//printf("%d bodies to read\n", num_bodies);
-	for (int i=0; i<num_bodies; i++) {
-		Body *b = Body::Unserialize(rd);
-		if (b) bodies.push_back(b);
-	}
-	num_bodies = rd.Int32();
-	for (int i=0; i<num_bodies; i++) {
-		Body *b = Body::Unserialize(rd);
-		if (b) storedArrivalClouds.push_back(static_cast<HyperspaceCloud*>(b));
-	}
-
-	hyperspaceAnim = 0;
-	if (rd.Byte()) {
-		hyperspacingTo = new SystemPath(SystemPath::Unserialize(rd));
-		hyperspaceAnim = rd.Float();
-		hyperspaceDuration = rd.Double();
-		hyperspaceEndTime = rd.Double();
-	}
-	// bodies with references to others must fix these up
-	Serializer::IndexBodies();
-	for (bodiesIter_t i = bodies.begin(); i != bodies.end(); ++i) {
-		(*i)->PostLoadFixup();
-	}
-	Frame::PostUnserializeFixup(rootFrame);
 }
 
 static Frame *find_frame_with_sbody(Frame *f, const SBody *b)
@@ -203,9 +295,9 @@ static Frame *find_frame_with_sbody(Frame *f, const SBody *b)
 	return 0;
 }
 
-Frame *GetFrameWithSBody(const SBody *b)
+Frame *Space::GetFrameWithSBody(const SBody *b)
 {
-	return find_frame_with_sbody(rootFrame, b);
+	return find_frame_with_sbody(m_rootFrame.Get(), b);
 }
 
 static void SetFrameOrientationFromSBodyAxialTilt(Frame *f, const SBody *sbody)
@@ -244,12 +336,12 @@ static Frame *MakeFrameFor(SBody *sbody, Body *b, Frame *f)
 		frameRadius = std::max(4.0*sbody->GetRadius(), sbody->GetMaxChildOrbitalDistance()*1.05);
 		orbFrame = new Frame(f, sbody->name.c_str());
 		orbFrame->m_sbody = sbody;
-		orbFrame->SetRadius(frameRadius ? frameRadius : 10*sbody->GetRadius());
+		orbFrame->SetRadius(frameRadius);
 		//printf("\t\t\t%s has frame size %.0fkm, body radius %.0fkm\n", sbody->name.c_str(),
 		//	(frameRadius ? frameRadius : 10*sbody->GetRadius())*0.001f,
 		//	sbody->GetRadius()*0.001f);
 	
-		assert(sbody->GetRotationPeriod() != 0);
+		assert(sbody->rotationPeriod != 0);
 		rotFrame = new Frame(orbFrame, sbody->name.c_str());
 		// rotating frame has size of GeoSphere terrain bounding sphere
 		rotFrame->SetRadius(b->GetBoundingRadius());
@@ -275,9 +367,9 @@ static Frame *MakeFrameFor(SBody *sbody, Body *b, Frame *f)
 		orbFrame = new Frame(f, sbody->name.c_str());
 		orbFrame->m_sbody = sbody;
 //		orbFrame->SetRadius(10*sbody->GetRadius());
-		orbFrame->SetRadius(frameRadius ? frameRadius : 10*sbody->GetRadius());
+		orbFrame->SetRadius(frameRadius);
 	
-		assert(sbody->GetRotationPeriod() != 0);
+		assert(sbody->rotationPeriod != 0);
 		rotFrame = new Frame(orbFrame, sbody->name.c_str());
 		rotFrame->SetRadius(1000.0);
 //		rotFrame->SetRadius(1.1*sbody->GetRadius());		// enough for collisions?
@@ -302,7 +394,7 @@ static Frame *MakeFrameFor(SBody *sbody, Body *b, Frame *f)
 		// first try suggested position
 		rot = sbody->orbit.rotMatrix;
 		pos = rot * vector3d(0,1,0);
-		if (planet->GetTerrainHeight(pos) - planet->GetSBody()->GetRadius() == 0.0) {
+		if (planet->GetTerrainHeight(pos) - planet->GetSBody()->GetRadius() <= 0.0) {
 			MTRand r(sbody->seed);
 			// position is under water. try some random ones
 			for (tries=0; tries<100; tries++) {
@@ -326,7 +418,7 @@ static Frame *MakeFrameFor(SBody *sbody, Body *b, Frame *f)
 	return NULL;
 }
 
-void GenBody(SBody *sbody, Frame *f)
+void Space::GenBody(SBody *sbody, Frame *f)
 {
 	Body *b = 0;
 
@@ -350,33 +442,6 @@ void GenBody(SBody *sbody, Frame *f)
 
 	for (std::vector<SBody*>::iterator i = sbody->children.begin(); i != sbody->children.end(); ++i) {
 		GenBody(*i, f);
-	}
-}
-
-void BuildSystem()
-{
-	GenBody(Pi::currentSystem->rootBody, rootFrame);
-	rootFrame->SetPosition(vector3d(0,0,0));
-	rootFrame->SetVelocity(vector3d(0,0,0));
-	rootFrame->UpdateOrbitRails();
-}
-
-void AddBody(Body *b)
-{
-	bodies.push_back(b);
-}
-
-void RemoveBody(Body *b)
-{
-	b->SetFrame(0);
-	bodies.remove(b);
-}
-
-void KillBody(Body* const b)
-{
-	if (!b->IsDead()) {
-		b->MarkDead();
-		if (b != Pi::player) corpses.push_back(b);
 	}
 }
 
@@ -483,11 +548,11 @@ static void hitCallback(CollisionContact *c)
 	}
 }
 
-void CollideFrame(Frame *f)
+void Space::CollideFrame(Frame *f)
 {
-	if (f->m_astroBody && (f->m_astroBody->IsType(Object::PLANET))) {
+	if (f->m_astroBody && (f->m_astroBody->IsType(Object::TERRAINBODY))) {
 		// this is pretty retarded
-		for (bodiesIter_t i = bodies.begin(); i!=bodies.end(); ++i) {
+		for (BodyIterator i = m_bodies.begin(); i!=m_bodies.end(); ++i) {
 			if ((*i)->GetFrame() != f) continue;
 			if (!(*i)->IsType(Object::DYNAMICBODY)) continue;
 			DynamicBody *dynBody = static_cast<DynamicBody*>(*i);
@@ -533,513 +598,107 @@ void CollideFrame(Frame *f)
 }
 
 
-void TimeStep(float step)
+void Space::TimeStep(float step)
 {
-	if (hyperspacingTo) {
-		Pi::RequestTimeAccel(6);
+	m_frameIndexValid = m_bodyIndexValid = m_sbodyIndexValid = false;
 
-		hyperspaceAnim += step;
-		if (Pi::GetGameTime() > hyperspaceEndTime) {
-			DoHyperspaceTo(0);
-			Pi::RequestTimeAccel(1);
-			hyperspaceAnim = 0;
-		}
-		// don't take a physics step at this mental time accel
-		return;
-	}
-
-	CollideFrame(rootFrame);
 	// XXX does not need to be done this often
+	CollideFrame(m_rootFrame.Get());
 
 	// update frames of reference
-	for (std::list<Body*>::iterator i = bodies.begin(); i != bodies.end(); ++i)
+	for (BodyIterator i = m_bodies.begin(); i != m_bodies.end(); ++i)
 		(*i)->UpdateFrame();
 
-	rootFrame->UpdateOrbitRails();
-	
-	for (bodiesIter_t i = bodies.begin(); i != bodies.end(); ++i)
-		(*i)->StaticUpdate(step);			// moved so timestep is correct during StaticUpdate
+	// AI acts here, then move all bodies and frames
+	for (BodyIterator i = m_bodies.begin(); i != m_bodies.end(); ++i)
+		(*i)->StaticUpdate(step);
 
-	for (bodiesIter_t i = bodies.begin(); i != bodies.end(); ++i)
+	m_rootFrame->UpdateOrbitRails(m_game->GetTime(), m_game->GetTimeStep());
+
+	for (BodyIterator i = m_bodies.begin(); i != m_bodies.end(); ++i)
 		(*i)->TimeStepUpdate(step);
-
-	Sfx::TimeStepAll(step, rootFrame);
-
-	Pi::luaOnEnterSystem.Emit();
-	Pi::luaOnLeaveSystem.Emit();
-	Pi::luaOnFrameChanged.Emit();
-	Pi::luaOnShipHit.Emit();
-	Pi::luaOnShipCollided.Emit();
-	Pi::luaOnShipDestroyed.Emit();
-	Pi::luaOnShipDocked.Emit();
-	Pi::luaOnShipAlertChanged.Emit();
-	Pi::luaOnShipUndocked.Emit();
-	Pi::luaOnShipLanded.Emit();
-	Pi::luaOnShipTakeOff.Emit();
-	Pi::luaOnJettison.Emit();
-	Pi::luaOnAICompleted.Emit();
-	Pi::luaOnCreateBB.Emit();
-	Pi::luaOnUpdateBB.Emit();
-
-	PruneCorpses();
-}
-
-void PruneCorpses()
-{
-	for (bodiesIter_t corpse = corpses.begin(); corpse != corpses.end(); ++corpse) {
-		for (bodiesIter_t i = bodies.begin(); i != bodies.end(); ++i)
-			(*i)->NotifyDeleted(*corpse);
-		bodies.remove(*corpse);
-		delete *corpse;
-	}
-	corpses.clear();
-}
-
-/*
- * Called during play to initiate hyperspace sequence.
- */
-void StartHyperspaceTo(Ship *ship, const SystemPath *dest)
-{
-	int fuelUsage;
-	double duration;
-	if (!ship->CanHyperspaceTo(dest, fuelUsage, duration)) return;
-	ship->UseHyperspaceFuel(dest);
-		
-	Pi::luaOnLeaveSystem.Queue(ship);
-
-	if (Pi::player == ship) {
-		if (Pi::player->GetFlightControlState() == Player::CONTROL_AUTOPILOT)
-			Pi::player->SetFlightControlState(Player::CONTROL_MANUAL);
-
-		// if the hyperspace target is the same system as the selected cloud,
-		// make sure we're following it
-		Body *navtarget = Pi::player->GetNavTarget();
-		if (navtarget && navtarget->IsType(Object::HYPERSPACECLOUD)) {
-			HyperspaceCloud *cloud = dynamic_cast<HyperspaceCloud*>(navtarget);
-			if (Ship *hship = cloud->GetShip()) {
-				const SystemPath hdest = hship->GetHyperspaceDest();
-				if (hdest.IsSameSystem(*dest)) {
-					Pi::player->SetFollowCloud(cloud);
-				}
-			}
-		}
-
-		// Departure clouds going to the same system as us are turned
-		// into arrival clouds and stored here
-		for (bodiesIter_t i = bodies.begin(); i != bodies.end();) {
-			HyperspaceCloud *cloud = static_cast<HyperspaceCloud*>(*i);
-			if ((*i)->IsType(Object::HYPERSPACECLOUD) && (!cloud->IsArrival()) &&
-					(cloud->GetShip() != 0)) {
-				// only comparing system, not precise body target
-				const SystemPath cloudDest = cloud->GetShip()->GetHyperspaceDest();
-				if (cloudDest.IsSameSystem(*dest)) {
-					Pi::player->NotifyDeleted(cloud);
-					cloud->SetIsArrival(true);
-					cloud->SetFrame(0);
-					storedArrivalClouds.push_back(cloud);
-					i = bodies.erase(i);
-				} else {
-					++i;
-				}
-			} else {
-				++i;
-			}
-		}
-		printf("%lu clouds brought over\n", storedArrivalClouds.size());
-
-		Space::Clear();
-
-		hyperspacingTo = new SystemPath(*dest);
-		hyperspaceAnim = 0.0f;
-		hyperspaceDuration = duration;
-		hyperspaceEndTime = Pi::GetGameTime() + duration;
-
-		Pi::player->SetFlightState(Ship::HYPERSPACE);
-
-		printf("Started hyperspacing...\n");
-	} else {
-		// XXX note that cloud now takes ownership of the ship object, and
-		// so we can drop the reference in Space::bodies. ship will be freed
-		// when the hyperspacecloud is freed
-		HyperspaceCloud *cloud = new HyperspaceCloud(ship, Pi::GetGameTime() + duration, false);
-		cloud->SetFrame(ship->GetFrame());
-		cloud->SetPosition(ship->GetPosition());
-		ship->SetFrame(0);
-#if 0
-		ship->SetHyperspaceTarget(dest);
-#endif
-		// need to swap ship out of bodies list, replacing it with
-		// cloud
-		for (bodiesIter_t i = bodies.begin(); i != bodies.end(); ++i) {
-			if (*i == ship) {
-				*i = cloud;
-				break;
-			}
-		}
-
-		if (Pi::player->GetCombatTarget() == ship && !Pi::player->GetNavTarget())
-			Pi::player->SetNavTarget(cloud);
-
-		// Hyperspacing ship must drop references to all other bodies,
-		// and they must all drop references to it.
-		// make other objects drop their references to this dude
-		for (bodiesIter_t i = bodies.begin(); i != bodies.end(); ++i) {
-			if (*i != cloud) {
-				(*i)->NotifyDeleted(ship);
-				ship->NotifyDeleted(*i);
-			}
-		}
-
-		ship->SetFlightState(Ship::HYPERSPACE);
-	}
-}
-
-static vector3d _get_random_pos(float min_dist, float max_dist)
-{
-	float longitude = Pi::rng.Double(-M_PI,M_PI);
-	float latitude = Pi::rng.Double(-M_PI,M_PI);
-	float dist = (min_dist + Pi::rng.Double(max_dist-min_dist));
-	return vector3d(sin(longitude)*cos(latitude), sin(latitude), cos(longitude)*cos(latitude)) * dist;
-}
-
-/*
- * Called at end of hyperspace sequence to place the player in a system.
- */
-void DoHyperspaceTo(const SystemPath *dest)
-{
-	bool isRealHyperspaceEvent = false;
-	if (dest == 0) {
-		dest = hyperspacingTo;
-		isRealHyperspaceEvent = true;
-	} else {
-		// called with dest indicates start from start point or saved
-		// game so don't insert stored arrival clouds into system
-		// XXX this shit should all be cleared on new game init....
-		for (std::list<HyperspaceCloud*>::iterator i = storedArrivalClouds.begin();
-				i != storedArrivalClouds.end(); ++i) {
-			delete *i;
-		}
-		storedArrivalClouds.clear();
-	}
 	
-	if (Pi::currentSystem) Pi::currentSystem->Release();
-	Pi::currentSystem = StarSystem::GetCached(dest);
-	Space::Clear();
-	Space::BuildSystem();
-	
-	Pi::player->SetFrame(Space::rootFrame);
-	Pi::player->SetPosition(_get_random_pos(9.0,11.0)*AU); // "hyperspace zone": 9-11 AU from primary
-	Pi::player->SetVelocity(vector3d(0,0,-1000.0));
-	Pi::player->SetRotMatrix(matrix4x4d::Identity());
-	Pi::player->Enable();
-	Pi::player->SetFlightState(Ship::FLYING);
+	// XXX don't emit events in hyperspace. this is mostly to maintain the
+	// status quo. in particular without this onEnterSystem will fire in the
+	// frame immediately before the player leaves hyperspace and the system is
+	// invalid when Lua goes and queries for it. we need to consider whether
+	// there's anything useful that can be done with events in hyperspace
+	if (m_starSystem) {
+		Pi::luaOnEnterSystem->Emit();
+		Pi::luaOnLeaveSystem->Emit();
+		Pi::luaOnFrameChanged->Emit();
+		Pi::luaOnShipHit->Emit();
+		Pi::luaOnShipCollided->Emit();
+		Pi::luaOnShipDestroyed->Emit();
+		Pi::luaOnShipDocked->Emit();
+		Pi::luaOnShipAlertChanged->Emit();
+		Pi::luaOnShipUndocked->Emit();
+		Pi::luaOnShipLanded->Emit();
+		Pi::luaOnShipTakeOff->Emit();
+		Pi::luaOnJettison->Emit();
+		Pi::luaOnCargoUnload->Emit();
+		Pi::luaOnAICompleted->Emit();
+		Pi::luaOnCreateBB->Emit();
+		Pi::luaOnUpdateBB->Emit();
+		Pi::luaOnShipFlavourChanged->Emit();
+		Pi::luaOnShipEquipmentChanged->Emit();
+		Pi::luaOnShipFuelChanged->Emit();
 
-	if (isRealHyperspaceEvent) {
-		HyperspaceCloud *cloud = new HyperspaceCloud(0, Pi::GetGameTime(), true);
-		cloud->SetPosition(Pi::player->GetPosition());
-		cloud->SetFrame(Space::rootFrame);
-		Space::AddBody(cloud);
+		Pi::luaTimer->Tick();
 	}
 
-	// do stuff to clouds we brought over from the last system
-	for (std::list<HyperspaceCloud*>::iterator i = storedArrivalClouds.begin(); i != storedArrivalClouds.end(); ++i) {
-		HyperspaceCloud *cloud = *i;
+	UpdateBodies();
+}
 
-		// first we have to figure out where to put it
-		cloud->SetFrame(Space::rootFrame);
-		cloud->SetVelocity(vector3d(0,0,0));
-
-		if (cloud == Pi::player->GetFollowCloud())
-			// player is following it, so put it somewhere near the player
-			cloud->SetPosition(Pi::player->GetPosition() + _get_random_pos(5.0,20.0)*1000.0); // 5-20km
-		else
-			// player doesn't care, so just wherever
-			cloud->SetPosition(_get_random_pos(9.0,11.0)*AU); // "hyperspace zone": 9-11 AU from primary
-
-		Space::AddBody(cloud);
-
-		if (cloud->GetDueDate() < Pi::GetGameTime()) {
-			// they emerged from hyperspace some time ago
-			Ship *ship = cloud->EvictShip();
-
-			ship->SetFrame(Space::rootFrame);
-			ship->SetVelocity(vector3d(0,0,-1000.0));
-			ship->SetRotMatrix(matrix4x4d::Identity());
-			ship->Enable();
-			ship->SetFlightState(Ship::FLYING);
-
-#if 0
-			const SystemPath *sdest = ship->GetHyperspaceTarget();
-			if (sdest->bodyIndex == 0) {
-				// travelling to the system as a whole, so just dump them on
-				// the cloud - we can't do any better in this case
-#endif
-				ship->SetPosition(cloud->GetPosition());
-#if 0
-			}
-
-			else {
-				// on their way to a body. they're already in-system so we
-				// want to simulate some travel to their destination. we
-				// naively assume full accel for half the distance, flip and
-				// full brake for the rest.
-				Body *target_body = FindBodyForPath(sdest);
-				double dist_to_target = cloud->GetPositionRelTo(target_body).Length();
-				double half_dist_to_target = dist_to_target / 2.0;
-				double accel = -(ship->GetShipType().linThrust[ShipType::THRUSTER_FORWARD] / ship->GetMass());
-				double travel_time = Pi::GetGameTime() - cloud->GetDueDate();
-
-				// I can't help but feel some actual math would do better here
-				double speed = 0;
-				double dist = 0;
-				while (travel_time > 0 && dist <= half_dist_to_target) {
-					speed += accel;
-					dist += speed;
-					travel_time--;
-				}
-				while (travel_time > 0 && dist < dist_to_target) {
-					speed -= accel;
-					dist += speed;
-					travel_time--;
-				}
-
-				if (travel_time <= 0) {
-					vector3d pos =
-						target_body->GetPositionRelTo(Space::rootFrame) +
-						cloud->GetPositionRelTo(target_body).Normalized() * (dist_to_target - dist);
-					ship->SetPosition(pos);
-				}
-
-				else {
-					// ship made it with time to spare. just put it somewhere
-					// near the body. the script should be issuing a dock or
-					// flyto command in onEnterSystem so it should sort it
-					// itself out long before the player can get near
-					
-					SBody *sbody = Pi::currentSystem->GetBodyByPath(sdest);
-					if (sbody->type == SBody::TYPE_STARPORT_ORBITAL) {
-						ship->SetFrame(target_body->GetFrame());
-						ship->SetPosition(_get_random_pos(1000.0,1000.0)*1000.0); // somewhere 1000km out
-					}
-
-					else {
-						if (sbody->type == SBody::TYPE_STARPORT_SURFACE) {
-							sbody = sbody->parent;
-							SystemPath path = Pi::currentSystem->GetPathOf(sbody);
-							target_body = FindBodyForPath(&path);
-						}
-
-						double sdist = sbody->GetRadius()*2.0;
-
-						ship->SetFrame(target_body->GetFrame());
-						ship->SetPosition(_get_random_pos(sdist,sdist));
-					}
-				}
-			}
+void Space::UpdateBodies()
+{
+#ifndef NDEBUG
+	m_processingFinalizationQueue = true;
 #endif
 
-			Space::AddBody(ship);
-
-			Pi::luaOnEnterSystem.Queue(ship);
-		}
+	for (BodyIterator b = m_removeBodies.begin(); b != m_removeBodies.end(); ++b) {
+		(*b)->SetFrame(0);
+		for (BodyIterator i = m_bodies.begin(); i != m_bodies.end(); ++i)
+			(*i)->NotifyRemoved(*b);
+		m_bodies.remove(*b);
 	}
-	storedArrivalClouds.clear();
+	m_removeBodies.clear();
 
-	// bit of a hack, this should be only false if DoHyperspaceTo is used at
-	// game startup (eg debug point)
-	if (Pi::IsGameStarted())
-		Pi::luaOnEnterSystem.Queue(Pi::player);
-	
-	delete hyperspacingTo;
-	hyperspacingTo = 0;
-	
-	Pi::sectorView->ResetHyperspaceTarget();
-	Pi::player->ClearFollowCloud();
-}
-
-/* called at game start to load the system and put the player in a starport */
-void SetupSystemForGameStart(const SystemPath *dest, int starport, int port)
-{
-	if (Pi::currentSystem) Pi::currentSystem->Release();
-	Pi::currentSystem = StarSystem::GetCached(dest);
-	Space::Clear();
-	Space::BuildSystem();
-
-	SpaceStation *station = 0;
-	for (Space::bodiesIter_t i = Space::bodies.begin(); i!=Space::bodies.end(); i++) {
-		if ((*i)->IsType(Object::SPACESTATION) && !starport--) {
-			station = static_cast<SpaceStation*>(*i);
-			break;
-		}
+	for (BodyIterator b = m_killBodies.begin(); b != m_killBodies.end(); ++b) {
+		for (BodyIterator i = m_bodies.begin(); i != m_bodies.end(); ++i)
+			(*i)->NotifyRemoved(*b);
+		m_bodies.remove(*b);
+		delete *b;
 	}
-	assert(station);
+	m_killBodies.clear();
 
-	Pi::player->Enable();
-	Pi::player->SetPosition(vector3d(0,0,0)); 
-	Pi::player->SetVelocity(vector3d(0,0,0));
-
-	Pi::player->SetFrame(station->GetFrame()); 
-	Pi::player->SetDockedWith(station, port); 
-
-	station->CreateBB();
+#ifndef NDEBUG
+	m_processingFinalizationQueue = false;
+#endif
 }
 
-float GetHyperspaceAnim()
+static char space[256];
+
+static void DebugDumpFrame(const Frame *f, unsigned int indent)
 {
-	return hyperspaceAnim;
+	printf("%.*s%p (%s)", indent, space, f, f->GetLabel());
+	if (f->m_parent)
+		printf(" parent %p (%s)", f->m_parent, f->m_parent->GetLabel());
+	if (f->m_astroBody)
+		printf(" body %p (%s)", f->m_astroBody, f->m_astroBody->GetLabel().c_str());
+	if (Body *b = f->GetBodyFor())
+		printf(" bodyFor %p (%s)", b, b->GetLabel().c_str());
+	printf(" distance %f radius %f", f->GetPosition().Length(), f->GetRadius());
+	printf("%s\n", f->IsRotatingFrame() ? " [rotating]" : "");
+
+	for (std::list<Frame*>::const_iterator i = f->m_children.begin(); i != f->m_children.end(); ++i)
+		DebugDumpFrame(*i, indent+2);
 }
 
-const SystemPath *GetHyperspaceDest()
+void Space::DebugDumpFrames()
 {
-	return hyperspacingTo;
+	memset(space, ' ', sizeof(space));
+
+	printf("Frame structure for '%s':\n", m_starSystem->GetName().c_str());
+	DebugDumpFrame(m_rootFrame.Get(), 2);
 }
-
-double GetHyperspaceDuration()
-{
-	return hyperspaceDuration;
-}
-
-void DrawSpike(double rad, const vector3d &fpos, const matrix4x4d &ftran)
-{
-	glPushMatrix();
-
-	float znear, zfar;
-	Pi::worldView->GetNearFarClipPlane(&znear, &zfar);
-	double newdist = znear + 0.5f * (zfar - znear);
-	double scale = newdist / fpos.Length();
-
-	glTranslatef(float(scale*fpos.x), float(scale*fpos.y), float(scale*fpos.z));
-
-	Render::State::UseProgram(0);
-	// face the camera dammit
-	vector3d zaxis = fpos.Normalized();
-	vector3d xaxis = vector3d(0,1,0).Cross(zaxis).Normalized();
-	vector3d yaxis = zaxis.Cross(xaxis);
-	matrix4x4d rot = matrix4x4d::MakeInvRotMatrix(xaxis, yaxis, zaxis);
-	glMultMatrixd(&rot[0]);
-
-	glDisable(GL_LIGHTING);
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-
-	// XXX WRONG. need to pick light from appropriate turd.
-	GLfloat col[4];
-	glGetLightfv(GL_LIGHT0, GL_DIFFUSE, col);
-	glColor4f(col[0], col[1], col[2], 1);
-	glBegin(GL_TRIANGLE_FAN);
-	glVertex3f(0,0,0);
-	glColor4f(col[0], col[1], col[2], 0);
-
-	const float spikerad = float(scale*rad);
-
-	// bezier with (0,0,0) control points
-		{
-			vector3f p0(0,spikerad,0), p1(spikerad,0,0);
-			float t=0.1f; for (int i=1; i<10; i++, t+= 0.1f) {
-				vector3f p = (1-t)*(1-t)*p0 + t*t*p1;
-				glVertex3fv(&p[0]);
-			}
-		}
-		{
-			vector3f p0(spikerad,0,0), p1(0,-spikerad,0);
-			float t=0.1f; for (int i=1; i<10; i++, t+= 0.1f) {
-				vector3f p = (1-t)*(1-t)*p0 + t*t*p1;
-				glVertex3fv(&p[0]);
-			}
-		}
-		{
-			vector3f p0(0,-spikerad,0), p1(-spikerad,0,0);
-			float t=0.1f; for (int i=1; i<10; i++, t+= 0.1f) {
-				vector3f p = (1-t)*(1-t)*p0 + t*t*p1;
-				glVertex3fv(&p[0]);
-			}
-		}
-		{
-			vector3f p0(-spikerad,0,0), p1(0,spikerad,0);
-			float t=0.1f; for (int i=1; i<10; i++, t+= 0.1f) {
-				vector3f p = (1-t)*(1-t)*p0 + t*t*p1;
-				glVertex3fv(&p[0]);
-			}
-		}
-	glEnd();
-	glDisable(GL_BLEND);
-	glEnable(GL_LIGHTING);
-	glEnable(GL_DEPTH_TEST);
-	glPopMatrix();
-}
-
-struct body_zsort_t {
-	double dist;
-	vector3d viewCoords;
-	matrix4x4d viewTransform;
-	Body *b;
-	Uint32 bodyFlags;
-};
-
-struct body_zsort_compare : public std::binary_function<body_zsort_t, body_zsort_t, bool> {
-	bool operator()(body_zsort_t a, body_zsort_t b)
-	{
-		if (a.bodyFlags & Body::FLAG_DRAW_LAST) {
-			if (!(b.bodyFlags & Body::FLAG_DRAW_LAST)) return false;
-		} else {
-			if (b.bodyFlags & Body::FLAG_DRAW_LAST) return true;
-		}
-		return a.dist > b.dist;
-	}
-};
-
-/** Perhaps this should be moved to WorldView.cpp. It is only called from there. */
-void Render(const Frame *cam_frame)
-{
-	Plane planes[6];
-	GetFrustum(planes);
-
-	// simple z-sort!!!!!!!!!!!!!11
-	body_zsort_t *bz = new body_zsort_t[bodies.size()];
-	int idx = 0;
-	for (std::list<Body*>::iterator i = bodies.begin(); i != bodies.end(); ++i) {
-		const vector3d pos = (*i)->GetInterpolatedPosition();
-		Frame::GetFrameRenderTransform((*i)->GetFrame(), cam_frame, bz[idx].viewTransform);
-		vector3d toBody = bz[idx].viewTransform * pos;
-		bz[idx].viewCoords = toBody;
-		bz[idx].dist = toBody.Length();
-		bz[idx].bodyFlags = (*i)->GetFlags();
-		bz[idx].b = *i;
-		idx++;
-	}
-	sort(bz, bz+bodies.size(), body_zsort_compare());
-
-	for (unsigned int i=0; i<bodies.size(); i++) {
-		double rad = bz[i].b->GetBoundingRadius();
-
-		// test against all frustum planes except far plane
-		bool do_draw = true;
-		// always render stars (they have a huge glow). Other things do frustum cull
-		if (!bz[i].b->IsType(Object::STAR)) {
-			for (int p=0; p<5; p++) {
-				if (planes[p].DistanceToPoint(bz[i].viewCoords)+rad < 0) {
-					do_draw = false;
-					break;
-				}
-			}
-		}
-		if (!do_draw) continue;
-
-		double screenrad = 500 * rad / bz[i].dist;		// approximate pixel size
-		if (!bz[i].b->IsType(Object::STAR) && screenrad < 2) {
-			if (!bz[i].b->IsType(Object::PLANET)) continue;
-			// absolute bullshit
-			double spikerad = (7 + 1.5*log10(screenrad)) * rad / screenrad;
-			DrawSpike(spikerad, bz[i].viewCoords, bz[i].viewTransform);
-		}
-		else bz[i].b->Render(bz[i].viewCoords, bz[i].viewTransform);
-	}
-	Sfx::RenderAll(rootFrame, cam_frame);
-	Render::State::UseProgram(0);
-	Render::UnbindAllBuffers();
-
-	delete [] bz;
-}
-
-}
-

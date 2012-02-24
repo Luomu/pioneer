@@ -5,6 +5,8 @@
 #include "FaceVideoLink.h"
 #include "ShipCpanel.h"
 #include "SpaceStationView.h"
+#include "Lang.h"
+#include "StringF.h"
 
 void StationPoliceForm::OnOptionClicked(int option)
 {
@@ -12,7 +14,7 @@ void StationPoliceForm::OnOptionClicked(int option)
 		case 0: {
 			SpaceStation *station = Pi::player->GetDockedWith();
 
-			SetTitle(stringf(256, "%s Police", station->GetLabel().c_str()).c_str());
+			SetTitle(stringf(Lang::SOMEWHERE_POLICE, formatarg("station", station->GetLabel())));
 
 			SetFaceFlags(FaceVideoLink::ARMOUR);
 			SetFaceSeed(MTRand(station->GetSBody()->seed).Int32());
@@ -21,14 +23,14 @@ void StationPoliceForm::OnOptionClicked(int option)
 			Polit::GetCrime(&crime, &fine);
 
 			if (fine == 0) {
-				SetMessage("We have no business with you at the moment.");
+				SetMessage(Lang::WE_HAVE_NO_BUSINESS_WITH_YOU);
 			}
 			else {
-				SetMessage(stringf(256, "We do not tolerate crime. You must pay a fine of %s.", format_money(fine).c_str()).c_str());
-				AddOption("Pay the fine now.", 1);
+				SetMessage(stringf(Lang::YOU_MUST_PAY_FINE_OF_N_CREDITS, formatarg("fine", format_money(fine))));
+				AddOption(Lang::PAY_THE_FINE_NOW, 1);
 			}
 
-			AddOption("Hang up.", -1);
+			AddOption(Lang::HANG_UP, -1);
 
 			break;
 		}
@@ -38,7 +40,7 @@ void StationPoliceForm::OnOptionClicked(int option)
 			Polit::GetCrime(&crime, &fine);
 
 			if (fine > Pi::player->GetMoney()) {
-				Pi::cpan->MsgLog()->Message("", "You do not have enough money.");
+				Pi::cpan->MsgLog()->Message("", Lang::YOU_NOT_ENOUGH_MONEY);
 				return;
 			}
 

@@ -12,13 +12,19 @@
 #include "LmrModel.h"
 #include "Polit.h"
 #include "Space.h"
+#include "Lang.h"
+#include "StringF.h"
 #include <algorithm>
+#include "Game.h"
 
 #define ARG_STATION_BAY1_STAGE 6
 #define ARG_STATION_BAY1_POS   10
 
 void SpaceStationType::_ReadStageDurations(const char *key, int *outNumStages, double **durationArray) {
 	lua_State *L = LmrGetLuaState();
+
+	LUA_DEBUG_START(L);
+
 	model->PushAttributeToLuaStack(key);
 	assert(lua_istable(L, -1));
 
@@ -39,6 +45,10 @@ void SpaceStationType::_ReadStageDurations(const char *key, int *outNumStages, d
 		Error("Space station %s must have atleast 1 docking and 1 undocking animation stage.",
 				modelName);
 	}
+
+	lua_pop(L, 1);
+
+	LUA_DEBUG_END(L, 0);
 }
 // read from lua model definition
 void SpaceStationType::ReadStageDurations() {
@@ -49,13 +59,18 @@ void SpaceStationType::ReadStageDurations() {
 bool SpaceStationType::GetShipApproachWaypoints(int port, int stage, positionOrient_t &outPosOrient) const
 {
 	lua_State *L = LmrGetLuaState();
+
+	LUA_DEBUG_START(L);
+
 	lua_pushcfunction(L, pi_lua_panic);
 	model->PushAttributeToLuaStack("ship_approach_waypoints");
 	if (!lua_isfunction(L, -1)) {
 		printf("no function\n");
 		lua_pop(L, 2);
+		LUA_DEBUG_END(L, 0);
 		return false;
 	}
+
 	lua_pushinteger(L, port+1);
 	lua_pushinteger(L, stage);
 	lua_pcall(L, 2, 1, -4);
@@ -64,22 +79,25 @@ bool SpaceStationType::GetShipApproachWaypoints(int port, int stage, positionOri
 		gotOrient = true;
 		lua_pushinteger(L, 1);
 		lua_gettable(L, -2);
-		outPosOrient.pos = vector3f(*MyLuaVec::checkVec(L, -1));
+		outPosOrient.pos = vector3d(*MyLuaVec::checkVec(L, -1));
 		lua_pop(L, 1);
 
 		lua_pushinteger(L, 2);
 		lua_gettable(L, -2);
-		outPosOrient.xaxis = vector3f(*MyLuaVec::checkVec(L, -1));
+		outPosOrient.xaxis = vector3d(*MyLuaVec::checkVec(L, -1));
 		lua_pop(L, 1);
 
 		lua_pushinteger(L, 3);
 		lua_gettable(L, -2);
-		outPosOrient.yaxis = vector3f(*MyLuaVec::checkVec(L, -1));
+		outPosOrient.yaxis = vector3d(*MyLuaVec::checkVec(L, -1));
 		lua_pop(L, 1);
 	} else {
 		gotOrient = false;
 	}
-	lua_pop(L, 1);
+	lua_pop(L, 2);
+
+	LUA_DEBUG_END(L, 0);
+
 	return gotOrient;
 }
 
@@ -91,7 +109,11 @@ bool SpaceStationType::GetDockAnimPositionOrient(int port, int stage, double t, 
 {
 	if ((stage < 0) && ((-stage) > numUndockStages)) return false;
 	if ((stage > 0) && (stage > numDockingStages)) return false;
+
 	lua_State *L = LmrGetLuaState();
+
+	LUA_DEBUG_START(L);
+
 	lua_pushcfunction(L, pi_lua_panic);
 	// It's a function of form function(stage, t, from)
 	model->PushAttributeToLuaStack("ship_dock_anim");
@@ -109,10 +131,10 @@ bool SpaceStationType::GetDockAnimPositionOrient(int port, int stage, double t, 
 		ship->GetAabb(aabb);
 		lua_createtable (L, 0, 2);
 		vector3f *v = MyLuaVec::pushVec(L);
-		*v = aabb.max;
+		*v = vector3f(aabb.max);
 		lua_setfield(L, -2, "max");
 		v = MyLuaVec::pushVec(L);
-		*v = aabb.min;
+		*v = vector3f(aabb.min);
 		lua_setfield(L, -2, "min");
 	}
 
@@ -122,22 +144,25 @@ bool SpaceStationType::GetDockAnimPositionOrient(int port, int stage, double t, 
 		gotOrient = true;
 		lua_pushinteger(L, 1);
 		lua_gettable(L, -2);
-		outPosOrient.pos = vector3f(*MyLuaVec::checkVec(L, -1));
+		outPosOrient.pos = vector3d(*MyLuaVec::checkVec(L, -1));
 		lua_pop(L, 1);
 
 		lua_pushinteger(L, 2);
 		lua_gettable(L, -2);
-		outPosOrient.xaxis = vector3f(*MyLuaVec::checkVec(L, -1));
+		outPosOrient.xaxis = vector3d(*MyLuaVec::checkVec(L, -1));
 		lua_pop(L, 1);
 
 		lua_pushinteger(L, 3);
 		lua_gettable(L, -2);
-		outPosOrient.yaxis = vector3f(*MyLuaVec::checkVec(L, -1));
+		outPosOrient.yaxis = vector3d(*MyLuaVec::checkVec(L, -1));
 		lua_pop(L, 1);
 	} else {
 		gotOrient = false;
 	}
-	lua_pop(L, 1);
+	lua_pop(L, 2);
+
+	LUA_DEBUG_END(L, 0);
+
 	return gotOrient;
 }
 
@@ -164,8 +189,8 @@ void SpaceStation::Init()
 			t.numDockingPorts = (*i)->GetIntAttribute("num_docking_ports");
 			t.dockOneAtATimePlease = (*i)->GetBoolAttribute("dock_one_at_a_time_please");
 			t.ReadStageDurations();
-			printf("one at a time? %s\n", t.dockOneAtATimePlease ? "yes" : "no");
-			printf("%s: %d docking ports\n", t.modelName, t.numDockingPorts);
+			//printf("one at a time? %s\n", t.dockOneAtATimePlease ? "yes" : "no");
+			//printf("%s: %d docking ports\n", t.modelName, t.numDockingPorts);
 			if (is_orbital) {
 				t.angVel = (*i)->GetFloatAttribute("angular_velocity");
 				orbitalStationTypes.push_back(t);
@@ -173,7 +198,20 @@ void SpaceStation::Init()
 			else surfaceStationTypes.push_back(t);
 		}
 	}
-	printf("%lu orbital station types and %lu surface station types.\n", orbitalStationTypes.size(), surfaceStationTypes.size());
+	//printf(SIZET_FMT " orbital station types and " SIZET_FMT " surface station types.\n", orbitalStationTypes.size(), surfaceStationTypes.size());
+}
+
+void SpaceStation::Uninit()
+{
+	std::vector<SpaceStationType>::iterator i;
+	for (i=surfaceStationTypes.begin(); i!=surfaceStationTypes.end(); ++i) {
+		delete[] (*i).dockAnimStageDuration;
+		delete[] (*i).undockAnimStageDuration;
+	}
+	for (i=orbitalStationTypes.begin(); i!=orbitalStationTypes.end(); ++i) {
+		delete[] (*i).dockAnimStageDuration;
+		delete[] (*i).undockAnimStageDuration;
+	}
 }
 
 float SpaceStation::GetDesiredAngVel() const
@@ -181,9 +219,9 @@ float SpaceStation::GetDesiredAngVel() const
 	return m_type->angVel;
 }
 
-void SpaceStation::Save(Serializer::Writer &wr)
+void SpaceStation::Save(Serializer::Writer &wr, Space *space)
 {
-	ModelBody::Save(wr);
+	ModelBody::Save(wr, space);
 	MarketAgent::Save(wr);
 	wr.Int32(Equip::TYPE_MAX);
 	for (int i=0; i<Equip::TYPE_MAX; i++) {
@@ -196,7 +234,7 @@ void SpaceStation::Save(Serializer::Writer &wr)
 		(*i).Save(wr);
 	}
 	for (int i=0; i<MAX_DOCKING_PORTS; i++) {
-		wr.Int32(Serializer::LookupBody(m_shipDocking[i].ship));
+		wr.Int32(space->GetIndexForBody(m_shipDocking[i].ship));
 		wr.Int32(m_shipDocking[i].stage);
 		wr.Float(float(m_shipDocking[i].stagePos));
 		wr.Vector3d(m_shipDocking[i].fromPos);
@@ -206,13 +244,13 @@ void SpaceStation::Save(Serializer::Writer &wr)
 		wr.Float(float(m_dockAnimState[i]));
 	}
 	wr.Double(m_lastUpdatedShipyard);
-	wr.Int32(Serializer::LookupSystemBody(m_sbody));
+	wr.Int32(space->GetIndexForSBody(m_sbody));
 	wr.Int32(m_numPoliceDocked);
 }
 
-void SpaceStation::Load(Serializer::Reader &rd)
+void SpaceStation::Load(Serializer::Reader &rd, Space *space)
 {
-	ModelBody::Load(rd);
+	ModelBody::Load(rd, space);
 	MarketAgent::Load(rd);
 	int num = rd.Int32();
 	if (num > Equip::TYPE_MAX) throw SavedGameCorruptException();
@@ -240,15 +278,15 @@ void SpaceStation::Load(Serializer::Reader &rd)
 		m_dockAnimState[i] = rd.Float();
 	}
 	m_lastUpdatedShipyard = rd.Double();
-	m_sbody = Serializer::LookupSystemBody(rd.Int32());
+	m_sbody = space->GetSBodyByIndex(rd.Int32());
 	m_numPoliceDocked = rd.Int32();
 	InitStation();
 }
 
-void SpaceStation::PostLoadFixup()
+void SpaceStation::PostLoadFixup(Space *space)
 {
 	for (int i=0; i<MAX_DOCKING_PORTS; i++) {
-		m_shipDocking[i].ship = static_cast<Ship*>(Serializer::LookupBody(m_shipDocking[i].shipIndex));
+		m_shipDocking[i].ship = static_cast<Ship*>(space->GetBodyByIndex(m_shipDocking[i].shipIndex));
 	}
 }
 
@@ -262,14 +300,7 @@ SpaceStation::SpaceStation(const SBody *sbody): ModelBody()
 	m_sbody = sbody;
 	m_lastUpdatedShipyard = 0;
 	m_numPoliceDocked = Pi::rng.Int32(3,10);
-	for (int i=1; i<Equip::TYPE_MAX; i++) {
-		if (EquipType::types[i].slot == Equip::SLOT_CARGO) {
-			m_equipmentStock[i] = Pi::rng.Int32(0,100) * Pi::rng.Int32(1,100);
-		} else {
-			if (EquipType::types[i].techLevel <= Pi::currentSystem->m_techlevel)
-				m_equipmentStock[i] = Pi::rng.Int32(0,100);
-		}
-	}
+
 	for (int i=0; i<MAX_DOCKING_PORTS; i++) {
 		m_shipDocking[i].ship = 0;
 		m_shipDocking[i].stage = 0;
@@ -277,6 +308,7 @@ SpaceStation::SpaceStation(const SBody *sbody): ModelBody()
 		m_openAnimState[i] = 0;
 		m_dockAnimState[i] = 0;
 	}
+
 	SetMoney(1000000000);
 	InitStation();
 }
@@ -292,8 +324,10 @@ void SpaceStation::InitStation()
 	} else {
 		m_type = &surfaceStationTypes[ rand.Int32(surfaceStationTypes.size()) ];
 	}
-	GetLmrObjParams().argDoubles[ARG_STATION_BAY1_STAGE] = 1.0;
-	GetLmrObjParams().argDoubles[ARG_STATION_BAY1_POS] = 1.0;
+	GetLmrObjParams().animStages[ANIM_DOCKING_BAY_1] = 1;
+	GetLmrObjParams().animValues[ANIM_DOCKING_BAY_1] = 1.0;
+	// XXX the animation namespace must match that in LuaConstants
+	GetLmrObjParams().animationNamespace = "SpaceStationAnimation";
 	SetModel(m_type->modelName, true);
 	m_bbCreated = false;
 }
@@ -392,8 +426,7 @@ void SpaceStation::DoDockingAnimation(const double timeStep)
 			if (dt.stage >= 0) {
 				// set docked
 				dt.ship->SetDockedWith(this, i);
-				CreateBB();
-				Pi::luaOnShipDocked.Queue(dt.ship, this);
+				Pi::luaOnShipDocked->Queue(dt.ship, this);
 			} else {
 				if (!dt.ship->IsEnabled()) {
 					// launch ship
@@ -408,7 +441,7 @@ void SpaceStation::DoDockingAnimation(const double timeStep)
 						dt.ship->SetVelocity(GetFrame()->GetStasisVelocityAtPosition(dt.ship->GetPosition()));
 						dt.ship->SetThrusterState(2, -1.0);		// forward
 					}
-					Pi::luaOnShipUndocked.Queue(dt.ship, this);
+					Pi::luaOnShipUndocked->Queue(dt.ship, this);
 				}
 			}
 		}
@@ -427,7 +460,6 @@ void SpaceStation::DoLawAndOrder()
 {
 	Sint64 fine, crimeBitset;
 	Polit::GetCrime(&crimeBitset, &fine);
-	bool isDocked = static_cast<Ship*>(Pi::player)->GetDockedWith() ? true : false;
 	if (Pi::player->GetFlightState() != Ship::DOCKED
 			&& m_numPoliceDocked
 			&& (fine > 1000)
@@ -440,11 +472,11 @@ void SpaceStation::DoLawAndOrder()
 			ship->AIKill(Pi::player);
 			ship->SetFrame(GetFrame());
 			ship->SetDockedWith(this, port);
-			Space::AddBody(ship);
+			Pi::game->GetSpace()->AddBody(ship);
 			{ // blue and white thang
 				ShipFlavour f;
 				f.type = ShipType::LADYBIRD;
-				strncpy(f.regid, "POLICE", 16);
+				strncpy(f.regid, Lang::POLICE_SHIP_REGISTRATION, 16);
 				f.price = ship->GetFlavour()->price;
 				LmrMaterial m;
 				m.diffuse[0] = 0.0f; m.diffuse[1] = 0.0f; m.diffuse[2] = 1.0f; m.diffuse[3] = 1.0f;
@@ -468,12 +500,26 @@ void SpaceStation::DoLawAndOrder()
 
 void SpaceStation::TimeStepUpdate(const float timeStep)
 {
-	if (Pi::GetGameTime() > m_lastUpdatedShipyard) {
-        if (m_bbCreated) Pi::luaOnUpdateBB.Queue(this);
+	bool update = false;
+
+	// if there's no BB and there are ships here, make one
+	if (!m_bbCreated && GetFreeDockingPort() != 0) {
+		CreateBB();
+		update = true;
+	}
+	
+	// if there is and it hasn't had an update for a while, update it
+	else if (Pi::game->GetTime() > m_lastUpdatedShipyard) {
+		Pi::luaOnUpdateBB->Queue(this);
+		update = true;
+	}
+
+	if (update) {
 		UpdateShipyard();
 		// update again in an hour or two
-		m_lastUpdatedShipyard = Pi::GetGameTime() + 3600.0 + 3600.0*Pi::rng.Double();
+		m_lastUpdatedShipyard = Pi::game->GetTime() + 3600.0 + 3600.0*Pi::rng.Double();
 	}
+
 	DoDockingAnimation(timeStep);
 	DoLawAndOrder();
 }
@@ -595,7 +641,7 @@ bool SpaceStation::GetDockingClearance(Ship *s, std::string &outMsg)
 	for (int i=0; i<MAX_DOCKING_PORTS; i++) {
 		if (i >= m_type->numDockingPorts) break;
 		if ((m_shipDocking[i].ship == s) && (m_shipDocking[i].stage > 0)) {
-			outMsg = stringf(256, "Clearance already granted. Proceed to docking bay %d.", i+1);
+			outMsg = stringf(Lang::CLEARANCE_ALREADY_GRANTED_BAY_N, formatarg("bay", i+1));
 			return true;
 		}
 	}
@@ -606,10 +652,10 @@ bool SpaceStation::GetDockingClearance(Ship *s, std::string &outMsg)
 		sd.ship = s;
 		sd.stage = 1;
 		sd.stagePos = 0;
-		outMsg = stringf(256, "Clearance granted. Proceed to docking bay %d.", i+1);
+		outMsg = stringf(Lang::CLEARANCE_GRANTED_BAY_N, formatarg("bay", i+1));
 		return true;
 	}
-	outMsg = "Clearance denied. There are no free docking bays.";
+	outMsg = Lang::CLEARANCE_DENIED_NO_BAYS;
 	return false;
 }
 
@@ -626,17 +672,17 @@ bool SpaceStation::CanBuy(Equip::Type t, bool verbose) const {
 bool SpaceStation::CanSell(Equip::Type t, bool verbose) const {
 	bool result = (m_equipmentStock[int(t)] > 0);
 	if (verbose && !result) {
-		Pi::Message("This item is out of stock.");
+		Pi::Message(Lang::ITEM_IS_OUT_OF_STOCK);
 	}
 	return result;
 }
 bool SpaceStation::DoesSell(Equip::Type t) const {
-	return Polit::IsCommodityLegal(Pi::currentSystem, t);
+	return Polit::IsCommodityLegal(Pi::game->GetSpace()->GetStarSystem().Get(), t);
 }
 
 Sint64 SpaceStation::GetPrice(Equip::Type t) const {
-	Sint64 mul = 100 + Pi::currentSystem->GetCommodityBasePriceModPercent(t);
-	return (mul * Sint64(EquipType::types[t].basePrice)) / 100;
+	Sint64 mul = 100 + Pi::game->GetSpace()->GetStarSystem()->GetCommodityBasePriceModPercent(t);
+	return (mul * Sint64(Equip::types[t].basePrice)) / 100;
 }
 
 bool SpaceStation::OnCollision(Object *b, Uint32 flags, double relVel)
@@ -685,7 +731,7 @@ bool SpaceStation::OnCollision(Object *b, Uint32 flags, double relVel)
 
 				// check player is sortof sensibly oriented for landing
 				const double dot = vector3d(invShipRot[1], invShipRot[5], invShipRot[9]).Dot(dockingNormal);
-				if ((dot < 0.99) || (s->GetWheelState() != 1.0)) return false;
+				if ((dot < 0.99) || (s->GetWheelState() < 1.0)) return false;
 			}
 			
 			if ((speed < MAX_LANDING_SPEED) &&
@@ -703,11 +749,11 @@ bool SpaceStation::OnCollision(Object *b, Uint32 flags, double relVel)
 					s->GetRotMatrix(temp);
 					sd.fromRot = Quaterniond::FromMatrix4x4(temp);
 					s->Disable();
+					s->ClearThrusterState();
 					s->SetFlightState(Ship::DOCKING);
 				} else {
 					s->SetDockedWith(this, port);
-					CreateBB();
-					Pi::luaOnShipDocked.Queue(s, this);
+					Pi::luaOnShipDocked->Queue(s, this);
 				}
 			}
 		}
@@ -717,45 +763,24 @@ bool SpaceStation::OnCollision(Object *b, Uint32 flags, double relVel)
 	}
 }
 
-void SpaceStation::NotifyDeleted(const Body* const deletedBody)
+void SpaceStation::NotifyRemoved(const Body* const removedBody)
 {
 	for (int i=0; i<MAX_DOCKING_PORTS; i++) {
-		if (m_shipDocking[i].ship == deletedBody) {
+		if (m_shipDocking[i].ship == removedBody) {
 			m_shipDocking[i].ship = 0;
 		}
 	}
 }
 
-static std::vector<LmrModel*> s_advertModels;
-
-void SpaceStation::Render(const vector3d &viewCoords, const matrix4x4d &viewTransform)
+void SpaceStation::Render(Graphics::Renderer *r, const vector3d &viewCoords, const matrix4x4d &viewTransform)
 {
-	/* Well this is nice... */
-	static int poo=0;
-	if (!poo) {
-		poo = 1;
-		LmrGetModelsWithTag("advert", s_advertModels);
-	}
-	// it is silly to do this every render call
-	//
-	// random advert models in pFlag[16 .. 19]
-	// station name in pText[0]
-	// docking port in pText[1]
-	MTRand rand;
-	rand.seed(m_sbody->seed);
-	
 	LmrObjParams &params = GetLmrObjParams();
-	/* random advert models */
-	params.argStrings[4] = s_advertModels[rand.Int32(s_advertModels.size())]->GetName();
-	params.argStrings[5] = s_advertModels[rand.Int32(s_advertModels.size())]->GetName();
-	params.argStrings[6] = s_advertModels[rand.Int32(s_advertModels.size())]->GetName();
-	params.argStrings[7] = s_advertModels[rand.Int32(s_advertModels.size())]->GetName();
-	params.argStrings[0] = GetLabel().c_str();
+	params.label = GetLabel().c_str();
 	SetLmrTimeParams();
 
 	for (int i=0; i<MAX_DOCKING_PORTS; i++) {
-		params.argDoubles[ARG_STATION_BAY1_STAGE + i] = double(m_shipDocking[i].stage);
-		params.argDoubles[ARG_STATION_BAY1_POS + i] = m_shipDocking[i].stagePos;
+		params.animStages[ANIM_DOCKING_BAY_1 + i] = m_shipDocking[i].stage;
+		params.animValues[ANIM_DOCKING_BAY_1 + i] = m_shipDocking[i].stagePos;
 	}
 
 	RenderLmrModel(viewCoords, viewTransform);
@@ -775,7 +800,7 @@ void SpaceStation::Render(const vector3d &viewCoords, const matrix4x4d &viewTran
 			if (!m_adjacentCity) {
 				m_adjacentCity = new CityOnPlanet(planet, this, m_sbody->seed);
 			}
-			m_adjacentCity->Render(this, viewCoords, viewTransform);
+			m_adjacentCity->Render(r, this, viewCoords, viewTransform);
 		}
 	}
 }
@@ -799,7 +824,22 @@ bool SpaceStation::AllocateStaticSlot(int& slot)
 void SpaceStation::CreateBB()
 {
 	if (m_bbCreated) return;
-	Pi::luaOnCreateBB.Queue(this);
+
+	// fill the shipyard equipment shop with all kinds of things
+	// XXX should probably be moved out to a MarketAgent/CommodityWidget type
+	//     thing, or just lua
+	for (int i=1; i<Equip::TYPE_MAX; i++) {
+		if (Equip::types[i].slot == Equip::SLOT_CARGO) {
+			m_equipmentStock[i] = Pi::rng.Int32(0,100) * Pi::rng.Int32(1,100);
+		} else {
+			if (Equip::types[i].techLevel <= Pi::game->GetSpace()->GetStarSystem()->m_techlevel)
+				m_equipmentStock[i] = Pi::rng.Int32(0,100);
+			else
+				m_equipmentStock[i] = 0;
+		}
+	}
+
+	Pi::luaOnCreateBB->Queue(this);
 	m_bbCreated = true;
 }
 
@@ -834,8 +874,9 @@ bool SpaceStation::RemoveBBAdvert(int ref)
 {
 	for (std::vector<BBAdvert>::iterator i = m_bbAdverts.begin(); i != m_bbAdverts.end(); i++)
 		if (i->ref == ref) {
+			BBAdvert ad = (*i);
 			m_bbAdverts.erase(i);
-			onBulletinBoardAdvertDeleted.emit(*i);
+			onBulletinBoardAdvertDeleted.emit(ad);
 			return true;
 		}
 	return false;
@@ -854,3 +895,23 @@ const std::list<const BBAdvert*> SpaceStation::GetBBAdverts()
 	return ads;
 }
 
+vector3d SpaceStation::GetTargetIndicatorPosition(const Frame *relTo) const
+{
+	//return the docking point's position, if permission has been granted for player
+	for (int i=0; i<MAX_DOCKING_PORTS; i++) {
+		if (i >= m_type->numDockingPorts) break;
+		if ((m_shipDocking[i].ship == Pi::player) && (m_shipDocking[i].stage > 0)) {
+
+			SpaceStationType::positionOrient_t dport;
+			PiVerify(m_type->GetDockAnimPositionOrient(i, m_type->numDockingStages,
+				1.0f, vector3d(0.0), dport, m_shipDocking[i].ship));
+			matrix4x4d rot;
+			GetRotMatrix(rot);
+
+			matrix4x4d m;
+			Frame::GetFrameRenderTransform(GetFrame(), relTo, m);
+			return m * (GetInterpolatedPosition() + (rot*dport.pos));
+		}
+	}
+	return GetInterpolatedPositionRelTo(relTo);
+}

@@ -37,6 +37,9 @@
  */
 static int l_ui_message(lua_State *l)
 {
+	if (!Pi::cpan)
+		luaL_error(l, "Control panel does not exist.");
+
 	std::string msg = luaL_checkstring(l, 1);
 
 	std::string from;
@@ -77,6 +80,9 @@ static int l_ui_message(lua_State *l)
  */
 static int l_ui_important_message(lua_State *l)
 {
+	if (!Pi::cpan)
+		luaL_error(l, "Control panel does not exist.");
+
 	std::string msg = luaL_checkstring(l, 1);
 
 	std::string from;
@@ -89,7 +95,7 @@ static int l_ui_important_message(lua_State *l)
 
 void LuaUI::Register()
 {
-	lua_State *l = Pi::luaManager.GetLuaState();
+	lua_State *l = Pi::luaManager->GetLuaState();
 
 	LUA_DEBUG_START(l);
 

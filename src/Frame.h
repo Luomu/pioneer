@@ -11,6 +11,7 @@ class CollisionSpace;
 class Geom;
 class SBody;
 class Sfx;
+class Space;
 
 /*
  * Frame of reference.
@@ -21,21 +22,24 @@ public:
 	Frame(Frame *parent, const char *label);
 	Frame(Frame *parent, const char *label, unsigned int flags);
 	~Frame();
-	static void Serialize(Serializer::Writer &wr, Frame *);
-	static void PostUnserializeFixup(Frame *f);
-	static Frame *Unserialize(Serializer::Reader &rd, Frame *parent);
+	static void Serialize(Serializer::Writer &wr, Frame *f, Space *space);
+	static void PostUnserializeFixup(Frame *f, Space *space);
+	static Frame *Unserialize(Serializer::Reader &rd, Space *space, Frame *parent);
+	// XXX this should return a std::string
 	const char *GetLabel() const { return m_label.c_str(); }
 	void SetLabel(const char *label) { m_label = label; }
 	void SetPosition(const vector3d &pos) { m_orient.SetTranslate(pos); }
 	vector3d GetPosition() const { return m_orient.GetTranslate(); }
+	void SetRotationOnly(const matrix4x4d &m) { for (int i=0; i<12; i++) m_orient[i] = m[i]; }
+	void SetTransform(const matrix4x4d &m) { m_orient = m; }
+	const matrix4x4d &GetTransform() const { return m_orient; }
 	void SetVelocity(const vector3d &vel) { m_vel = vel; }
 	vector3d GetVelocity() const { return m_vel; }
 	void SetAngVelocity(const vector3d &angvel) { m_angVel = angvel; }
 	vector3d GetAngVelocity() const { return m_angVel; }
 	vector3d GetStasisVelocityAtPosition(const vector3d &pos) const;
-	const matrix4x4d &GetTransform() const { return m_orient; }
-	void SetRotationOnly(const matrix4x4d &m) { for (int i=0; i<12; i++) m_orient[i] = m[i]; }
 	void SetRadius(double radius) { m_radius = radius; }
+	double GetRadius() const { return m_radius; }
 	void RemoveChild(Frame *f);
 	void AddGeom(Geom *);
 	void RemoveGeom(Geom *);
@@ -44,12 +48,12 @@ public:
 	void SetPlanetGeom(double radius, Body *);
 	CollisionSpace *GetCollisionSpace() const { return m_collisionSpace; }
 	void RotateInTimestep(double step);
-	bool IsRotatingFrame() const { return m_angVel.Length() != 0.0; }
+	bool IsRotatingFrame() const { return !is_zero_general(m_angVel.Length()); }
 	bool IsStationRotFrame() const;
 	// snoops into parent frames so beware
 	SBody *GetSBodyFor() const;
 	Body *GetBodyFor() const;
-	void UpdateOrbitRails();
+	void UpdateOrbitRails(double time, double timestep);
 
 	void ApplyLeavingTransform(matrix4x4d &m) const;
 	void ApplyEnteringTransform(matrix4x4d &m) const;

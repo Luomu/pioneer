@@ -16,6 +16,7 @@ class CollMeshSet;
 class Ship;
 struct Mission;
 class CityOnPlanet;
+namespace Graphics { class Renderer; }
 
 struct SpaceStationType {
 	LmrModel *model;
@@ -66,14 +67,23 @@ class SpaceStation: public ModelBody, public MarketAgent {
 public:
 	OBJDEF(SpaceStation, ModelBody, SPACESTATION);
 	static void Init();
+	static void Uninit();
 	enum TYPE { JJHOOP, GROUND_FLAVOURED, TYPE_MAX };
+
+	enum Animation { // <enum scope='SpaceStation' name=SpaceStationAnimation prefix=ANIM_>
+		ANIM_DOCKING_BAY_1,
+		ANIM_DOCKING_BAY_2,
+		ANIM_DOCKING_BAY_3,
+		ANIM_DOCKING_BAY_4,
+	};
+
 	// Should point to SBody in Pi::currentSystem
 	SpaceStation(const SBody *);
 	SpaceStation() {}
 	virtual ~SpaceStation();
 	virtual double GetBoundingRadius() const;
 	virtual bool OnCollision(Object *b, Uint32 flags, double relVel);
-	virtual void Render(const vector3d &viewCoords, const matrix4x4d &viewTransform);
+	virtual void Render(Graphics::Renderer *r, const vector3d &viewCoords, const matrix4x4d &viewTransform);
 	/** You should call Ship::Undock() rather than this.
 	 * Returns true on success, false if permission denied */
 	bool LaunchShip(Ship *ship, int port);
@@ -92,8 +102,8 @@ public:
 	virtual const SBody *GetSBody() const { return m_sbody; }
 	void ReplaceShipOnSale(int idx, const ShipFlavour *with);
 	std::vector<ShipFlavour> &GetShipsOnSale() { return m_shipsOnSale; }
-	virtual void PostLoadFixup();
-	virtual void NotifyDeleted(const Body* const deletedBody);
+	virtual void PostLoadFixup(Space *space);
+	virtual void NotifyRemoved(const Body* const removedBody);
 	int GetFreeDockingPort(); // returns -1 if none free
 	int GetMyDockingPort(const Ship *s) const {
 		for (int i=0; i<MAX_DOCKING_PORTS; i++) {
@@ -116,10 +126,13 @@ public:
 	const BBAdvert *GetBBAdvert(int ref);
 	bool RemoveBBAdvert(int ref);
 	const std::list<const BBAdvert*> GetBBAdverts();
+
+	// use docking bay position, if player has been granted permission
+	virtual vector3d GetTargetIndicatorPosition(const Frame *relTo) const;
 	
 protected:
-	virtual void Save(Serializer::Writer &wr);
-	virtual void Load(Serializer::Reader &rd);
+	virtual void Save(Serializer::Writer &wr, Space *space);
+	virtual void Load(Serializer::Reader &rd, Space *space);
 	/* MarketAgent stuff */
 	void Bought(Equip::Type t);
 	void Sold(Equip::Type t);

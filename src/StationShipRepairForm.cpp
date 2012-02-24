@@ -2,14 +2,16 @@
 #include "Pi.h"
 #include "Player.h"
 #include "ShipCpanel.h"
+#include "Lang.h"
+#include "StringF.h"
 
 StationShipRepairForm::StationShipRepairForm(FormController *controller) : FaceForm(controller)
 {
 	m_station = Pi::player->GetDockedWith();
 
-	SetTitle(stringf(256, "%s ship repairs", m_station->GetLabel().c_str()));
+	SetTitle(stringf(Lang::SOMEWHERE_SHIP_REPAIRS, formatarg("station", m_station->GetLabel())));
 
-	m_working = new Gui::Label("Your ship is in perfect working condition.");
+	m_working = new Gui::Label(Lang::SHIP_IS_ALREADY_FULLY_REPAIRED);
 	Add(m_working, 0, 0);
 
 	m_tableBox = new Gui::HBox();
@@ -24,7 +26,7 @@ StationShipRepairForm::StationShipRepairForm(FormController *controller) : FaceF
 	Gui::Button *b = new Gui::SolidButton();
 	b->onClick.connect(sigc::bind(sigc::mem_fun(this, &StationShipRepairForm::RepairHull), 1.0f));
 	buttonBox->PackEnd(b);
-	buttonBox->PackEnd(new Gui::Label("Repair 1.0% of hull damage"));
+	buttonBox->PackEnd(new Gui::Label(Lang::REPAIR_1_PERCENT_HULL));
 	columnBox->PackEnd(buttonBox);
 
 	buttonBox = new Gui::HBox();
@@ -64,7 +66,7 @@ void StationShipRepairForm::RepairHull(float percent)
 	if (percent > hullDamage) percent = hullDamage;
 	int cost = GetRepairCost(percent);
 	if (Pi::player->GetMoney() < cost) {
-		Pi::cpan->MsgLog()->Message("", "You do not have enough money");
+		Pi::cpan->MsgLog()->Message("", Lang::YOU_NOT_ENOUGH_MONEY);
 	} else {
 		Pi::player->SetMoney(Pi::player->GetMoney() - cost);
 		Pi::player->SetPercentHull(Pi::player->GetPercentHull() + percent);
@@ -83,9 +85,10 @@ void StationShipRepairForm::UpdateLabels()
 	}
 
 	else {
-		m_repairAllDesc->SetText(stringf(128, "Repair all hull damage (%.1f%%)", 100.0f - hullPercent));
-		m_repairOneCost->SetText(format_money(GetRepairCost(1.0f)));
-		m_repairAllCost->SetText(format_money(GetRepairCost(100.f - hullPercent)));
+		m_repairAllDesc->SetText(stringf(Lang::REPAIR_ENTIRE_HULL, formatarg("repairpercent", 100.0f - hullPercent)));
+		const float hullDamage = 100.0f - hullPercent;
+		m_repairOneCost->SetText(format_money(GetRepairCost(std::min(hullDamage, 1.0f))));
+		m_repairAllCost->SetText(format_money(GetRepairCost(hullDamage)));
 
 		m_working->Hide();
 		m_tableBox->Show();

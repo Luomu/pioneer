@@ -4,10 +4,12 @@
 #include "LuaObject.h"
 #include "LuaUtils.h"
 #include "Pi.h"
+#include "LuaConsole.h"
+#include "StringF.h"
 
 void LuaEventQueueBase::RegisterEventQueue()
 {
-	lua_State *l = Pi::luaManager.GetLuaState();
+	lua_State *l = Pi::luaManager->GetLuaState();
 
 	LUA_DEBUG_START(l);
 
@@ -52,9 +54,33 @@ void LuaEventQueueBase::ClearEvents()
 	}
 }
 
+inline void LuaEventQueueBase::DoEventCall(lua_State *l, LuaEventBase *e)
+{
+	if (m_debugTimer) {
+		int top = lua_gettop(l);
+
+		lua_pushvalue(l, -1);
+		lua_Debug ar;
+		lua_getinfo(l, ">S", &ar);
+
+		PrepareLuaStack(l, e);
+
+		Uint32 start = SDL_GetTicks();
+		pi_lua_protected_call(l, lua_gettop(l) - top, 0);
+		Uint32 end = SDL_GetTicks();
+
+		Pi::luaConsole->AddOutput(stringf("DEBUG: %0 %1{u}ms %2:%3{d}", m_name, end-start, ar.source, ar.linedefined));
+	}
+	else {
+		int top = lua_gettop(l);
+		PrepareLuaStack(l, e);
+		pi_lua_protected_call(l, lua_gettop(l) - top, 0);
+	}
+}
+
 void LuaEventQueueBase::EmitSingleEvent(LuaEventBase *e)
 {
-	lua_State *l = Pi::luaManager.GetLuaState();
+	lua_State *l = Pi::luaManager->GetLuaState();
 
 	LUA_DEBUG_START(l);
 
@@ -64,11 +90,8 @@ void LuaEventQueueBase::EmitSingleEvent(LuaEventBase *e)
 	assert(lua_istable(l, -1));
 
 	lua_pushnil(l);
-	while (lua_next(l, -2) != 0) {
-		int top = lua_gettop(l);
-		PrepareLuaStack(l, e);
-		lua_call(l, lua_gettop(l) - top, 0);
-	}
+	while (lua_next(l, -2) != 0)
+		DoEventCall(l, e);
 
 	lua_pop(l, 2);
 
@@ -81,7 +104,7 @@ void LuaEventQueueBase::Emit()
 {
 	if (!m_events.size()) return;
 
-	lua_State *l = Pi::luaManager.GetLuaState();
+	lua_State *l = Pi::luaManager->GetLuaState();
 
 	LUA_DEBUG_START(l);
 
@@ -95,11 +118,8 @@ void LuaEventQueueBase::Emit()
 		m_events.pop_front();
 
 		lua_pushnil(l);
-		while (lua_next(l, -2) != 0) {
-			int top = lua_gettop(l);
-			PrepareLuaStack(l, e);
-			lua_call(l, lua_gettop(l) - top, 0);
-		}
+		while (lua_next(l, -2) != 0)
+			DoEventCall(l, e);
 
 		delete e;
 	}
@@ -444,6 +464,49 @@ void LuaEventQueueBase::Emit()
  *    stable
  *
  *
+ * Event: onShipEquipmentChanged
+ *
+ * Triggered when a ship's equipment set changes.
+ *
+ * > local onShipEquipmentChanged = function (ship, equipType) ... end
+ * > EventQueue.onShipEquipmentChanged:Connect(onShipEquipmentChanged)
+ *
+ * Parameters:
+ *
+ *   ship - the <Ship> whose equipment just changed
+ *
+ *   equipType - the string ID of the <EquipType> that was added or removed,
+ *   or 'NONE' if the change involved multiple types of equipment
+ *
+ * Availability:
+ *
+ *   alpha 15
+ *
+ * Status:
+ *
+ *   experimental
+ *
+ *
+ * Event: onShipFlavourChanged
+ *
+ * Triggered when a ship's type, registration or graphical flavour changes.
+ *
+ * > local onShipFlavourChanged = function (ship) ... end
+ * > EventQueue.onShipFlavourChanged:Connect(onShipFlavourChanged)
+ *
+ * Parameters:
+ *
+ *   ship - the <Ship> whose type or graphical flavour just changed
+ *
+ * Availability:
+ *
+ *   alpha 15
+ *
+ * Status:
+ *
+ *   experimental
+ *
+ *
  * Event: onJettison
  *
  * Triggered when a ship jettisons a cargo item.
@@ -466,16 +529,40 @@ void LuaEventQueueBase::Emit()
  *   experimental
  *
  *
+ * Event: onCargoUnload
+ *
+ * Triggered when the player unloads a cargo item while docked or landed.
+ *
+ * > local onUnload = function (body, cargoType) ... end
+ * > EventQueue.onCargoUnload:Connect(onUnload)
+ *
+ * Parameters:
+ *
+ *   body - the <Body> the <Player> was docked with (a <SpaceStation>) or landed on (a <Planet>)
+ *
+ *   cargoType - <EquipType> of the unloaded cargo
+ *
+ * Availability:
+ *
+ *   alpha 18
+ *
+ * Status:
+ *
+ *   experimental
+ *
+ *
  * Event: onAICompleted
  *
  * Triggered when a ship AI completes
  *
- * > local onAICompleted = function (ship) ... end
+ * > local onAICompleted = function (ship, error) ... end
  * > EventQueue.onAICompleted:Connect(onAICompleted)
  *
  * Parameters:
  *
  *   ship - the <Ship>
+ *
+ *   error - the <Constants.ShipAIError>
  *
  * Availability:
  *
@@ -561,7 +648,7 @@ void LuaEventQueueBase::Emit()
  * Example:
  *
  * > EventQueue.onEnterSystem:Connect(function (ship)
- * >     print("welcome to "..Game.system:GetName()..", "..ship:GetLabel())
+ * >     print("welcome to "..Game.system.name..", "..ship.label)
  * > end)
  *
  * Availability:
@@ -601,7 +688,7 @@ int LuaEventQueueBase::l_connect(lua_State *l)
  * Disconnects a function from an event queue. The function will no long
  * receive events emitted by the queue.
  *
- * If the function is not connected to the queue this method does nothihg.
+ * If the function is not connected to the queue this method does nothing.
  *
  * > onEvent:Disconnect(function)
  *
@@ -641,13 +728,50 @@ int LuaEventQueueBase::l_disconnect(lua_State *l)
 	return 0;
 }
 
+/*
+ * Method: DebugTimer
+ *
+ * Enables the function timer for this event queue. When enabled the console
+ * will display the amount of time that each function attached to this queue
+ * takes to run.
+ *
+ * > onEvent:DebugTimer(enabled)
+ *
+ * Parameters:
+ *
+ *   enabled - a true value to enable the timer, or a false value to disable
+ *             it.
+ *
+ * Availability:
+ *
+ *   alpha 19
+ *
+ * Status:
+ *
+ *   debug
+ */
+int LuaEventQueueBase::l_debug_timer(lua_State *l)
+{
+	LUA_DEBUG_START(l);
+
+	LuaEventQueueBase *q = LuaObject<LuaEventQueueBase>::GetFromLua(1);
+	bool enable = lua_toboolean(l, 2);
+
+	q->DebugTimer(enable);
+
+	LUA_DEBUG_END(l, 0);
+
+	return 0;
+}
+
 template <> const char *LuaObject<LuaEventQueueBase>::s_type = "EventQueue";
 
 template <> void LuaObject<LuaEventQueueBase>::RegisterClass()
 {
 	static const luaL_reg l_methods[] = {
-		{ "Connect",    LuaEventQueueBase::l_connect    },
-		{ "Disconnect", LuaEventQueueBase::l_disconnect },
+		{ "Connect",    LuaEventQueueBase::l_connect     },
+		{ "Disconnect", LuaEventQueueBase::l_disconnect  },
+		{ "DebugTimer", LuaEventQueueBase::l_debug_timer },
 		{ 0, 0 }
 	};
 

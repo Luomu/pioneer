@@ -2,6 +2,7 @@ build/
 bin/
 lib/
 Debug/
+PreRelease/
 Release/
 ipch/
 src/data
@@ -42,3 +43,4 @@ stamp-h1
 *~
 *.orig
 pioneer-*.tar.*
+Thumbs.db

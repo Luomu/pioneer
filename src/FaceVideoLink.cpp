@@ -1,4 +1,13 @@
 #include "FaceVideoLink.h"
+#include "Lang.h"
+#include "Pi.h"
+#include "LuaNameGen.h"
+#include "Texture.h"
+#include "graphics/Material.h"
+#include "graphics/Renderer.h"
+#include "graphics/VertexArray.h"
+
+using namespace Graphics;
 
 #define FACE_WIDTH  295
 #define FACE_HEIGHT 285
@@ -31,9 +40,11 @@ static void _blit_image(SDL_Surface *s, const char *filename, int xoff, int yoff
 	SDL_FreeSurface(is);
 }
 
-FaceVideoLink::FaceVideoLink(float w, float h, Uint32 flags, Uint32 seed) : VideoLink(w, h) {
+FaceVideoLink::FaceVideoLink(float w, float h, Uint32 flags, Uint32 seed,
+	const std::string &name, const std::string &title) : VideoLink(w, h)
+{
 	m_created = SDL_GetTicks();
-	m_message = new Gui::ToolTip("Video link established");
+	m_message = new Gui::ToolTip(Lang::VID_LINK_ESTABLISHED);
 
 	if (!seed) seed = time(NULL);
 	MTRand rand(seed);
@@ -57,6 +68,12 @@ FaceVideoLink::FaceVideoLink(float w, float h, Uint32 flags, Uint32 seed) : Vide
 			break;
 	}
 
+	std::string charname = name;
+	if (charname.empty())
+		charname = Pi::luaNameGen->FullName((gender != 0), rand);
+
+	m_characterInfo = new CharacterInfoText(w * 0.8f, h * 0.15f, charname, title);
+
 	int head  = rand.Int32(0,MAX_HEAD);
 	int eyes  = rand.Int32(0,MAX_EYES);
 	int nose  = rand.Int32(0,MAX_NOSE);
@@ -73,7 +90,7 @@ FaceVideoLink::FaceVideoLink(float w, float h, Uint32 flags, Uint32 seed) : Vide
 
 	char filename[1024];
 
-	SDL_Surface *s = SDL_CreateRGBSurface(SDL_SWSURFACE, ceil_pow2(FACE_WIDTH), ceil_pow2(FACE_HEIGHT), 32, 0xff, 0xff00, 0xff0000, 0xff000000);
+	SDL_Surface *s = SDL_CreateRGBSurface(SDL_SWSURFACE, FACE_WIDTH, FACE_HEIGHT, 32, 0xff, 0xff00, 0xff0000, 0xff000000);
 
 	snprintf(filename, sizeof(filename), PIONEER_DATA_DIR "/facegen/backgrounds/background_%d.png", background);
 	//printf("%s\n", filename);
@@ -115,29 +132,24 @@ FaceVideoLink::FaceVideoLink(float w, float h, Uint32 flags, Uint32 seed) : Vide
 		_blit_image(s, filename, 0, 0);
 	}
 
-	glEnable(GL_TEXTURE_2D);
-	glGenTextures(1, &m_tex);
-	glBindTexture(GL_TEXTURE_2D, m_tex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, s->w, s->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, s->pixels);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glDisable(GL_TEXTURE_2D);
+	m_texture = new UITexture(s);
 
 	SDL_FreeSurface(s);
 }
 
 FaceVideoLink::~FaceVideoLink() {
 	delete m_message;
-
-	glDeleteTextures(1, &m_tex);
+	delete m_characterInfo;
+	delete m_texture;
 }
 
 void FaceVideoLink::Draw() {
-	float size[2]; GetSize(size);
-	if (SDL_GetTicks() - m_created < 1500) {
-		m_message->SetText("Connecting...");
+	float size[2];
+	GetSize(size);
+
+	Uint32 now = SDL_GetTicks();
+
+	if (now - m_created < 1500) {
 		glBegin(GL_QUADS);
 			glColor3f(0,0,0);
 			glVertex2f(0,0);
@@ -145,45 +157,110 @@ void FaceVideoLink::Draw() {
 			glVertex2f(size[0],size[1]);
 			glVertex2f(size[0],0);
 		glEnd();
+
+		m_message->SetText(Lang::VID_CONNECTING);
 		DrawMessage();
-	} else {
-		m_message->SetText("Video link established.");
 
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, m_tex);
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-		glBegin(GL_QUADS);
-			float w = float(FACE_WIDTH) / ceil_pow2(FACE_WIDTH);
-			float h = float(FACE_HEIGHT) / ceil_pow2(FACE_HEIGHT);
-			glColor3f(0,0,0);
-			glTexCoord2f(0,h);
-			glVertex2f(0,size[1]);
-			glTexCoord2f(w,h);
-			glVertex2f(size[0],size[1]);
-			glTexCoord2f(w,0);
-			glVertex2f(size[0],0);
-			glTexCoord2f(0,0);
-			glVertex2f(0,0);
-		glEnd();
-		glDisable(GL_TEXTURE_2D);
-
-		if (SDL_GetTicks() & 0x400)
-			DrawMessage();
+		return;
 	}
+
+	// XXX fixed function combiner
+	glEnable(GL_TEXTURE_2D);
+	m_texture->Bind();
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	m_texture->Unbind();
+	glDisable(GL_TEXTURE_2D);
+
+	float w = m_texture->GetTextureWidth();
+	float h = m_texture->GetTextureHeight();
+
+	// this is not entirely a standard quad, special uv coords
+	// XXX 2d vertices
+	VertexArray va(ATTRIB_POSITION | ATTRIB_UV0);
+	Color white(1.f, 1.f, 1.f, 1.f);
+	va.Add(vector3f(0.f, 0.f, 0.f), vector2f(0.f, 0.f));
+	va.Add(vector3f(0.f, size[1], 0.f), vector2f(0.f, h));
+	va.Add(vector3f(size[0], 0.f, 0.f), vector2f(w, 0.f));
+	va.Add(vector3f(size[0], size[1], 0.f), vector2f(w, h));
+	Material mat;
+	mat.texture0 = m_texture;
+	mat.unlit = true;
+	Pi::renderer->DrawTriangles(&va, &mat, TRIANGLE_STRIP);
+
+	glPushMatrix();
+	glTranslatef(0.f, size[1]- size[1] * 0.16f, 0.f);
+	m_characterInfo->Draw();
+	glPopMatrix();
 }
 
 void FaceVideoLink::DrawMessage() {
 	float size[2];
-	float msgSize[2];
 	GetSize(size);
+
+	float msgSize[2];
 	m_message->GetSize(msgSize);
+
 	glPushMatrix();
-	if (SDL_GetTicks() - m_created < 1500) {
-		glTranslatef(size[0]*0.5f-msgSize[0]*0.5f, size[1]*0.5f-msgSize[1]*0.5f, 0);
-	} else {
-		glTranslatef(size[0]*0.5f-msgSize[0]*0.5f, size[1]-msgSize[1]*1.5f, 0);
-	}
-	
+	glTranslatef(size[0]*0.5f-msgSize[0]*0.5f, size[1]-msgSize[1]*1.5f, 0);
 	m_message->Draw();
 	glPopMatrix();
+}
+
+CharacterInfoText::CharacterInfoText(float w, float h,
+	const std::string &name, const std::string &title) :
+	Gui::Fixed(w, h),
+	m_characterName(name),
+	m_characterTitle(title),
+	m_width(w),
+	m_height(h)
+{
+	if (m_characterTitle.empty())
+		h = h/1.5f;
+	SetSize(w, h);
+	m_background = new Gui::Gradient(w, h, Color(0.1f, 0.1f, 0.1f, 0.8f),
+		Color(0.f, 0.f, 0.1f, 0.f), Gui::Gradient::HORIZONTAL);
+	Gui::Screen::PushFont("OverlayFont");
+	m_nameLabel = new Gui::Label(m_characterName);
+	m_titleLabel = new Gui::Label(m_characterTitle);
+	Gui::Screen::PopFont();
+	Add(m_background, 0.f, 0.f);
+	Add(m_nameLabel, 25.f, 5.f);
+	Add(m_titleLabel, 25.f, m_height/2);
+}
+
+CharacterInfoText::~CharacterInfoText()
+{
+
+}
+
+void CharacterInfoText::SetCharacterName(const std::string &name)
+{
+	m_characterName = name;
+	m_nameLabel->SetText(name);
+	UpdateAllChildSizes();
+}
+
+void CharacterInfoText::SetCharacterTitle(const std::string &title)
+{
+	m_characterTitle = title;
+	m_titleLabel->SetText(title);
+	UpdateAllChildSizes();
+}
+
+void CharacterInfoText::GetSizeRequested(float size[2])
+{
+	size[0] = m_width;
+	size[1] = m_height;
+}
+
+void CharacterInfoText::Draw()
+{
+	if (m_characterName.empty() && m_characterTitle.empty()) return;
+
+	for (std::list<widget_pos>::iterator i = m_children.begin(); i != m_children.end(); ++i) {
+		glPushMatrix();
+		glTranslatef((*i).pos[0], (*i).pos[1], 0);
+		(*i).w->Draw();
+		glPopMatrix();
+	}
 }

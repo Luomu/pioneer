@@ -1,10 +1,12 @@
 #include "LuaTimer.h"
 #include "LuaUtils.h"
+#include "Game.h"
 #include "Pi.h"
 
 void LuaTimer::Tick()
 {
-	lua_State *l = Pi::luaManager.GetLuaState();
+	assert(Pi::game);
+	lua_State *l = Pi::luaManager->GetLuaState();
 
 	LUA_DEBUG_START(l);
 
@@ -16,7 +18,7 @@ void LuaTimer::Tick()
 	}
 	assert(lua_istable(l, -1));
 
-	double now = Pi::GetGameTime();
+	double now = Pi::game->GetTime();
 
 	lua_pushnil(l);
 	while (lua_next(l, -2)) {
@@ -28,7 +30,7 @@ void LuaTimer::Tick()
 
 		if (at <= now) {
 			lua_getfield(l, -1, "callback");
-			lua_call(l, 0, 1);
+			pi_lua_protected_call(l, 0, 1);
 			bool cancel = lua_toboolean(l, -1);
 			lua_pop(l, 1);
 
@@ -44,7 +46,7 @@ void LuaTimer::Tick()
 				double every = lua_tonumber(l, -1);
 				lua_pop(l, 1);
 
-				pi_lua_settable(l, "at", Pi::GetGameTime() + every);
+				pi_lua_settable(l, "at", Pi::game->GetTime() + every);
 			}
 		}
 
@@ -146,11 +148,14 @@ static void _finish_timer_create(lua_State *l)
  */
 static int l_timer_call_at(lua_State *l)
 {
+	if (!Pi::game)
+		luaL_error(l, "Game is not started");
+
 	double at = luaL_checknumber(l, 2);
 	if (!lua_isfunction(l, 3))
 		luaL_typerror(l, 3, lua_typename(l, LUA_TFUNCTION));
 	
-	if (at <= Pi::GetGameTime())
+	if (at <= Pi::game->GetTime())
 		luaL_error(l, "Specified time is in the past");
 	
 	LUA_DEBUG_START(l);
@@ -207,6 +212,9 @@ static int l_timer_call_at(lua_State *l)
  */
 static int l_timer_call_every(lua_State *l)
 {
+	if (!Pi::game)
+		luaL_error(l, "Game is not started");
+
 	double every = luaL_checknumber(l, 2);
 	if (!lua_isfunction(l, 3))
 		luaL_typerror(l, 3, lua_typename(l, LUA_TFUNCTION));
@@ -218,7 +226,7 @@ static int l_timer_call_every(lua_State *l)
 
 	lua_newtable(l);
 	pi_lua_settable(l, "every", every);
-	pi_lua_settable(l, "at", Pi::GetGameTime() + every);
+	pi_lua_settable(l, "at", Pi::game->GetTime() + every);
 
 	_finish_timer_create(l);
 

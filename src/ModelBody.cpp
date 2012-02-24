@@ -3,6 +3,7 @@
 #include "Space.h"
 #include "matrix4x4.h"
 #include "Frame.h"
+#include "Game.h"
 #include "Pi.h"
 #include "WorldView.h"
 #include "Serializer.h"
@@ -24,14 +25,14 @@ ModelBody::~ModelBody()
 	delete m_geom;
 }
 
-void ModelBody::Save(Serializer::Writer &wr)
+void ModelBody::Save(Serializer::Writer &wr, Space *space)
 {
-	Body::Save(wr);
+	Body::Save(wr, space);
 }
 
-void ModelBody::Load(Serializer::Reader &rd)
+void ModelBody::Load(Serializer::Reader &rd, Space *space)
 {
-	Body::Load(rd);
+	Body::Load(rd, space);
 }
 
 void ModelBody::Disable()
@@ -106,10 +107,7 @@ double ModelBody::GetBoundingRadius() const
 
 void ModelBody::SetLmrTimeParams()
 {
-	m_params.argDoubles[1] = Pi::GetGameTime();
-	m_params.argDoubles[2] = Pi::GetGameTime() / 60.0;
-	m_params.argDoubles[3] = Pi::GetGameTime() / 3600.0;
-	m_params.argDoubles[4] = Pi::GetGameTime() / (24*3600.0);
+	m_params.time = Pi::game->GetTime();
 }
 
 void ModelBody::SetRotMatrix(const matrix4x4d &r)
@@ -162,34 +160,13 @@ void ModelBody::TriMeshUpdateLastPos(const matrix4x4d &currentTransform)
 
 void ModelBody::RenderLmrModel(const vector3d &viewCoords, const matrix4x4d &viewTransform)
 {
-	float znear, zfar;
-	Pi::worldView->GetNearFarClipPlane(&znear, &zfar);
-	
-/*	if (viewCoords.Length() > zfar) {
-		vector3d pos = viewCoords;
+	matrix4x4d t = viewTransform * GetInterpolatedTransform();
+	matrix4x4f trans;
+	for (int i=0; i<12; i++) trans[i] = float(t[i]);
+	trans[12] = viewCoords.x;
+	trans[13] = viewCoords.y;
+	trans[14] = viewCoords.z;
+	trans[15] = 1.0f;
 
-		glPointSize(1.0);
-		glDisable(GL_LIGHTING);
-		glColor3f(1,1,1);
-		glBegin(GL_POINTS);
-		pos = pos.Normalized() * 0.99*(double)zfar;
-		glVertex3dv(&pos[0]);
-		glEnd();
-		glEnable(GL_LIGHTING);
-	} else {*/
-		matrix4x4d t = viewTransform * GetInterpolatedTransform();
-		matrix4x4f trans;
-		for (int i=0; i<12; i++) trans[i] = float(t[i]);
-		trans[12] = viewCoords.x;
-		trans[13] = viewCoords.y;
-		trans[14] = viewCoords.z;
-		trans[15] = 1.0f;
-
-
-		m_lmrModel->Render(trans, &m_params);
-
-		glDisable(GL_BLEND);
-		glEnable(GL_LIGHTING);
-		glDisable(GL_NORMALIZE);
-//	}
+	m_lmrModel->Render(trans, &m_params);
 }

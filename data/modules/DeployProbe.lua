@@ -9,12 +9,16 @@
 -- characteristics (which cannot be accessed yet) and danger
 -- from environmental hazards (which do not exist yet)
 local max_dist = 10
-local base_reward = 5000 --how much is enough?
+local base_reward = 500 --how much is enough?
 local distance_bonus = 100 --per LY
 local probe_type = 'MINING_MACHINERY' --the probest there is now
 
 local missions = {}
 local ads = {}
+
+function GiveProbe()
+	Game.player:AddEquip(probe_type, 1)
+end
 
 local onChat = function(form, ref, option)
 	local ad = ads[ref]
@@ -27,7 +31,7 @@ local onChat = function(form, ref, option)
 	end
 
 	if option == 0 then --greeting
-		form:SetFace({ female = ad.isfemale, seed = ad.faceseed })
+		form:SetFace({ female = ad.isfemale, seed = ad.faceseed, name = ad.client, title = "Scientist" })
 		form:SetMessage("Hello. We want you to drop our fancy probe on a planet of your choosing. You need one ton of free cargo space.")
 	elseif option == 1 then --accept
 		form:RemoveAdvertOnClose()
@@ -49,7 +53,7 @@ local onChat = function(form, ref, option)
 		missions[mref] = mission
 
 		form:SetMessage("Good. Return here with the probe data for your reward. You have until " .. Format.Date(ad.due))
-		Game.player:AddEquip(probe_type, 1)
+		GiveProbe()
 		form:AddOption("Hang up.", -1)
 
 		return
@@ -72,33 +76,13 @@ local onDelete = function(ref)
 	ads[ref] = nil
 end
 
-function findSuitablePlanet(systems)
-	local suitablePaths = {}
-
-	for k,sys in pairs(systems) do
-		local syspaths = sys:GetBodyPaths()
-		for p,path in pairs(syspaths) do
-			local bod = path:GetSystemBody()
-			if bod.superType == 'ROCKY_PLANET' then
-				table.insert(suitablePaths, path)
-			end
-		end
-	end
-
-	if #suitablePaths == 0 then
-		return nil
-	else
-		return suitablePaths[Engine.rand:Integer(1, #suitablePaths)]
-	end
-end
-
 local makeAdvert = function(station)
 	local location = path
 	local flavour = "WANTED. Someone to probe interesting balls of rock. Big rewards."
 	local isfemale = Engine.rand:Integer(1) == 1
 	local client = NameGen.FullName(isfemale)
 	local due = Game.time + 15*24*60*60 --plenty of time
-	local reward = base_reward
+	local reward = 0 --rewards calculated from results
 
 	local ad = {
 		station  = station,
@@ -137,12 +121,12 @@ local onShipDocked = function(ship, station)
 	--check for success, or failure
 	--failure conditions:
 	--time limit exceeded
-	--probe misplaced
+	--probe misplaced: can't do this right now since it's mining machinery
 	for ref,mission in pairs(missions) do
 		if mission.location == station.path then
 			if mission.status == 'COMPLETED' then
 				UI.ImportantMessage("That was excellent probing.", mission.client)
-				Game.player:AddMoney(mission.reward + mission.bonus)
+				Game.player:AddMoney(base_reward + mission.bonus)
 				removeMission(ref)
 			elseif mission.status == 'FAILED' or Game.time > mission.due then
 				UI.ImportantMessage("You failure. No money for you.", mission.client)
@@ -153,33 +137,17 @@ local onShipDocked = function(ship, station)
 end
 
 -- Jettisoning on surface = deploy
--- jettisoning in space is not instant fail as cargo is recoverable
-local onDeploy = function(ship, cargo)
-	if not ship:IsPlayer() then return end
+local onDeploy = function(cargo)
 	if cargo.type ~= probe_type then return end
+	--reward for unexplored systems only
+	--if body.path:GetStarSystem().population > 0 then return end
 	for ref,mission in pairs(missions) do
-		mission.status = 'COMPLETED'
-		Game.player:UpdateMission(ref, mission)
-		return
-	end
-end
-
-local onLanded = function(ship, body)
-	--unexplored systems only
-	if body.path:GetStarSystem().population > 0 then return end
-
-	for ref,mission in pairs(missions) do
-		print(mission.status,mission.location)
 		if mission.status == 'ACTIVE' then
-			--need probes
-			if ship:GetEquipCount('CARGO', probe_type) > 0 then
-				ship:RemoveEquip(probe_type, 1)
-				--would like to show more text here but it might not fit on screen right now
-				UI.Message("Geological probe deployed.")
-				mission.status = 'COMPLETED'
-				mission.bonus = mission.bonus + distance_bonus * body.path:DistanceTo(mission.location)
-				Game.player:UpdateMission(ref, mission)
-			end
+			UI.Message("Geological probe deployed.")
+			mission.status = 'COMPLETED'
+			mission.bonus = mission.bonus + distance_bonus * body.path:DistanceTo(mission.location)
+			Game.player:UpdateMission(ref, mission)
+			return
 		end
 	end
 end
@@ -216,7 +184,6 @@ EventQueue.onGameStart:Connect(onGameStart)
 EventQueue.onCreateBB:Connect(onCreateBB)
 EventQueue.onUpdateBB:Connect(onUpdateBB)
 EventQueue.onShipDocked:Connect(onShipDocked)
-EventQueue.onJettison:Connect(onDeploy)
-EventQueue.onShipLanded:Connect(onLanded)
+EventQueue.onCargoUnload:Connect(onDeploy)
 
 Serializer:Register("DeployProbe", serialize, unserialize)

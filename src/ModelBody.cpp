@@ -170,3 +170,67 @@ void ModelBody::RenderLmrModel(const vector3d &viewCoords, const matrix4x4d &vie
 
 	m_lmrModel->Render(trans, &m_params);
 }
+
+void ModelBody::DrawBoundingBox(Graphics::Renderer *r, const vector3d &viewCoords, const matrix4x4d &viewTransform, const Color &c) const
+{
+	glPushMatrix();
+	matrix4x4d t = viewTransform * GetInterpolatedTransform();
+	matrix4x4f trans;
+	//copy double matrix to float
+	for (int i=0; i<12; i++) trans[i] = float(t[i]);
+	//set translation
+	trans[12] = viewCoords.x;
+	trans[13] = viewCoords.y;
+	trans[14] = viewCoords.z;
+	trans[15] = 1.0f;
+
+	//draw a box from Aabb extents
+	//eight corners, 12 lines
+	Aabb bb;
+	GetAabb(bb);
+	std::vector<vector3f> vts;
+	vector3f min(bb.min.x, bb.min.y, bb.min.z); 
+	vector3f max(bb.max.x, bb.max.y, bb.max.z);
+	vector3f fbl(min.x, min.y, min.z); //front bottom left
+	vector3f fbr(max.x, min.y, min.z); //front bottom right
+	vector3f ftl(min.x, max.y, min.z); //front top left
+	vector3f ftr(max.x, max.y, min.z); //front top right
+	vector3f rtl(min.x, max.y, max.z); //rear top left
+	vector3f rtr(max.x, max.y, max.z); //rear top right
+	vector3f rbl(min.x, min.y, max.z); //rear bottom left
+	vector3f rbr(max.x, min.y, max.z); //rear bottom right
+
+	//lateral lines
+	vts.push_back(fbl);
+	vts.push_back(fbr);
+	vts.push_back(ftl);
+	vts.push_back(ftr);
+	vts.push_back(rbl);
+	vts.push_back(rbr);
+	vts.push_back(rtl);
+	vts.push_back(rtr);
+
+	//vertical lines
+	vts.push_back(ftl);
+	vts.push_back(fbl);
+	vts.push_back(ftr);
+	vts.push_back(fbr);
+	vts.push_back(rtl);
+	vts.push_back(rbl);
+	vts.push_back(rtr);
+	vts.push_back(rbr);
+
+	//directional lines
+	vts.push_back(rtl);
+	vts.push_back(ftl);
+	vts.push_back(rbl);
+	vts.push_back(fbl);
+	vts.push_back(rtr);
+	vts.push_back(ftr);
+	vts.push_back(rbr);
+	vts.push_back(fbr);
+
+	r->SetTransform(trans);
+	r->DrawLines(vts.size(), &vts[0], Color(1.f, 0.f, 0.f, 1.f));
+	glPopMatrix();
+}

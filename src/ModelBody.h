@@ -40,6 +40,8 @@ public:
 protected:
 	virtual void Save(Serializer::Writer &wr, Space *space);
 	virtual void Load(Serializer::Reader &rd, Space *space);
+	void DrawBoundingBox(Graphics::Renderer *r, const vector3d &viewCoords, const matrix4x4d &viewTransform, const Color &c) const;
+
 private:
 	LmrModel *m_lmrModel;
 	LmrCollMesh *m_collMesh;

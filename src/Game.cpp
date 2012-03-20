@@ -560,6 +560,7 @@ void Game::RequestTimeAccel(TimeAccel t, bool force)
 
 void Game::CreatePlayer()
 {
+	m_playerCharacter.Reset(new Pioneer::Player());
 	// XXX this should probably be in lua somewhere
 	// XXX no really, it should. per system hacks? oh my.
 

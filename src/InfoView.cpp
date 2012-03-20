@@ -194,8 +194,8 @@ public:
 		DeleteAllChildren();
 
 		float ypos = 40.0f;
-		Add((new Gui::Label(Lang::COMBAT_RATING))->Shadow(true), 40, ypos);
-		Add(new Gui::Label(Pi::combatRating[ Pi::CombatRating(Pi::player->GetKillCount()) ]), 40, ypos+YSEP);
+		//Add((new Gui::Label(Lang::COMBAT_RATING))->Shadow(true), 40, ypos);
+		//Add(new Gui::Label(Pi::combatRating[ Pi::CombatRating(Pi::player->GetKillCount()) ]), 40, ypos+YSEP);
 
 		ypos = 160.0f;
 		Add((new Gui::Label(Lang::CRIMINAL_RECORD))->Shadow(true), 40, ypos);

@@ -364,6 +364,39 @@ Character = {
 	sensors = 15,
 
 --
+-- Attribute: killcount
+--
+-- Integer value; number of objects destroyed by this character. Automatically
+-- incremented in the case of the player by one of the stock scripts.
+--
+-- Availability:
+--
+--   alpha 18
+--
+-- Status:
+--
+--   experimental
+--
+	killcount = 0,
+
+--
+-- Attribute: assistcount
+--
+-- Integer value; number of objects damaged by this character which were
+-- subsequently destroyed by something else. Automatically incremented
+-- in the case of the player by one of the stock scripts.
+--
+-- Availability:
+--
+--   alpha 18
+--
+-- Status:
+--
+--   experimental
+--
+	assistcount = 0,
+
+--
 -- Group: Methods
 --
 
@@ -844,7 +877,7 @@ Character = {
 --
 -- ch:UnSave()
 --
--- Availability
+-- Availability:
 --
 --   alpha 17
 --
@@ -856,6 +889,118 @@ Character = {
 		for num,NPC in ipairs(PersistentCharacters) do
 			if NPC == self then table.remove(PersistentCharacters,num) end
 		end
+	end,
+
+--
+-- Method: GetCombatRating
+--
+--   Returns a translatable string giving the character's combat rating
+--
+-- rating = ch:GetCombatRating()
+--
+-- Return:
+--
+--   rating - Translatable string
+--
+-- Example:
+--
+-- Show player their own combat rating as a UI message
+--
+-- > t = Translate:GetTranslator()
+-- > UI.Message(('Your combat rating is {rating}'):interp({
+-- >     rating = t(PersistentCharacters.player:GetCombatRating()),
+-- > }))
+--
+-- Availability:
+--
+--   alpha 18
+--
+-- Status:
+--
+--   experimental
+--
+	GetCombatRating = function (self)
+		if self.killcount < 8 then
+			return('HARMLESS')
+		elseif self.killcount < 16 then
+			return('MOSTLY_HARMLESS')
+		elseif self.killcount < 32 then
+			return('POOR')
+		elseif self.killcount < 64 then
+			return('AVERAGE')
+		elseif self.killcount < 128 then
+			return('ABOVE_AVERAGE')
+		elseif self.killcount < 512 then
+			return('COMPETENT')
+		elseif self.killcount < 2400 then
+			return('DANGEROUS')
+		elseif self.killcount < 6000 then
+			return('DEADLY')
+		else 
+			return('ELITE')
+		end
+	end,
+
+--
+-- Method: IsCombatRated
+--
+--   Tests whether a character has reached a specific combat rating
+--
+-- ch:IsCombatRated(rating)
+--
+-- Parameters:
+--
+--   rating - One of the following values:
+-- >         'HARMLESS','MOSTLY_HARMLESS','POOR','AVERAGE','ABOVE_AVERAGE',
+-- >         'COMPETENT','DANGEROUS','DEADLY','ELITE'
+--
+-- Return:
+--
+--   true - Character has reached the specified rating
+--
+--   false - Character has not reached the specified rating (or specified
+--          rating was not a valid value)
+--
+-- Example:
+--
+-- Check to see if the player is rated "Deadly" or higher
+--
+-- > if PersistentCharacter.player:IsCombatRated('DEADLY') then
+-- >   DoSomethingDeadly() -- Player is rated "Deadly" or higher
+-- > end
+--
+-- Availability:
+--
+--   alpha 18
+--
+-- Status:
+--
+--   experimental
+--
+	IsCombatRated = function (self,rating)
+		-- This function is completely agnostic of the values of the ratings.
+		local ratingflag = false
+		local combatrating = self:GetCombatRating()
+		for i,testrating in ipairs {'HARMLESS',
+									'MOSTLY_HARMLESS',
+									'POOR',
+									'AVERAGE',
+									'ABOVE_AVERAGE',
+									'COMPETENT',
+									'DANGEROUS',
+									'DEADLY',
+									'ELITE'} do
+			if testrating == rating then
+				-- We have reached the desired rating
+				ratingflag = true
+			end
+			if testrating == combatrating and ratingflag then
+				-- The character's rating is equal to the one we've rached, and
+				-- we have either reached or passed the desired rating
+				return true
+			end
+		end --for
+		return false
 	end,
 
 	-- Debug function

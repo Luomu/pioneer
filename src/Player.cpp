@@ -23,7 +23,6 @@ Player::Player(ShipType::Type shipType): Ship(shipType)
 void Player::Save(Serializer::Writer &wr, Space *space)
 {
 	Ship::Save(wr, space);
-	MarketAgent::Save(wr);
 	wr.Int32(m_killCount);
 	wr.Int32(m_knownKillCount);
 }
@@ -32,7 +31,6 @@ void Player::Load(Serializer::Reader &rd, Space *space)
 {
 	Pi::player = this;
 	Ship::Load(rd, space);
-	MarketAgent::Load(rd);
 	m_killCount = rd.Int32();
 	m_knownKillCount = rd.Int32();
 }
@@ -136,58 +134,6 @@ void Player::NotifyRemoved(const Body* const removedBody)
 	Ship::NotifyRemoved(removedBody);
 }
 
-/* MarketAgent shite */
-//XXX move to Player character .cpp
-void Player::Bought(Equip::Type t)
-{
-	m_equipment.Add(t);
-	UpdateMass();
-}
-
-void Player::Sold(Equip::Type t)
-{
-	m_equipment.Remove(t, 1);
-	UpdateMass();
-}
-
-bool Player::CanBuy(Equip::Type t, bool verbose) const
-{
-	Equip::Slot slot = Equip::types[int(t)].slot;
-	bool freespace = (m_equipment.FreeSpace(slot)!=0);
-	bool freecapacity = (m_stats.free_capacity >= Equip::types[int(t)].mass);
-	if (verbose) {
-		if (!freespace) {
-			Pi::Message(Lang::NO_FREE_SPACE_FOR_ITEM);
-		}
-		else if (!freecapacity) {
-			Pi::Message(Lang::SHIP_IS_FULLY_LADEN);
-		}
-	}
-	return (freespace && freecapacity);
-}
-
-bool Player::CanSell(Equip::Type t, bool verbose) const
-{
-	Equip::Slot slot = Equip::types[int(t)].slot;
-	bool cansell = (m_equipment.Count(slot, t) > 0);
-	if (verbose) {
-		if (!cansell) {
-			Pi::Message(stringf(Lang::YOU_DO_NOT_HAVE_ANY_X, formatarg("item", Equip::types[int(t)].name)));
-		}
-	}
-	return cansell;
-}
-
-Sint64 Player::GetPrice(Equip::Type t) const
-{
-	if (Ship::GetDockedWith()) {
-		return Ship::GetDockedWith()->GetPrice(t);
-	} else {
-		assert(0);
-		return 0;
-	}
-}
-
 //XXX ui stuff
 void Player::OnEnterHyperspace()
 {
@@ -240,3 +186,8 @@ void Player::SetNavTarget(Body* const target, bool setSpeedTo)
 	Pi::onPlayerChangeTarget.emit();
 }
 //temporary targeting stuff ends
+
+Pioneer::Player *Player::GetPlayer()
+{
+	return Pi::game->GetPlayer();
+}

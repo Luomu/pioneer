@@ -86,7 +86,7 @@ SpaceStationView::~SpaceStationView()
 void SpaceStationView::Update()
 {
 	char buf[64];
-	m_money->SetText(format_money(Pi::player->GetMoney()));
+	m_money->SetText(format_money(Pi::game->GetPlayer()->GetMoney()));
 
 	const shipstats_t *stats = Pi::player->CalcStats();
 	snprintf(buf, sizeof(buf), "%dt", stats->used_capacity - stats->used_cargo);

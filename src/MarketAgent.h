@@ -8,6 +8,7 @@
 class MarketAgent {
 public:
 	MarketAgent(): m_money(0) {}
+	void AddMoney(Sint64 m) { m_money += m; }
 	void SetMoney(Sint64 m) { m_money = m; }
 	Sint64 GetMoney() const { return m_money; }
 	bool Pay(MarketAgent *b, Sint64 amount, bool verbose = false);

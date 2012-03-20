@@ -120,14 +120,14 @@ StationShipViewForm::StationShipViewForm(FormController *controller, int marketI
 void StationShipViewForm::BuyShip()
 {
 	Sint64 cost = m_flavour.price - Pi::player->GetFlavour()->price;
-	if (Pi::player->GetMoney() < cost) {
+	if (Pi::game->GetPlayer()->GetMoney() < cost) {
 		Pi::cpan->MsgLog()->Message("", Lang::YOU_NOT_ENOUGH_MONEY);
 		return;
 	}
 
 	ShipFlavour old = *(Pi::player->GetFlavour());
 
-	Pi::player->SetMoney(Pi::player->GetMoney() - cost);
+	Pi::game->GetPlayer()->AddMoney(-cost);
 	Pi::player->ResetFlavour(&m_flavour);
 	Pi::player->m_equipment.Set(Equip::SLOT_ENGINE, 0, ShipType::types[m_flavour.type].hyperdrive);
 	Pi::player->UpdateMass();

@@ -158,7 +158,7 @@ static void _table_to_mission(lua_State *l, Mission &m, bool create)
  */
 static int l_player_add_mission(lua_State *l)
 {
-	Player *p = LuaPlayer::GetFromLua(1);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
 
 	Mission m;
 	_table_to_mission(l, m, true);
@@ -195,7 +195,7 @@ static int l_player_add_mission(lua_State *l)
  */
 static int l_player_get_mission(lua_State *l)
 {
-	Player *p = LuaPlayer::GetFromLua(1);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
 	int ref = luaL_checkinteger(l, 2);
 	const Mission *m = p->missions.Get(ref);
 	if (!m)
@@ -240,7 +240,7 @@ static int l_player_get_mission(lua_State *l)
  */
 static int l_player_update_mission(lua_State *l)
 {
-	Player *p = LuaPlayer::GetFromLua(1);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
 	int ref = luaL_checkinteger(l, 2);
 
 	const Mission *m = p->missions.Get(ref);
@@ -276,7 +276,7 @@ static int l_player_update_mission(lua_State *l)
  */
 static int l_player_remove_mission(lua_State *l)
 {
-	Player *p = LuaPlayer::GetFromLua(1);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
 	int ref = luaL_checkinteger(l, 2);
 	p->missions.Remove(ref);
 	return 0;
@@ -303,7 +303,7 @@ static int l_player_remove_mission(lua_State *l)
  */
 static int l_player_get_money(lua_State *l)
 {
-	Player *p = LuaPlayer::GetFromLua(1);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
 	lua_pushnumber(l, p->GetMoney()*0.01);
 	return 1;
 } 
@@ -329,7 +329,7 @@ static int l_player_get_money(lua_State *l)
  */
 static int l_player_set_money(lua_State *l)
 {
-	Player *p = LuaPlayer::GetFromLua(1);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
 	float m = luaL_checknumber(l, 2);
 	p->SetMoney(Sint64(m*100.0));
 	return 0;
@@ -360,7 +360,7 @@ static int l_player_set_money(lua_State *l)
  */
 static int l_player_add_money(lua_State *l)
 {
-	Player *p = LuaPlayer::GetFromLua(1);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
 	float a = luaL_checknumber(l, 2);
 	Sint64 m = p->GetMoney() + Sint64(a*100.0);
 	p->SetMoney(m);

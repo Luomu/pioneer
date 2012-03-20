@@ -10,6 +10,7 @@ class HyperspaceCloud;
 class Player;
 class ShipController;
 class Space;
+namespace Pioneer { class Player; }
 
 class Game {
 public:
@@ -33,7 +34,7 @@ public:
 
 	Space *GetSpace() const { return m_space.Get(); }
 	double GetTime() const { return m_time; }
-	Player *GetPlayer() const { return m_player.Get(); }
+	Pioneer::Player *GetPlayer() const { return m_playerCharacter.Get(); }
 
 	// physics step
 	void TimeStep(float step);
@@ -85,6 +86,7 @@ private:
 	double m_time;
 
 	ScopedPtr<Player> m_player;
+	ScopedPtr<Pioneer::Player> m_playerCharacter;
 
 	enum State {
 		STATE_NORMAL,

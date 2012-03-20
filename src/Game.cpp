@@ -1,6 +1,7 @@
 #include "Game.h"
 #include "Space.h"
 #include "Player.h"
+#include "PlayerCharacter.h"
 #include "Body.h"
 #include "SpaceStation.h"
 #include "HyperspaceCloud.h"
@@ -588,7 +589,7 @@ void Game::CreatePlayer()
 	}
 
 	m_player->UpdateMass();
-	m_player->SetMoney(10000);
+	GetPlayer()->SetMoney(10000);
 }
 
 // XXX this should be in some kind of central UI management class that

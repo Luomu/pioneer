@@ -134,7 +134,7 @@ void StationShipEquipmentForm::FitItem(Equip::Type t)
 	const shipstats_t *stats = Pi::player->CalcStats();
 	int freespace = Pi::player->m_equipment.FreeSpace(slot);
 	
-	if (Pi::player->GetMoney() < m_station->GetPrice(t)) {
+	if (Pi::game->GetPlayer()->GetMoney() < m_station->GetPrice(t)) {
 		Pi::cpan->MsgLog()->Message("", Lang::YOU_NOT_ENOUGH_MONEY);
 		return;
 	}
@@ -176,7 +176,7 @@ void StationShipEquipmentForm::FitItemForce(Equip::Type t, int pos) {
 		Pi::player->m_equipment.Set(Equip::types[t].slot, pos, t);
 
 	Pi::player->UpdateMass();
-	Pi::player->SetMoney(Pi::player->GetMoney() - m_station->GetPrice(t));
+	Pi::game->GetPlayer()->AddMoney(-m_station->GetPrice(t));
 	Pi::cpan->MsgLog()->Message("", Lang::FITTING+std::string(Equip::types[t].name));
 
 	RecalcButtonVisibility();
@@ -189,7 +189,7 @@ void StationShipEquipmentForm::RemoveItemForce(Equip::Type t, int pos) {
 		Pi::player->m_equipment.Set(Equip::types[t].slot, pos, Equip::NONE);
 
 	Pi::player->UpdateMass();
-	Pi::player->SetMoney(Pi::player->GetMoney() + m_station->GetPrice(t) * REMOVAL_VALUE_PERCENT / 100);
+	Pi::game->GetPlayer()->AddMoney(m_station->GetPrice(t) * REMOVAL_VALUE_PERCENT / 100);
 	m_station->AddEquipmentStock(t, 1);
 	Pi::cpan->MsgLog()->Message("", Lang::REMOVING+std::string(Equip::types[t].name));
 

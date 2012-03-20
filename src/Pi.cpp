@@ -746,9 +746,9 @@ void Pi::HandleEvents()
 						case SDLK_i: // Toggle Debug info
 							Pi::showDebugInfo = !Pi::showDebugInfo;
 							break;
-						case SDLK_m:  // Gimme money!
+						case SDLK_m:  // Money cheat
 							if(Pi::game) {
-								Pi::player->SetMoney(Pi::player->GetMoney() + 10000000);
+								Pi::game->GetPlayer()->AddMoney(10000000);
 							}
 							break;
 						case SDLK_F12:

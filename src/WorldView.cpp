@@ -936,20 +936,21 @@ static void PlayerRequestDockingClearance(SpaceStation *s)
 
 static void PlayerPayFine()
 {
+	const Sint64 money = Pi::game->GetPlayer()->GetMoney();
 	Sint64 crime, fine;
 	Polit::GetCrime(&crime, &fine);
-	if (Pi::player->GetMoney() == 0) {
+	if (money == 0) {
 		Pi::cpan->MsgLog()->Message("", Lang::YOU_NO_MONEY);
-	} else if (fine > Pi::player->GetMoney()) {
-		Polit::AddCrime(0, -Pi::player->GetMoney());
+	} else if (fine > money) {
+		Polit::AddCrime(0, -money);
 		Polit::GetCrime(&crime, &fine);
 		Pi::cpan->MsgLog()->Message("", stringf(
 			Lang::FINE_PAID_N_BUT_N_REMAINING,
-				formatarg("paid", format_money(Pi::player->GetMoney())),
+				formatarg("paid", format_money(money)),
 				formatarg("fine", format_money(fine))));
-		Pi::player->SetMoney(0);
+		Pi::game->GetPlayer()->SetMoney(0);
 	} else {
-		Pi::player->SetMoney(Pi::player->GetMoney() - fine);
+		Pi::game->GetPlayer()->AddMoney(-fine);
 		Pi::cpan->MsgLog()->Message("", stringf(Lang::FINE_PAID_N,
 				formatarg("fine", format_money(fine))));
 		Polit::AddCrime(0, -fine);

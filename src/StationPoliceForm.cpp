@@ -39,12 +39,12 @@ void StationPoliceForm::OnOptionClicked(int option)
 			Sint64 crime, fine;
 			Polit::GetCrime(&crime, &fine);
 
-			if (fine > Pi::player->GetMoney()) {
+			if (fine > Pi::game->GetPlayer()->GetMoney()) {
 				Pi::cpan->MsgLog()->Message("", Lang::YOU_NOT_ENOUGH_MONEY);
 				return;
 			}
 
-			Pi::player->SetMoney(Pi::player->GetMoney() - fine);
+			Pi::game->GetPlayer()->AddMoney(-fine);
 			Polit::AddCrime(0, -fine);
 
 			Close();

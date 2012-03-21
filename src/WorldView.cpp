@@ -1186,6 +1186,8 @@ void WorldView::UpdateProjectedObjects()
 {
 	const int guiSize[2] = { Gui::Screen::GetWidth(), Gui::Screen::GetHeight() };
 	const Graphics::Frustum frustum = m_activeCamera->GetFrustum();
+	const Ship *playerShip = GetPlayerShip();
+	const PlayerShipController *playerController = GetPlayerController();
 
 	const Frame *cam_frame = m_activeCamera->GetFrame();
 	matrix4x4d cam_rot = cam_frame->GetTransform();
@@ -1201,7 +1203,7 @@ void WorldView::UpdateProjectedObjects()
 		if ((pos.z < -1.0) && project_to_screen(pos, pos, frustum, guiSize)) {
 
 			// only show labels on large or nearby bodies
-			if (b->IsType(Object::PLANET) || b->IsType(Object::STAR) || b->IsType(Object::SPACESTATION) || Pi::player->GetPositionRelTo(b).LengthSqr() < 1000000.0*1000000.0)
+			if (b->IsType(Object::PLANET) || b->IsType(Object::STAR) || b->IsType(Object::SPACESTATION) || playerShip->GetPositionRelTo(b).LengthSqr() < 1000000.0*1000000.0)
 				m_bodyLabels->Add((*i)->GetLabel(), sigc::bind(sigc::mem_fun(this, &WorldView::SelectBody), *i, true), float(pos.x), float(pos.y));
 
 			m_projectedPos[b] = pos;
@@ -1210,7 +1212,7 @@ void WorldView::UpdateProjectedObjects()
 
 	// velocity relative to current frame (white)
 	// GetVelocityRelTo considers statis velocity of rotating frame, which GetVelocity() doesn't
-	const vector3d camSpaceVel = Pi::player->GetVelocityRelTo(Pi::player->GetFrame()) * cam_rot;
+	const vector3d camSpaceVel = GetPlayerShip()->GetVelocityRelTo(GetPlayerShip()->GetFrame()) * cam_rot;
 	if (camSpaceVel.LengthSqr() >= 1e-4)
 		UpdateIndicator(m_velIndicator, camSpaceVel);
 	else
@@ -1226,21 +1228,21 @@ void WorldView::UpdateProjectedObjects()
 		HideIndicator(m_mouseDirIndicator);
 
 	// navtarget info
-	if (Body *navtarget = Pi::player->GetNavTarget()) {
+	if (Body *navtarget = playerController->GetNavTarget()) {
 		// if navtarget and body frame are the same,
 		// then we hide the frame-relative velocity indicator
 		// (which would be hidden underneath anyway)
-		if (navtarget == Pi::player->GetFrame()->GetBodyFor())
+		if (navtarget == playerShip->GetFrame()->GetBodyFor())
 			HideIndicator(m_velIndicator);
 
 		// navtarget distance/target square indicator (displayed with navtarget label)
 		double dist = (navtarget->GetTargetIndicatorPosition(cam_frame) 
-			- Pi::player->GetPositionRelTo(cam_frame)).Length();
+			- playerShip->GetPositionRelTo(cam_frame)).Length();
 		m_navTargetIndicator.label->SetText(format_distance(dist).c_str());
 		UpdateIndicator(m_navTargetIndicator, navtarget->GetTargetIndicatorPosition(cam_frame));
 
 		// velocity relative to navigation target
-		vector3d navvelocity = Pi::player->GetVelocityRelTo(navtarget);
+		vector3d navvelocity = playerShip->GetVelocityRelTo(navtarget);
 		double navspeed = navvelocity.Length();
 		const vector3d camSpaceNavVel = navvelocity * cam_rot;
 
@@ -1271,7 +1273,7 @@ void WorldView::UpdateProjectedObjects()
 	Ship *enemy = static_cast<Ship *>(Pi::player->GetCombatTarget());
 	if (enemy) {
 		char buf[128];
-		const vector3d targpos = enemy->GetInterpolatedPositionRelTo(Pi::player) * cam_rot;
+		const vector3d targpos = enemy->GetInterpolatedPositionRelTo(playerShip) * cam_rot;
 		const double dist = targpos.Length();
 		const vector3d targScreenPos = enemy->GetInterpolatedPositionRelTo(cam_frame);
 
@@ -1287,13 +1289,13 @@ void WorldView::UpdateProjectedObjects()
 			default: laser = -1; break;
 		}
 		if (laser >= 0) {
-			laser = Pi::player->m_equipment.Get(Equip::SLOT_LASER, laser);
+			laser = playerShip->m_equipment.Get(Equip::SLOT_LASER, laser);
 			laser = Equip::types[laser].tableIndex;
 		}
 		if (laser >= 0) { // only display target lead position on views with lasers
 			double projspeed = Equip::lasers[laser].speed;
 
-			const vector3d targvel = enemy->GetVelocityRelTo(Pi::player) * cam_rot;
+			const vector3d targvel = enemy->GetVelocityRelTo(playerShip) * cam_rot;
 			vector3d leadpos = targpos + targvel*(targpos.Length()/projspeed);
 			leadpos = targpos + targvel*(leadpos.Length()/projspeed); // second order approx
 
@@ -1302,7 +1304,7 @@ void WorldView::UpdateProjectedObjects()
 
 			double vel = targvel.Dot(targpos.NormalizedSafe()); // position should be towards
 			double raccel =
-				Pi::player->GetShipType().linThrust[ShipType::THRUSTER_REVERSE] / Pi::player->GetMass();
+				playerShip->GetShipType().linThrust[ShipType::THRUSTER_REVERSE] / playerShip->GetMass();
 
 			double c = Clamp(vel / sqrt(2.0 * raccel * dist), -1.0, 1.0);
 			float r = float(0.2+(c+1.0)*0.4);

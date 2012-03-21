@@ -138,6 +138,10 @@ Game::Game(Serializer::Reader &rd) :
 	m_hyperspaceDuration = section.Double();
 	m_hyperspaceEndTime = section.Double();
 
+	//player
+	section = rd.RdSection("Player");
+	m_playerCharacter.Reset(new Pioneer::Player());
+	m_playerCharacter->Load(section);
 
 	// system political stuff
 	section = rd.RdSection("Polit");
@@ -194,6 +198,9 @@ void Game::Serialize(Serializer::Writer &wr)
 	
 	wr.WrSection("Game", section.GetData());
 
+	section = Serializer::Writer();
+	m_playerCharacter->Save(section);
+	wr.WrSection("Player", section.GetData());
 
 	// system political data (crime etc)
 	section = Serializer::Writer();

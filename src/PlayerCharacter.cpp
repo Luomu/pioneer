@@ -12,6 +12,7 @@ Player::~Player() { }
 void Player::Save(Serializer::Writer &wr)
 {
 	MarketAgent::Save(wr);
+	//missions are serialized by lua scripts
 }
 
 void Player::Load(Serializer::Reader &rd)

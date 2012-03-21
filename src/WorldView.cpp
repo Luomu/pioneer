@@ -223,6 +223,11 @@ void WorldView::InitObject()
 	GetPlayerController()->SetMouseForRearView(m_camType == CAM_REAR);
 }
 
+Ship *WorldView::GetPlayerShip() const
+{
+	return Pi::game->GetPlayer()->GetShip();
+}
+
 WorldView::~WorldView()
 {
 	delete m_frontCamera;
@@ -344,13 +349,13 @@ void WorldView::OnChangeLabelsState(Gui::MultiStateImageButton *b)
 void WorldView::OnClickBlastoff()
 {
 	Pi::BoinkNoise();
-	if (Pi::player->GetFlightState() == Ship::DOCKED) {
-		if (!Pi::player->Undock()) {
-			Pi::cpan->MsgLog()->ImportantMessage(Pi::player->GetDockedWith()->GetLabel(),
+	if (GetPlayerShip()->GetFlightState() == Ship::DOCKED) {
+		if (!GetPlayerShip()->Undock()) {
+			Pi::cpan->MsgLog()->ImportantMessage(GetPlayerShip()->GetDockedWith()->GetLabel(),
 					Lang::LAUNCH_PERMISSION_DENIED_BUSY);
 		}
 	} else {
-		Pi::player->Blastoff();
+		GetPlayerShip()->Blastoff();
 	}
 }
 
@@ -371,7 +376,7 @@ WorldView::CamType WorldView::GetCamType() const
 {
 	if (m_camType == CAM_EXTERNAL || m_camType == CAM_SIDEREAL) {
 		// don't allow external view when docked with an orbital starport
-		if (Pi::player->GetFlightState() == Ship::DOCKED && !Pi::player->GetDockedWith()->IsGroundStation()) {
+		if (GetPlayerShip()->GetFlightState() == Ship::DOCKED && !GetPlayerShip()->GetDockedWith()->IsGroundStation()) {
 			return CAM_FRONT;
 		} else {
 			return m_camType;
@@ -419,14 +424,14 @@ void WorldView::RefreshButtonStateAndVisibility()
 		return;
 	}
 	else {
-		m_wheelsButton->SetActiveState(int(Pi::player->GetWheelState()));
+		m_wheelsButton->SetActiveState(int(GetPlayerShip()->GetWheelState()));
 
-		if (m_showHyperspaceButton && Pi::player->GetFlightState() == Ship::FLYING)
+		if (m_showHyperspaceButton && GetPlayerShip()->GetFlightState() == Ship::FLYING)
 			m_hyperspaceButton->Show();
 		else
 			m_hyperspaceButton->Hide();
 
-		switch(Pi::player->GetFlightState()) {
+		switch(GetPlayerShip()->GetFlightState()) {
 			case Ship::LANDED:
 				m_flightStatus->SetText(Lang::LANDED);
 				m_launchButton->Show();
@@ -490,7 +495,7 @@ void WorldView::RefreshButtonStateAndVisibility()
 	}
 
 	// Direction indicator
-	vector3d vel = Pi::player->GetVelocityRelTo(Pi::player->GetFrame());
+	vector3d vel = GetPlayerShip()->GetVelocityRelTo(GetPlayerShip()->GetFrame());
 
 	if (m_showTargetActionsTimeout) {
 		if (SDL_GetTicks() - m_showTargetActionsTimeout > 20000) {
@@ -526,8 +531,8 @@ void WorldView::RefreshButtonStateAndVisibility()
 	}
 #endif
 
-	if (Pi::player->GetFlightState() == Ship::HYPERSPACE) {
-		const SystemPath dest = Pi::player->GetHyperspaceDest();
+	if (GetPlayerShip()->GetFlightState() == Ship::HYPERSPACE) {
+		const SystemPath dest = GetPlayerShip()->GetHyperspaceDest();
 		RefCountedPtr<StarSystem> s = StarSystem::GetCached(dest);
 		m_hudVelocity->SetText(stringf(Lang::IN_TRANSIT_TO_N_X_X_X,
 			formatarg("system", s->GetName()),
@@ -549,12 +554,12 @@ void WorldView::RefreshButtonStateAndVisibility()
 			std::string str;
 			double _vel = 0;
 			const char *rel_to = 0;
-			const Body *set_speed_target = Pi::player->GetSetSpeedTarget();
+			const Body *set_speed_target = GetPlayerController()->GetSetSpeedTarget();
 			if (set_speed_target) {
 				rel_to = set_speed_target->GetLabel().c_str();
-				_vel = Pi::player->GetVelocityRelTo(set_speed_target).Length();
+				_vel = GetPlayerShip()->GetVelocityRelTo(set_speed_target).Length();
 			} else {
-				rel_to = Pi::player->GetFrame()->GetLabel();
+				rel_to = GetPlayerShip()->GetFrame()->GetLabel();
 				_vel = vel.Length();
 			}
 			if (_vel > 1000) {
@@ -565,8 +570,8 @@ void WorldView::RefreshButtonStateAndVisibility()
 			m_hudVelocity->SetText(str);
 		}
 
-		if (Body *navtarget = Pi::player->GetNavTarget()) {
-			double dist = Pi::player->GetPositionRelTo(navtarget).Length();
+		if (Body *navtarget = GetPlayerController()->GetNavTarget()) {
+			double dist = GetPlayerShip()->GetPositionRelTo(navtarget).Length();
 			m_hudTargetDist->SetText(stringf(Lang::N_DISTANCE_TO_TARGET,
 				formatarg("distance", format_distance(dist))));
 			m_hudTargetDist->Show();
@@ -575,19 +580,19 @@ void WorldView::RefreshButtonStateAndVisibility()
 			m_hudTargetDist->Hide();
 
 		// altitude
-		if (Pi::player->GetFrame()->m_astroBody) {
-			Body *astro = Pi::player->GetFrame()->m_astroBody;
+		if (GetPlayerShip()->GetFrame()->m_astroBody) {
+			Body *astro = GetPlayerShip()->GetFrame()->m_astroBody;
 			//(GetFrame()->m_sbody->GetSuperType() == SUPERTYPE_ROCKY_PLANET)) {
 			double radius;
-			vector3d surface_pos = Pi::player->GetPosition().Normalized();
+			vector3d surface_pos = GetPlayerShip()->GetPosition().Normalized();
 			if (astro->IsType(Object::TERRAINBODY)) {
 				radius = static_cast<TerrainBody*>(astro)->GetTerrainHeight(surface_pos);
 			} else {
 				// XXX this is an improper use of GetBoundingRadius
 				// since it is not a surface radius
-				radius = Pi::player->GetFrame()->m_astroBody->GetBoundingRadius();
+				radius = GetPlayerShip()->GetFrame()->m_astroBody->GetBoundingRadius();
 			}
-			double altitude = Pi::player->GetPosition().Length() - radius;
+			double altitude = GetPlayerShip()->GetPosition().Length() - radius;
 			if (altitude > 9999999.0 || astro->IsType(Object::SPACESTATION)) {
 				m_hudAltitude->Hide();
 			} else {
@@ -597,7 +602,7 @@ void WorldView::RefreshButtonStateAndVisibility()
 			}
 
 			if (astro->IsType(Object::PLANET)) {
-				double dist = Pi::player->GetPosition().Length();
+				double dist = GetPlayerShip()->GetPosition().Length();
 				double pressure, density;
 				reinterpret_cast<Planet*>(astro)->GetAtmosphericState(dist, &pressure, &density);
 
@@ -616,10 +621,10 @@ void WorldView::RefreshButtonStateAndVisibility()
 			m_hudHullTemp->Hide();
 		}
 
-		m_hudFuelGauge->SetValue(Pi::player->GetFuel());
+		m_hudFuelGauge->SetValue(GetPlayerShip()->GetFuel());
 	}
 
-	const float activeWeaponTemp = Pi::player->GetGunTemperature(GetActiveWeapon());
+	const float activeWeaponTemp = GetPlayerShip()->GetGunTemperature(GetActiveWeapon());
 	if (activeWeaponTemp > 0.0f) {
 		m_hudWeaponTemp->SetValue(activeWeaponTemp);
 		m_hudWeaponTemp->Show();
@@ -627,7 +632,7 @@ void WorldView::RefreshButtonStateAndVisibility()
 		m_hudWeaponTemp->Hide();
 	}
 
-	float hull = Pi::player->GetPercentHull();
+	float hull = GetPlayerShip()->GetPercentHull();
 	if (hull < 100.0f) {
 		m_hudHullIntegrity->SetColor(get_color_for_warning_meter_bar(hull));
 		m_hudHullIntegrity->SetValue(hull*0.01f);
@@ -635,7 +640,7 @@ void WorldView::RefreshButtonStateAndVisibility()
 	} else {
 		m_hudHullIntegrity->Hide();
 	}
-	float shields = Pi::player->GetPercentShields();
+	float shields = GetPlayerShip()->GetPercentShields();
 	if (shields < 100.0f) {
 		m_hudShieldIntegrity->SetColor(get_color_for_warning_meter_bar(shields));
 		m_hudShieldIntegrity->SetValue(shields*0.01f);
@@ -644,9 +649,9 @@ void WorldView::RefreshButtonStateAndVisibility()
 		m_hudShieldIntegrity->Hide();
 	}
 
-	Body *b = Pi::player->GetCombatTarget() ? Pi::player->GetCombatTarget() : Pi::player->GetNavTarget();
+	Body *b = GetPlayerController()->GetCombatTarget() ? GetPlayerController()->GetCombatTarget() : GetPlayerController()->GetNavTarget();
 	if (b) {
-		if (b->IsType(Object::SHIP) && Pi::player->m_equipment.Get(Equip::SLOT_RADARMAPPER) == Equip::RADAR_MAPPER) {
+		if (b->IsType(Object::SHIP) && GetPlayerShip()->m_equipment.Get(Equip::SLOT_RADARMAPPER) == Equip::RADAR_MAPPER) {
 			assert(b->IsType(Object::SHIP));
 			Ship *s = static_cast<Ship*>(b);
 

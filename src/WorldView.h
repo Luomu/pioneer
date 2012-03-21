@@ -56,7 +56,7 @@ public:
 
 private:
 	void InitObject();
-
+	Ship *GetPlayerShip() const;
 	void RefreshButtonStateAndVisibility();
 	void UpdateCommsOptions();
 

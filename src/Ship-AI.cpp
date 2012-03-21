@@ -75,7 +75,7 @@ bool Ship::AITimeStep(float timeStep)
 	if (m_launchLockTimeout > 0.0) return false;
 
 	if (!m_curAICmd) {
-		if (this == Pi::player) return true;
+		if (isPlayerShip) return true;
 
 		// just in case the AI left it on
 		ClearThrusterState();

@@ -33,9 +33,13 @@ void Player::SetShip(Ship *ship)
 	if (currentShip) {
 		currentShip->GetController()->m_active = false;
 		currentShip->isPlayerShip = false;
+		currentShip->AIHoldPosition();
 	}
 	ship->SetController(new PlayerShipController());
 	ship->isPlayerShip = true;
+	ship->AIClearInstructions();
+	ship->GetController()->SetFlightControlState(CONTROL_MANUAL);
+	ship->ClearThrusterState();
 	m_ship = ship;
 	if (Pi::worldView) Pi::worldView->SetCameraBody(ship);
 }

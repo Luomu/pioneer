@@ -611,6 +611,7 @@ bool Ship::FireMissile(int idx, Ship *target)
 	missile->SetPosition(GetPosition()+50.0*dir);
 	missile->SetVelocity(GetVelocity());
 	Pi::game->GetSpace()->AddBody(missile);
+	Sound::BodyMakeNoise(this, "Missile_launch", 1.0f);
 	return true;
 }
 
@@ -1093,6 +1094,7 @@ bool Ship::SetWheelState(bool down)
 	if (m_flightState != FLYING) return false;
 	if (is_equal_exact(m_wheelState, down ? 1.0f : 0.0f)) return false;
 	m_wheelTransition = (down ? 1 : -1);
+	Sound::BodyMakeNoise(this, down ? "UC_out" : "UC_in", 1.f);
 	return true;
 }
 

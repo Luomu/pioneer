@@ -19,8 +19,6 @@ public:
 	Player(ShipType::Type shipType);
 	Player() { }; //default constructor used before Load
 	virtual bool OnDamage(Object *attacker, float kgDamage);
-	virtual bool SetWheelState(bool down); // returns success of state change, NOT state itself
-	virtual bool FireMissile(int idx, Ship *target);
 	virtual void SetAlertState(Ship::AlertState as);
 	virtual void NotifyRemoved(const Body* const removedBody);
 

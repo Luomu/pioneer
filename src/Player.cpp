@@ -39,27 +39,6 @@ bool Player::OnDamage(Object *attacker, float kgDamage)
 	return r;
 }
 
-//XXX all ships should make this sound
-bool Player::SetWheelState(bool down)
-{
-	static Sound::Event sndev;
-	bool did = Ship::SetWheelState(down);
-	if (did) {
-		sndev.Play(down ? "UC_out" : "UC_in", 1.0f, 1.0f, 0);
-	}
-	return did;
-}
-
-//XXX all ships should make this sound
-bool Player::FireMissile(int idx, Ship *target)
-{
-	if (!Ship::FireMissile(idx, target))
-		return false;
-	
-	Sound::PlaySfx("Missile_launch", 1.0f, 1.0f, 0);
-	return true;
-}
-
 //XXX do in lua, or use the alert concept for all ships
 void Player::SetAlertState(Ship::AlertState as)
 {

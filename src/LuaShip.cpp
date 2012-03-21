@@ -1029,6 +1029,17 @@ static int l_ship_hyperspace_to(lua_State *l)
 }
 
 /*
+ * Transfer control of a ship to the player. The previous player ship is
+ * told to hold position.
+ */
+static int l_ship_take_control(lua_State *l)
+{
+	Ship *s = LuaShip::GetFromLua(1);
+	Pi::game->GetPlayer()->SetShip(s);
+	return 1;
+}
+
+/*
  * Group: Attributes
  */
 
@@ -1365,6 +1376,9 @@ template <> void LuaObject<Ship>::RegisterClass()
 
 		{ "CanHyperspaceTo", l_ship_can_hyperspace_to },
 		{ "HyperspaceTo",    l_ship_hyperspace_to     },
+
+		//debug actions
+		{ "TakeControl", l_ship_take_control },
 
 		{ 0, 0 }
 	};

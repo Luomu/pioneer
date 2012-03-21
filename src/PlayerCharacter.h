@@ -31,7 +31,14 @@ public:
 	void Save(Serializer::Writer &wr);
 	void Load(Serializer::Reader &rd);
 	RefList<Mission> missions;
-	Ship *GetCurrentShip() const;
+	//get the currently piloted ship
+	Ship *GetShip() const;
+	//give player control over a ship.
+	//The previous one is set to autopilot (and set speed 0?).
+	//does not change viewpoint, do that separately
+	//XXX actually this changes viewpoint too for now
+	void SetShip(Ship *s);
+
 	int GetStock(Equip::Type t) const { assert(0); return 0; }
 	bool CanBuy(Equip::Type t, bool verbose) const;
 	bool CanSell(Equip::Type t, bool verbose) const;
@@ -43,6 +50,7 @@ protected:
 	void Sold(Equip::Type t);
 
 private:
+	Ship *m_ship; //current ship
 };
 
 }

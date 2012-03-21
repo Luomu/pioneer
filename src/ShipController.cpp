@@ -133,6 +133,7 @@ void PlayerShipController::PollControls(const float timeStep)
 {
 	static bool stickySpeedKey = false;
 
+	if (!m_active) return;
 	CheckControlsLock();
 	if (m_controlsLocked) return;
 

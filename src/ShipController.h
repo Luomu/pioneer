@@ -29,7 +29,7 @@ public:
 		AI = 0,
 		PLAYER = 1
 	};
-	ShipController() { }
+	ShipController() : m_active(true) { }
 	virtual ~ShipController() { }
 	virtual Type GetType() { return AI; }
 	virtual void Save(Serializer::Writer &wr, Space *s) { }
@@ -38,6 +38,9 @@ public:
 	virtual void StaticUpdate(float timeStep);
 	virtual void SetFlightControlState(FlightControlState s) { }
 	Ship *m_ship;
+
+	//XXX temporary. To stop input when switching ships.
+	bool m_active;
 };
 
 // autopilot AI + input

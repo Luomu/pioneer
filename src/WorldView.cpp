@@ -6,6 +6,7 @@
 #include "Sector.h"
 #include "SectorView.h"
 #include "Serializer.h"
+#include "ShipController.h"
 #include "ShipCpanel.h"
 #include "Sound.h"
 #include "Space.h"
@@ -219,7 +220,7 @@ void WorldView::InitObject()
 	m_onPlayerEquipmentChangeCon =
 		Pi::player->m_equipment.onChange.connect(sigc::mem_fun(this, &WorldView::OnPlayerEquipmentChange));
 
-	Pi::player->GetPlayerController()->SetMouseForRearView(m_camType == CAM_REAR);
+	GetPlayerController()->SetMouseForRearView(m_camType == CAM_REAR);
 }
 
 WorldView::~WorldView()
@@ -252,7 +253,7 @@ void WorldView::SetCamType(enum CamType c)
 {
 	if (c != m_camType) {
 		m_camType = c;
-		Pi::player->GetPlayerController()->SetMouseForRearView(c == CAM_REAR);
+		GetPlayerController()->SetMouseForRearView(c == CAM_REAR);
 		onChangeCamType.emit();
 	}
 }
@@ -325,13 +326,13 @@ void WorldView::OnChangeFlightState(Gui::MultiStateImageButton *b)
 		}
 	}
 	b->SetActiveState(newState);
-	Pi::player->GetPlayerController()->SetFlightControlState(static_cast<FlightControlState>(newState));
+	GetPlayerController()->SetFlightControlState(static_cast<FlightControlState>(newState));
 }
 
 /* This is when the flight control state actually changes... */
 void WorldView::OnPlayerChangeFlightControlState()
 {
-	m_flightControlButton->SetActiveState(Pi::player->GetPlayerController()->GetFlightControlState());
+	m_flightControlButton->SetActiveState(GetPlayerController()->GetFlightControlState());
 }
 
 void WorldView::OnChangeLabelsState(Gui::MultiStateImageButton *b)
@@ -378,6 +379,14 @@ WorldView::CamType WorldView::GetCamType() const
 	} else {
 		return m_camType;
 	}
+}
+
+void WorldView::SetCameraBody(const Body *b)
+{
+	m_externalCamera->SetBody(b);
+	m_frontCamera->SetBody(b);
+	m_rearCamera->SetBody(b);
+	m_siderealCamera->SetBody(b);
 }
 
 void WorldView::Draw3D()
@@ -444,14 +453,14 @@ void WorldView::RefreshButtonStateAndVisibility()
 
 			case Ship::FLYING:
 			default:
-				const FlightControlState fstate = Pi::player->GetPlayerController()->GetFlightControlState();
+				const FlightControlState fstate = GetPlayerController()->GetFlightControlState();
 				switch (fstate) {
 					case CONTROL_MANUAL:
 						m_flightStatus->SetText(Lang::MANUAL_CONTROL); break;
 
 					case CONTROL_FIXSPEED: {
 						std::string msg;
-						const double setspeed = Pi::player->GetPlayerController()->GetSetSpeed();
+						const double setspeed = GetPlayerController()->GetSetSpeed();
 						if (setspeed > 1000) {
 							msg = stringf(Lang::SET_SPEED_KM_S, formatarg("speed", setspeed*0.001));
 						} else {
@@ -1000,17 +1009,17 @@ void WorldView::OnPlayerChangeTarget()
 
 static void autopilot_flyto(Body *b)
 {
-	Pi::player->GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
+	WorldView::GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
 	Pi::player->AIFlyTo(b);
 }
 static void autopilot_dock(Body *b)
 {
-	Pi::player->GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
+	WorldView::GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
 	Pi::player->AIDock(static_cast<SpaceStation*>(b));
 }
 static void autopilot_orbit(Body *b, double alt)
 {
-	Pi::player->GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
+	WorldView::GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
 	Pi::player->AIOrbit(b, alt);
 }
 
@@ -1101,6 +1110,13 @@ void WorldView::UpdateCommsOptions()
 		button->onClick.connect(sigc::bind(sigc::ptr_fun(autopilot_flyto), comtarget));
 		ypos += 32;
 	}
+}
+
+PlayerShipController *WorldView::GetPlayerController()
+{
+	PlayerShipController *c = dynamic_cast<PlayerShipController*>(Pi::game->GetPlayer()->GetShip()->GetController());
+	assert(c);
+	return c;
 }
 
 void WorldView::SelectBody(Body *target, bool reselectIsDeselect)
@@ -1196,8 +1212,8 @@ void WorldView::UpdateProjectedObjects()
 		HideIndicator(m_velIndicator);
 
 	// orientation according to mouse
-	if (Pi::player->GetPlayerController()->IsMouseActive()) {
-		vector3d mouseDir = Pi::player->GetPlayerController()->GetMouseDir() * cam_rot;
+	if (GetPlayerController()->IsMouseActive()) {
+		vector3d mouseDir = GetPlayerController()->GetMouseDir() * cam_rot;
 		if (GetCamType() == CAM_REAR)
 			mouseDir = -mouseDir;
 		UpdateIndicator(m_mouseDirIndicator, (Pi::player->GetBoundingRadius() * 1.5) * mouseDir);

@@ -14,6 +14,7 @@
 
 Player::Player(ShipType::Type shipType): Ship(shipType)
 {
+	isPlayerShip = true;
 	SetController(new PlayerShipController());
 	UpdateMass();
 }
@@ -104,11 +105,6 @@ void Player::OnEnterSystem()
 }
 
 //temporary targeting stuff
-PlayerShipController *Player::GetPlayerController() const
-{
-	return static_cast<PlayerShipController*>(GetController());
-}
-
 Body *Player::GetCombatTarget() const
 {
 	return static_cast<PlayerShipController*>(m_controller)->GetCombatTarget();

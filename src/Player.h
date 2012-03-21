@@ -22,7 +22,6 @@ public:
 	virtual void SetAlertState(Ship::AlertState as);
 	virtual void NotifyRemoved(const Body* const removedBody);
 
-	PlayerShipController *GetPlayerController() const;
 	//XXX temporary things to avoid causing too many changes right now
 	Body *GetCombatTarget() const;
 	Body *GetNavTarget() const;

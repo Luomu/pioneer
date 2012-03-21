@@ -20,6 +20,7 @@ public:
 	void Draw(Graphics::Renderer *r);
 
 	const Body *GetBody() const { return m_body; }
+	void SetBody(const Body *b) { m_body = b;; }
 
 	// camera position relative to the body
 	void SetPosition(const vector3d &pos) { m_pose.SetTranslate(pos); }

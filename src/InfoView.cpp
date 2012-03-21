@@ -110,7 +110,7 @@ public:
 class CargoPage: public InfoViewPage {
 public:
 	CargoPage(InfoView *v) : InfoViewPage(v) {
-		Pi::game->GetPlayer()->GetCurrentShip()->m_equipment.onChange.connect(sigc::mem_fun(*this, &CargoPage::HandleEquipChange));
+		Pi::game->GetPlayer()->GetShip()->m_equipment.onChange.connect(sigc::mem_fun(*this, &CargoPage::HandleEquipChange));
 	}
 
 	virtual void Show() {

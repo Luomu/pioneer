@@ -5,7 +5,7 @@
 
 namespace Pioneer {
 
-Player::Player() : MarketAgent() { }
+Player::Player() : MarketAgent(), m_ship(0) { }
 
 Player::~Player() { }
 
@@ -20,28 +20,43 @@ void Player::Load(Serializer::Reader &rd)
 	MarketAgent::Load(rd);
 }
 
-Ship *Player::GetCurrentShip() const
+Ship *Player::GetShip() const
 {
-	return Pi::player;
+	return m_ship;
+}
+
+void Player::SetShip(Ship *ship)
+{
+	Ship *currentShip = GetShip();
+	//XXX could be better to just Deactivate the current PlayerShipController.
+	//currentShip->SetController(new ShipController());
+	if (currentShip) {
+		currentShip->GetController()->m_active = false;
+		currentShip->isPlayerShip = false;
+	}
+	ship->SetController(new PlayerShipController());
+	ship->isPlayerShip = true;
+	m_ship = ship;
+	if (Pi::worldView) Pi::worldView->SetCameraBody(ship);
 }
 
 void Player::Bought(Equip::Type t)
 {
-	GetCurrentShip()->m_equipment.Add(t);
-	GetCurrentShip()->UpdateMass(); //XXX shouldn't equip add do this
+	GetShip()->m_equipment.Add(t);
+	GetShip()->UpdateMass(); //XXX shouldn't equip add do this
 }
 
 void Player::Sold(Equip::Type t)
 {
-	GetCurrentShip()->m_equipment.Remove(t, 1);
-	GetCurrentShip()->UpdateMass();
+	GetShip()->m_equipment.Remove(t, 1);
+	GetShip()->UpdateMass();
 }
 
 bool Player::CanBuy(Equip::Type t, bool verbose) const
 {
 	Equip::Slot slot = Equip::types[int(t)].slot;
-	const bool freespace = (GetCurrentShip()->m_equipment.FreeSpace(slot)!=0);
-	const bool freecapacity = (GetCurrentShip()->m_stats.free_capacity >= Equip::types[int(t)].mass);
+	const bool freespace = (GetShip()->m_equipment.FreeSpace(slot)!=0);
+	const bool freecapacity = (GetShip()->m_stats.free_capacity >= Equip::types[int(t)].mass);
 	if (verbose) {
 		if (!freespace) {
 			Pi::Message(Lang::NO_FREE_SPACE_FOR_ITEM);
@@ -56,7 +71,7 @@ bool Player::CanBuy(Equip::Type t, bool verbose) const
 bool Player::CanSell(Equip::Type t, bool verbose) const
 {
 	Equip::Slot slot = Equip::types[int(t)].slot;
-	const bool cansell = (GetCurrentShip()->m_equipment.Count(slot, t) > 0);
+	const bool cansell = (GetShip()->m_equipment.Count(slot, t) > 0);
 	if (verbose) {
 		if (!cansell) {
 			Pi::Message(stringf(Lang::YOU_DO_NOT_HAVE_ANY_X, formatarg("item", Equip::types[int(t)].name)));
@@ -67,8 +82,8 @@ bool Player::CanSell(Equip::Type t, bool verbose) const
 
 Sint64 Player::GetPrice(Equip::Type t) const
 {
-	if (GetCurrentShip()->GetDockedWith()) {
-		return GetCurrentShip()->GetDockedWith()->GetPrice(t);
+	if (GetShip()->GetDockedWith()) {
+		return GetShip()->GetDockedWith()->GetPrice(t);
 	} else {
 		assert(0);
 		return 0;

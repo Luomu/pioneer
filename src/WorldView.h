@@ -13,6 +13,7 @@ class Body;
 class Frame;
 class LabelSet;
 class Ship;
+class PlayerShipController;
 namespace Gui { class TexturedQuad; }
 
 class WorldView: public View {
@@ -36,6 +37,7 @@ public:
 	enum CamType { CAM_FRONT, CAM_REAR, CAM_EXTERNAL, CAM_SIDEREAL };
 	void SetCamType(enum CamType);
 	enum CamType GetCamType() const;
+	void SetCameraBody(const Body *b); //update all cameras
 	int GetNumLights() const { return m_numLights; }
 	void ToggleTargetActions();
 	void ShowTargetActions();
@@ -50,6 +52,7 @@ public:
 	
 	matrix4x4d m_siderealViewOrient;
 	double m_siderealViewDist;
+	static PlayerShipController *GetPlayerController(); //XXX sigh, static+public because of some static funcs
 
 private:
 	void InitObject();

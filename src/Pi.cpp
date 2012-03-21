@@ -116,7 +116,7 @@ int Pi::mouseMotion[2];
 bool Pi::doingMouseGrab = false;
 Player *Pi::player;
 View *Pi::currentView;
-WorldView *Pi::worldView;
+WorldView *Pi::worldView = 0;
 SpaceStationView *Pi::spaceStationView;
 InfoView *Pi::infoView;
 SectorView *Pi::sectorView;

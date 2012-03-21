@@ -613,6 +613,7 @@ void Game::CreateViews()
 	// XXX views expect Pi::game and Pi::player to exist
 	Pi::game = this;
 	Pi::player = m_player.Get();
+	m_playerCharacter->SetShip(Pi::player);
 
 	Pi::cpan = new ShipCpanel(Pi::renderer);
 	Pi::sectorView = new SectorView();

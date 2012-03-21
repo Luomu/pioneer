@@ -163,7 +163,8 @@ void Ship::PostLoadFixup(Space *space)
 
 Ship::Ship(ShipType::Type shipType): DynamicBody(),
 	m_controller(0),
-	m_thrusterFuel(1.f)
+	m_thrusterFuel(1.f),
+	isPlayerShip(false)
 {
 	m_flightState = FLYING;
 	m_alertState = ALERT_NONE;
@@ -208,7 +209,6 @@ void Ship::SetController(ShipController *c)
 	m_controller = c;
 	m_controller->m_ship = this;
 }
-
 
 float Ship::GetPercentHull() const
 {
@@ -1102,9 +1102,10 @@ void Ship::Render(Graphics::Renderer *renderer, const vector3d &viewCoords, cons
 {
 	if (IsDead() || (!IsEnabled()) && !m_flightState) return;
 	LmrObjParams &params = GetLmrObjParams();
-	
-	if ( (!this->IsType(Object::PLAYER)) ||
-	     (Pi::worldView->GetCamType() == WorldView::CAM_EXTERNAL) ||
+
+	//XXX replace with camera-based check - any ship could be the camera body
+	if ((!isPlayerShip) ||
+	    (Pi::worldView->GetCamType() == WorldView::CAM_EXTERNAL) ||
 		(Pi::worldView->GetCamType() == WorldView::CAM_SIDEREAL)) {
 		m_shipFlavour.ApplyTo(&params);
 		SetLmrTimeParams();

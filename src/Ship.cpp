@@ -63,6 +63,7 @@ void Ship::Save(Serializer::Writer &wr, Space *space)
 	wr.Int32(int(m_flightState));
 	wr.Int32(int(m_alertState));
 	wr.Double(m_lastFiringAlert);
+	wr.Bool(m_criticalDamageReported);
 
 	// XXX make sure all hyperspace attrs and the cloud get saved
 	m_hyperspace.dest.Serialize(wr);
@@ -102,6 +103,7 @@ void Ship::Load(Serializer::Reader &rd, Space *space)
 	m_flightState = FlightState(rd.Int32());
 	m_alertState = AlertState(rd.Int32());
 	m_lastFiringAlert = rd.Double();
+	m_criticalDamageReported = rd.Bool();
 	
 	m_hyperspace.dest = SystemPath::Unserialize(rd);
 	m_hyperspace.countdown = rd.Float();
@@ -165,7 +167,8 @@ void Ship::PostLoadFixup(Space *space)
 Ship::Ship(ShipType::Type shipType): DynamicBody(),
 	m_controller(0),
 	m_thrusterFuel(1.f),
-	isPlayerShip(false)
+	isPlayerShip(false),
+	m_criticalDamageReported(false)
 {
 	m_flightState = FLYING;
 	m_alertState = ALERT_NONE;
@@ -227,6 +230,9 @@ void Ship::SetPercentHull(float p)
 {
 	const ShipType &stype = GetShipType();
 	m_stats.hull_mass_left = 0.01f * Clamp(p, 0.0f, 100.0f) * float(stype.hullMass);
+	//note: critical report is not triggered on SetPercentHull.
+	if (GetPercentHull() > 50.f)
+		m_criticalDamageReported = false;
 }
 
 void Ship::UpdateMass()
@@ -281,6 +287,10 @@ bool Ship::OnDamage(Object *attacker, float kgDamage)
 		}
 	}
 
+	if (GetPercentHull() < 25.f && !m_criticalDamageReported && !IsDead()) {
+		onHullCritical.emit();
+		m_criticalDamageReported = true;
+	}
 	//printf("Ouch! %s took %.1f kilos of damage from %s! (%.1f t hull left)\n", GetLabel().c_str(), kgDamage, attacker->GetLabel().c_str(), m_stats.hull_mass_left);
 	return true;
 }

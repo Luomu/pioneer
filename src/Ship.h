@@ -213,6 +213,7 @@ public:
 	sigc::signal<void> onDock;
 	sigc::signal<void> onUndock;
 	sigc::signal<void, Ship::AlertState> onAlertStateChanged;
+	sigc::signal<void> onHullCritical;
 
 protected:
 	virtual void Save(Serializer::Writer &wr, Space *space);
@@ -230,7 +231,6 @@ protected:
 	float m_gunRecharge[ShipType::GUNMOUNT_MAX];
 	float m_gunTemperature[ShipType::GUNMOUNT_MAX];
 	float m_ecmRecharge;
-
 	ShipController *m_controller;
 
 private:
@@ -256,6 +256,7 @@ private:
 
 	AlertState m_alertState;
 	double m_lastFiringAlert;
+	bool m_criticalDamageReported;
 
 	struct HyperspacingOut {
 		SystemPath dest;

@@ -17,16 +17,6 @@ Player::Player(ShipType::Type shipType): Ship(shipType)
 {
 }
 
-//XXX perhaps remove this, the sound is very annoying
-bool Player::OnDamage(Object *attacker, float kgDamage)
-{
-	bool r = Ship::OnDamage(attacker, kgDamage);
-	if (!IsDead() && (GetPercentHull() < 25.0f)) {
-		Sound::BodyMakeNoise(this, "warning", .5f);
-	}
-	return r;
-}
-
 void Player::NotifyRemoved(const Body* const removedBody)
 {
 	if (GetNavTarget() == removedBody)

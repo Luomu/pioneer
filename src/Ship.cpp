@@ -1,5 +1,6 @@
 #include "Ship.h"
 #include "CityOnPlanet.h"
+#include "HyperspaceCloud.h"
 #include "Lang.h"
 #include "Missile.h"
 #include "Projectile.h"

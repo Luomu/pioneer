@@ -2,13 +2,8 @@
 #define _PLAYER_H
 
 #include "libs.h"
-#include <list>
-#include "HyperspaceCloud.h"
-#include "MarketAgent.h"
-#include "RefList.h"
 #include "Ship.h"
 #include "ShipController.h"
-#include "StarSystem.h"
 #include "PlayerCharacter.h" //XXX to reduce the number of include changes
 
 namespace Graphics { class Renderer; }

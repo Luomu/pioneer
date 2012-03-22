@@ -1,6 +1,7 @@
 #include "Player.h"
 #include "Frame.h"
 #include "Game.h"
+#include "HyperspaceCloud.h"
 #include "KeyBindings.h"
 #include "Lang.h"
 #include "Pi.h"

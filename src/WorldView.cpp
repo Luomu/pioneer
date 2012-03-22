@@ -948,7 +948,7 @@ void WorldView::BuildCommsNavOptions()
 	}
 }
 
-void WorldView::PlayerRequestDockingClearance(SpaceStation *s) const
+static void PlayerRequestDockingClearance(SpaceStation *s)
 {
 	std::string msg;
 	s->GetDockingClearance(GetPlayerShip(), msg);

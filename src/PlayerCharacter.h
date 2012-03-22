@@ -3,6 +3,7 @@
  * The actual player. This file will be renamed to Player.*
  */
 #include "MarketAgent.h"
+#include "RefList.h"
 #include "Serializer.h"
 
 class Ship;

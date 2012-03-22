@@ -53,6 +53,7 @@ public:
 	virtual ~Ship();
 	void SetController(ShipController *c); //deletes existing
 	ShipController *GetController() const { return m_controller; }
+	bool IsPlayer() const { return isPlayerShip; }
 	bool isPlayerShip; //XXX temporary
 
 	virtual void SetDockedWith(SpaceStation *, int port);

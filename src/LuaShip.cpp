@@ -36,7 +36,7 @@
  *
  * Returns:
  *
- *   isplayer - true if the ship is the player, false otherwise
+ *   isplayer - true if the ship is controlled by the player, false otherwise
  *
  * Example:
  *
@@ -54,8 +54,9 @@
  */
 static int l_ship_is_player(lua_State *l)
 {
-    lua_pushboolean(l, false);
-    return 1;
+	Ship *s = LuaShip::GetFromLua(1);
+	lua_pushboolean(l, s->IsPlayer());
+	return 1;
 }
 
 /*

@@ -22,9 +22,6 @@ public:
 	void SetNavTarget(Body* const target, bool setSpeedTo = false);
 
 	Pioneer::Player *GetPlayer(); //XXX to avoid some lua work
-protected:
-	virtual void OnEnterSystem();
-	virtual void OnEnterHyperspace();
 };
 
 #endif /* _PLAYER_H */

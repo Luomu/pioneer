@@ -17,25 +17,6 @@ Player::Player(ShipType::Type shipType): Ship(shipType)
 {
 }
 
-//XXX ui stuff
-void Player::OnEnterHyperspace()
-{
-	SetNavTarget(0);
-	SetCombatTarget(0);
-
-	Pi::worldView->HideTargetActions(); // hide the comms menu
-	m_controller->SetFlightControlState(CONTROL_MANUAL); //could set CONTROL_HYPERDRIVE
-	ClearThrusterState();
-	Pi::game->WantHyperspace();
-}
-
-void Player::OnEnterSystem()
-{
-	m_controller->SetFlightControlState(CONTROL_MANUAL);
-	//XXX don't call sectorview from here, use signals instead
-	Pi::sectorView->ResetHyperspaceTarget();
-}
-
 //temporary targeting stuff
 Body *Player::GetCombatTarget() const
 {

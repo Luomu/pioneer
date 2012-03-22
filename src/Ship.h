@@ -221,9 +221,6 @@ protected:
 
 	bool AITimeStep(float timeStep); // Called by controller. Returns true if complete
 
-	virtual void OnEnterHyperspace();
-	virtual void OnEnterSystem();
-
 	SpaceStation *m_dockedWith;
 	int m_dockedWithPort;
 	ShipFlavour m_shipFlavour;

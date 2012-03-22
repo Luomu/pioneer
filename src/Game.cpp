@@ -328,6 +328,7 @@ bool Game::UpdateTimeAccel()
 void Game::WantHyperspace()
 {
 	assert(m_state == STATE_NORMAL);
+	Pi::worldView->HideTargetActions(); // hide the comms menu
 	m_wantHyperspace = true;
 }
 
@@ -524,6 +525,9 @@ void Game::SwitchToNormalSpace()
 	m_hyperspaceClouds.clear();
 
 	m_state = STATE_NORMAL;
+
+	//XXX don't call sectorview from here, use signals instead
+	Pi::sectorView->ResetHyperspaceTarget();
 }
 
 const float Game::s_timeAccelRates[] = {

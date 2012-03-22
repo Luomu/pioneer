@@ -40,6 +40,9 @@ public:
 	virtual void NotifyRemoved(const Body* const removedBody) { }
 	Ship *m_ship;
 
+	//targeting
+	virtual void ClearTargeting() { }
+
 	//XXX temporary. To stop input when switching ships.
 	bool m_active;
 };
@@ -70,6 +73,7 @@ public:
 	Body *GetCombatTarget() const;
 	Body *GetNavTarget() const;
 	Body *GetSetSpeedTarget() const;
+	void ClearTargeting();
 	void SetCombatTarget(Body* const target, bool setSpeedTo = false);
 	void SetNavTarget(Body* const target, bool setSpeedTo = false);
 

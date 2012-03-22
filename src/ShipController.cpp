@@ -313,6 +313,12 @@ Body *PlayerShipController::GetSetSpeedTarget() const
 	return m_setSpeedTarget;
 }
 
+void PlayerShipController::ClearTargeting()
+{
+	SetCombatTarget(0);
+	SetNavTarget(0);
+}
+
 void PlayerShipController::SetCombatTarget(Body* const target, bool setSpeedTo)
 {
 	if (setSpeedTo)

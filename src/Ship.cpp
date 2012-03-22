@@ -1267,32 +1267,30 @@ void Ship::EnterHyperspace() {
 
 	SetFlightState(Ship::HYPERSPACE);
 
-	// virtual call, do class-specific things
-	OnEnterHyperspace();
-}
+	if (isPlayerShip) {
+		m_controller->SetFlightControlState(CONTROL_MANUAL); //could set CONTROL_HYPERDRIVE
+		ClearThrusterState();
+		Pi::game->WantHyperspace();
+	} else {
+		//remove the ship and create a hypercloud
+		m_hyperspaceCloud = new HyperspaceCloud(this, Pi::game->GetTime() + m_hyperspace.duration, false);
+		m_hyperspaceCloud->SetFrame(GetFrame());
+		m_hyperspaceCloud->SetPosition(GetPosition());
 
-void Ship::OnEnterHyperspace() {
-	m_hyperspaceCloud = new HyperspaceCloud(this, Pi::game->GetTime() + m_hyperspace.duration, false);
-	m_hyperspaceCloud->SetFrame(GetFrame());
-	m_hyperspaceCloud->SetPosition(GetPosition());
+		Space *space = Pi::game->GetSpace();
 
-	Space *space = Pi::game->GetSpace();
-
-	space->RemoveBody(this);
-	space->AddBody(m_hyperspaceCloud);
+		space->RemoveBody(this);
+		space->AddBody(m_hyperspaceCloud);
+	}
 }
 
 void Ship::EnterSystem() {
 	assert(GetFlightState() == Ship::HYPERSPACE);
 
-	// virtual call, do class-specific things
-	OnEnterSystem();
+	m_controller->SetFlightControlState(CONTROL_MANUAL); //AI ships effectively ignore this
+	m_hyperspaceCloud = 0;
 
 	SetFlightState(Ship::FLYING);
 
 	Pi::luaOnEnterSystem->Queue(this);
-}
-
-void Ship::OnEnterSystem() {
-	m_hyperspaceCloud = 0;
 }

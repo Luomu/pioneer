@@ -266,6 +266,7 @@
     <ClCompile Include="..\..\src\PiLuaClasses.cpp" />
     <ClCompile Include="..\..\src\Planet.cpp" />
     <ClCompile Include="..\..\src\Player.cpp" />
+    <ClCompile Include="..\..\src\PlayerCharacter.cpp" />
     <ClCompile Include="..\..\src\Polit.cpp" />
     <ClCompile Include="..\..\src\Projectile.cpp" />
     <ClCompile Include="..\..\src\Sector.cpp" />
@@ -503,6 +504,7 @@
     <ClInclude Include="..\..\src\PiLuaClasses.h" />
     <ClInclude Include="..\..\src\Planet.h" />
     <ClInclude Include="..\..\src\Player.h" />
+    <ClInclude Include="..\..\src\PlayerCharacter.h" />
     <ClInclude Include="..\..\src\Polit.h" />
     <ClInclude Include="..\..\src\Projectile.h" />
     <ClInclude Include="..\..\src\Quaternion.h" />

@@ -114,7 +114,7 @@ void PlayerShipController::StaticUpdate(const float timeStep)
 void PlayerShipController::CheckControlsLock()
 {
 	m_controlsLocked = (Pi::game->IsPaused())
-		|| Pi::player->IsDead()
+		|| m_ship->IsDead()
 		|| (m_ship->GetFlightState() != Ship::FLYING)
 		|| Pi::IsConsoleActive()
 		|| (Pi::GetView() != Pi::worldView); //to prevent moving the ship in starmap etc.

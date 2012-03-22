@@ -737,7 +737,7 @@ void Ship::DoThrusterSounds() const
 		sndev.Play("Thruster_large", 0.0f, 0.0f, Sound::OP_REPEAT);
 		sndev.VolumeAnimate(targetVol, dv_dt);
 	}
-	float angthrust = 0.1f * v_env * float(Pi::player->GetAngThrusterState().Length());
+	float angthrust = 0.1f * v_env * float(GetAngThrusterState().Length());
 
 	static Sound::Event angThrustSnd;
 	if (!angThrustSnd.VolumeAnimate(angthrust, angthrust, 5.0f, 5.0f)) {
@@ -1038,7 +1038,7 @@ void Ship::StaticUpdate(const float timeStep)
 
 	// XXX any ship being the current camera body should emit sounds
 	// also, ship sounds could be split to internal and external sounds
-	if (Pi::player == this) DoThrusterSounds();
+	if (isPlayerShip) DoThrusterSounds();
 }
 
 void Ship::NotifyRemoved(const Body* const removedBody)

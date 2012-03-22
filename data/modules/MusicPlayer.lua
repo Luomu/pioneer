@@ -54,9 +54,9 @@ local playAmbient = function ()
 	-- they'd say they're not near it, so only use its rotating frame (which
 	-- only extends to about the radius of the atmosphere). orbital stations
 	-- however are tiny so use their whole frame
-	local near = Game.player.frameBody
+	local near = Game.player.ship.frameBody
 	if near then
-		if near:isa("Planet") and Game.player.frameRotating then
+		if near:isa("Planet") and Game.player.ship.frameRotating then
 			category = "near-planet"
 		elseif near:isa("SpaceStation") then
 			category = "near-spacestation"

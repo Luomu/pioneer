@@ -508,7 +508,7 @@ static int l_ship(lua_State *l)
 {
 	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 	LuaShip::PushToLua(p->GetShip());
-	return 0;
+	return 1;
 }
 
 template <> const char *LuaObject<Pioneer::Player>::s_type = "Player";

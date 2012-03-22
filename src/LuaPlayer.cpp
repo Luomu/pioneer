@@ -1,8 +1,9 @@
 #include "LuaPlayer.h"
-#include "LuaSystemPath.h"
 #include "LuaBody.h"
-#include "LuaUtils.h"
 #include "LuaConstants.h"
+#include "LuaShip.h"
+#include "LuaSystemPath.h"
+#include "LuaUtils.h"
 #include "Player.h"
 #include "Polit.h"
 
@@ -152,7 +153,7 @@ static void _table_to_mission(lua_State *l, Mission &m, bool create)
  */
 static int l_player_add_mission(lua_State *l)
 {
-	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 
 	Mission m;
 	_table_to_mission(l, m, true);
@@ -189,7 +190,7 @@ static int l_player_add_mission(lua_State *l)
  */
 static int l_player_get_mission(lua_State *l)
 {
-	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 	int ref = luaL_checkinteger(l, 2);
 	const Mission *m = p->missions.Get(ref);
 	if (!m)
@@ -234,7 +235,7 @@ static int l_player_get_mission(lua_State *l)
  */
 static int l_player_update_mission(lua_State *l)
 {
-	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 	int ref = luaL_checkinteger(l, 2);
 
 	const Mission *m = p->missions.Get(ref);
@@ -270,7 +271,7 @@ static int l_player_update_mission(lua_State *l)
  */
 static int l_player_remove_mission(lua_State *l)
 {
-	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 	int ref = luaL_checkinteger(l, 2);
 	p->missions.Remove(ref);
 	return 0;
@@ -297,7 +298,7 @@ static int l_player_remove_mission(lua_State *l)
  */
 static int l_player_get_money(lua_State *l)
 {
-	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 	lua_pushnumber(l, p->GetMoney()*0.01);
 	return 1;
 } 
@@ -323,7 +324,7 @@ static int l_player_get_money(lua_State *l)
  */
 static int l_player_set_money(lua_State *l)
 {
-	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 	float m = luaL_checknumber(l, 2);
 	p->SetMoney(Sint64(m*100.0));
 	return 0;
@@ -354,7 +355,7 @@ static int l_player_set_money(lua_State *l)
  */
 static int l_player_add_money(lua_State *l)
 {
-	Pioneer::Player *p = LuaPlayer::GetFromLua(1)->GetPlayer();
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 	float a = luaL_checknumber(l, 2);
 	Sint64 m = p->GetMoney() + Sint64(a*100.0);
 	p->SetMoney(m);
@@ -414,7 +415,7 @@ static int l_player_add_crime(lua_State *l)
 
 static int l_get_nav_target(lua_State *l)
 {
-	Player *p = LuaPlayer::GetFromLua(1);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 	LuaBody::PushToLua(p->GetNavTarget());
 	return 1;
 }
@@ -441,7 +442,7 @@ static int l_get_nav_target(lua_State *l)
 
 static int l_set_nav_target(lua_State *l)
 {
-	Player *p = LuaPlayer::GetFromLua(1);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 	Body *target = LuaBody::GetFromLua(2);
     p->SetNavTarget(target);
     return 0;
@@ -469,7 +470,7 @@ static int l_set_nav_target(lua_State *l)
 
 static int l_get_combat_target(lua_State *l)
 {
-	Player *p = LuaPlayer::GetFromLua(1);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 	LuaBody::PushToLua(p->GetCombatTarget());
 	return 1;
 }
@@ -496,20 +497,23 @@ static int l_get_combat_target(lua_State *l)
 
 static int l_set_combat_target(lua_State *l)
 {
-	Player *p = LuaPlayer::GetFromLua(1);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
 	Body *target = LuaBody::GetFromLua(2);
     p->SetCombatTarget(target);
     return 0;
 }
 
-static bool promotion_test(DeleteEmitter *o)
+//XXX doc me
+static int l_ship(lua_State *l)
 {
-	return dynamic_cast<Player*>(o);
+	Pioneer::Player *p = LuaPlayer::GetFromLua(1);
+	LuaShip::PushToLua(p->GetShip());
+	return 0;
 }
 
-template <> const char *LuaObject<Player>::s_type = "Player";
+template <> const char *LuaObject<Pioneer::Player>::s_type = "Player";
 
-template <> void LuaObject<Player>::RegisterClass()
+template <> void LuaObject<Pioneer::Player>::RegisterClass()
 {
 	static const char *l_parent = "Ship";
 
@@ -533,6 +537,10 @@ template <> void LuaObject<Player>::RegisterClass()
 		{ 0, 0 }
 	};
 
-	LuaObjectBase::CreateClass(s_type, l_parent, l_methods, NULL, NULL);
-	LuaObjectBase::RegisterPromotion(l_parent, s_type, promotion_test);
+	static const luaL_reg l_attrs[] = {
+		{ "ship", l_ship },
+		{ 0, 0 }
+	};
+
+	LuaObjectBase::CreateClass(s_type, NULL, l_methods, l_attrs, NULL);
 }

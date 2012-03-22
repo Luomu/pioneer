@@ -4,6 +4,6 @@
 #include "LuaObject.h"
 #include "Player.h"
 
-typedef LuaObject<Player> LuaPlayer;
+typedef LuaObject<Pioneer::Player> LuaPlayer;
 
 #endif

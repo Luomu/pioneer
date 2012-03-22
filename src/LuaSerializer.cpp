@@ -296,9 +296,6 @@ const char *LuaSerializer::unpickle(lua_State *l, const char *pos)
 					case Object::STAR:
 						LuaStar::PushToLua(dynamic_cast<Star*>(body));
 						break;
-					case Object::PLAYER:
-						LuaPlayer::PushToLua(dynamic_cast<Player*>(body));
-						break;
 					default:
 						throw SavedGameCorruptException();
 				}

@@ -35,7 +35,7 @@ static int l_game_meta_index(lua_State *l)
 	 *  stable
 	 */
 	if (strcmp(key, "player") == 0) {
-		LuaPlayer::PushToLua(Pi::playerShip);
+		LuaPlayer::PushToLua(Pi::game->GetPlayer());
 		return 1;
 	}
 

@@ -441,7 +441,7 @@ function ExternalCtr:init (station, urgency, risk)
    end
    self.reward = roundup (self.reward * (1 + 4 * risk), 100)
    self.due = roundup (self.due + Game.time, 3600)
-   local verbose = (station == Game.player:GetDockedWith())
+   local verbose = (station == Game.player.ship:GetDockedWith())
    if verbose then
       print (ship.name.." "..Format.Date (self.due))
    end
@@ -550,10 +550,10 @@ function Advert:desc()
 end
 
 local function heavy_duty_check (flavours, station, bbcreate)
-   return station:DistanceTo (Game.player) > 0.02 * AU or
+   return station:DistanceTo (Game.player.ship) > 0.02 * AU or
       -- the spath calculation is a way too slow for lua.
       flavours.localdelivery == 0 and
-      bbcreate and station ~= Game.player:GetDockedWith()
+      bbcreate and station ~= Game.player.ship:GetDockedWith()
 end
 
 local function makeAdvert (station, bbcreate)
@@ -623,10 +623,10 @@ local function spawnPirates (n, ships, mission)
 	       string.sub (e,0,11) == 'PULSECANNON'
 	 end)
       local laser = lasers[Engine.rand:Integer(1, #lasers)]
-      ship = Space.SpawnShipNear (shipname, Game.player, 50, 100)
+      ship = Space.SpawnShipNear (shipname, Game.player.ship, 50, 100)
       ship:AddEquip (default_drive)
       ship:AddEquip (laser)
-      ship:AIKill (Game.player)
+      ship:AIKill (Game.player.ship)
    end
    if ship then
       local pirate_greeting =
@@ -718,7 +718,7 @@ local function onGameStart ()
    if not loaded_data then
       return
    end
-   station = Game.player:GetDockedWith()
+   station = Game.player.ship:GetDockedWith()
    if station then -- onCreateBB will not be called
       updates[station] = Game.time
    end

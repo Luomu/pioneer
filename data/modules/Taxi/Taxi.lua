@@ -15,14 +15,14 @@ local missions = {}
 local passengers = 0
 
 local add_passengers = function (group)
-	Game.player:RemoveEquip('UNOCCUPIED_CABIN', group)
-	Game.player:AddEquip('PASSENGER_CABIN', group)
+	Game.player.ship:RemoveEquip('UNOCCUPIED_CABIN', group)
+	Game.player.ship:AddEquip('PASSENGER_CABIN', group)
 	passengers = passengers + group
 end
 
 local remove_passengers = function (group)
-	Game.player:RemoveEquip('PASSENGER_CABIN', group)
-	Game.player:AddEquip('UNOCCUPIED_CABIN', group)
+	Game.player.ship:RemoveEquip('PASSENGER_CABIN', group)
+	Game.player.ship:AddEquip('UNOCCUPIED_CABIN', group)
 	passengers = passengers - group
 end
 
@@ -69,8 +69,8 @@ local onChat = function (form, ref, option)
 		form:SetMessage(howmany)
 
 	elseif option == 3 then
-		local capacity = Game.player:GetEquipSlotCapacity('CABIN')
-		if capacity < ad.group or Game.player:GetEquipCount('CABIN', 'UNOCCUPIED_CABIN') < ad.group then
+		local capacity = Game.player.ship:GetEquipSlotCapacity('CABIN')
+		if capacity < ad.group or Game.player.ship:GetEquipCount('CABIN', 'UNOCCUPIED_CABIN') < ad.group then
 			form:SetMessage(t("You do not have enough cabin space on your ship."))
 			form:AddOption(t('HANG_UP'), -1)
 			return
@@ -231,7 +231,7 @@ local onEnterSystem = function (player)
 					end)
 					local laser = lasers[Engine.rand:Integer(1,#lasers)]
 
-					ship = Space.SpawnShipNear(shipname, Game.player, 50, 100)
+					ship = Space.SpawnShipNear(shipname, Game.player.ship, 50, 100)
 					ship:AddEquip(default_drive)
 					ship:AddEquip(laser)
 					ship:AddEquip('SHIELD_GENERATOR', math.ceil(risk * 3))
@@ -241,7 +241,7 @@ local onEnterSystem = function (player)
 					if Engine.rand:Number(3) <= risk then
 						ship:AddEquip('SHIELD_ENERGY_BOOSTER')
 					end
-					ship:AIKill(Game.player)
+					ship:AIKill(Game.player.ship)
 				end
 			end
 
@@ -289,7 +289,7 @@ end
 
 local onShipUndocked = function (player, station)
 	if not player:IsPlayer() then return end
-	local current_passengers = Game.player:GetEquipCount('CABIN', 'PASSENGER_CABIN')
+	local current_passengers = Game.player.ship:GetEquipCount('CABIN', 'PASSENGER_CABIN')
 	if current_passengers >= passengers then return end -- nothing changed, good
 
 	for ref,mission in pairs(missions) do

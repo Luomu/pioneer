@@ -30,6 +30,18 @@ static const Color s_hudTextColor(0.0f,1.0f,0.0f,0.9f);
 
 #define HUD_CROSSHAIR_SIZE	24.0f
 
+static inline Ship *GetPlayerShip()
+{
+	return Pi::game->GetPlayer()->GetShip();
+}
+
+static inline PlayerShipController *GetPlayerController()
+{
+	PlayerShipController *c = dynamic_cast<PlayerShipController*>(Pi::game->GetPlayer()->GetShip()->GetController());
+	assert(c);
+	return c;
+}
+
 WorldView::WorldView(): View()
 {
 	m_showHyperspaceButton = false;
@@ -37,7 +49,7 @@ WorldView::WorldView(): View()
 	m_externalViewDist = 200;
 	m_siderealViewOrient = matrix4x4d::Identity();
 	m_siderealViewDist = 200;
-	m_prevShipOrient = Pi::player->GetTransformRelTo(Pi::game->GetSpace()->GetRootFrame());
+	m_prevShipOrient = GetPlayerShip()->GetTransformRelTo(Pi::game->GetSpace()->GetRootFrame());
 	m_camType = CAM_FRONT;
 
 	InitObject();
@@ -50,7 +62,7 @@ WorldView::WorldView(Serializer::Reader &rd): View()
 	m_externalViewDist = rd.Float();
 	for (int i = 0; i < 16; i++) m_siderealViewOrient[i] = rd.Float();
 	m_siderealViewDist = rd.Float();
-	m_prevShipOrient = Pi::player->GetTransformRelTo(Pi::game->GetSpace()->GetRootFrame());
+	m_prevShipOrient = GetPlayerShip()->GetTransformRelTo(Pi::game->GetSpace()->GetRootFrame());
 	m_camType = CamType(rd.Int32());
 	m_showHyperspaceButton = rd.Bool();
 
@@ -199,10 +211,10 @@ void WorldView::InitObject()
 	Pi::renderer->GetNearFarRange(znear, zfar);
 
 	const float fovY = Pi::config->Float("FOVVertical");
-	m_frontCamera = new Camera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
-	m_rearCamera = new Camera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
-	m_externalCamera = new Camera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
-	m_siderealCamera = new Camera(Pi::player, Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
+	m_frontCamera = new Camera(GetPlayerShip(), Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
+	m_rearCamera = new Camera(GetPlayerShip(), Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
+	m_externalCamera = new Camera(GetPlayerShip(), Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
+	m_siderealCamera = new Camera(GetPlayerShip(), Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
 	
 	m_rearCamera->SetOrientation(matrix4x4d::RotateYMatrix(M_PI));
 	
@@ -221,11 +233,6 @@ void WorldView::InitObject()
 		Pi::player->m_equipment.onChange.connect(sigc::mem_fun(this, &WorldView::OnPlayerEquipmentChange));
 
 	GetPlayerController()->SetMouseForRearView(m_camType == CAM_REAR);
-}
-
-Ship *WorldView::GetPlayerShip() const
-{
-	return Pi::game->GetPlayer()->GetShip();
 }
 
 WorldView::~WorldView()
@@ -280,7 +287,7 @@ matrix4x4d WorldView::GetExternalViewRotation()
 
 void WorldView::UpdateSiderealView()
 {
-	matrix4x4d curShipOrient = Pi::player->GetInterpolatedTransformRelTo(Pi::game->GetSpace()->GetRootFrame());
+	matrix4x4d curShipOrient = GetPlayerShip()->GetInterpolatedTransformRelTo(Pi::game->GetSpace()->GetRootFrame());
 	
 	matrix4x4d invAngDisp = curShipOrient.InverseOf() * m_prevShipOrient;
 	m_siderealViewOrient = invAngDisp * m_siderealViewOrient;
@@ -304,7 +311,7 @@ matrix4x4d WorldView::GetSiderealViewRotation()
 void WorldView::OnChangeWheelsState(Gui::MultiStateImageButton *b)
 {
 	Pi::BoinkNoise();
-	if (!Pi::player->SetWheelState(b->GetState()!=0)) {
+	if (!GetPlayerShip()->SetWheelState(b->GetState()!=0)) {
 		b->StatePrev();
 	}
 }
@@ -361,14 +368,14 @@ void WorldView::OnClickBlastoff()
 
 void WorldView::OnClickHyperspace()
 {
-	if (Pi::player->IsHyperspaceActive()) {
+	if (GetPlayerShip()->IsHyperspaceActive()) {
 		// Hyperspace countdown in effect.. abort!
-		Pi::player->ResetHyperspaceCountdown();
+		GetPlayerShip()->ResetHyperspaceCountdown();
 		Pi::cpan->MsgLog()->Message("", Lang::HYPERSPACE_JUMP_ABORTED);
 	} else {
 		// Initiate hyperspace drive
 		SystemPath path = Pi::sectorView->GetHyperspaceTarget();
-		Pi::player->StartHyperspaceCountdown(path);
+		GetPlayerShip()->StartHyperspaceCountdown(path);
 	}
 }
 
@@ -419,7 +426,7 @@ static Color get_color_for_warning_meter_bar(float v) {
 
 void WorldView::RefreshButtonStateAndVisibility()
 {
-	if (!Pi::player || Pi::player->IsDead() || !Pi::game) {
+	if (!GetPlayerShip() || GetPlayerShip()->IsDead() || !Pi::game) {
 		HideAll();
 		return;
 	}
@@ -512,11 +519,11 @@ void WorldView::RefreshButtonStateAndVisibility()
 #if WITH_DEVKEYS
 	if (Pi::showDebugInfo) {
 		char buf[1024], aibuf[256];
-		vector3d pos = Pi::player->GetPosition();
-		vector3d abs_pos = Pi::player->GetPositionRelTo(Pi::game->GetSpace()->GetRootFrame());
-		const char *rel_to = (Pi::player->GetFrame() ? Pi::player->GetFrame()->GetLabel() : "System");
-		const char *rot_frame = (Pi::player->GetFrame()->IsRotatingFrame() ? "yes" : "no");
-		Pi::player->AIGetStatusText(aibuf); aibuf[255] = 0;
+		vector3d pos = GetPlayerShip()->GetPosition();
+		vector3d abs_pos = GetPlayerShip()->GetPositionRelTo(Pi::game->GetSpace()->GetRootFrame());
+		const char *rel_to = (GetPlayerShip()->GetFrame() ? GetPlayerShip()->GetFrame()->GetLabel() : "System");
+		const char *rot_frame = (GetPlayerShip()->GetFrame()->IsRotatingFrame() ? "yes" : "no");
+		GetPlayerShip()->AIGetStatusText(aibuf); aibuf[255] = 0;
 		snprintf(buf, sizeof(buf), "Pos: %.1f,%.1f,%.1f\n"
 			"AbsPos: %.1f,%.1f,%.1f (%.3f AU)\n"
 			"Rel-to: %s (%.0f km), rotating: %s\n" "%s",
@@ -609,7 +616,7 @@ void WorldView::RefreshButtonStateAndVisibility()
 				m_hudPressure->SetText(stringf(Lang::PRESSURE_N_BAR, formatarg("pressure", pressure)));
 				m_hudPressure->Show();
 
-				m_hudHullTemp->SetValue(float(Pi::player->GetHullTemperature()));
+				m_hudHullTemp->SetValue(float(GetPlayerShip()->GetHullTemperature()));
 				m_hudHullTemp->Show();
 			} else {
 				m_hudPressure->Hide();
@@ -697,7 +704,7 @@ void WorldView::RefreshButtonStateAndVisibility()
 			m_hudTargetInfo->Show();
 		}
 
-		else if (b->IsType(Object::HYPERSPACECLOUD) && Pi::player->m_equipment.Get(Equip::SLOT_HYPERCLOUD) == Equip::HYPERCLOUD_ANALYZER) {
+		else if (b->IsType(Object::HYPERSPACECLOUD) && GetPlayerShip()->m_equipment.Get(Equip::SLOT_HYPERCLOUD) == Equip::HYPERCLOUD_ANALYZER) {
 			HyperspaceCloud *cloud = static_cast<HyperspaceCloud*>(b);
 
 			m_hudTargetHullIntegrity->Hide();
@@ -739,8 +746,8 @@ void WorldView::RefreshButtonStateAndVisibility()
 		m_hudTargetInfo->Hide();
 	}
 
-	if (Pi::player->IsHyperspaceActive()) {
-		float val = Pi::player->GetHyperspaceCountdown();
+	if (GetPlayerShip()->IsHyperspaceActive()) {
+		float val = GetPlayerShip()->GetHyperspaceCountdown();
 
 		if (!(int(ceil(val*2.0)) % 2)) {
 			m_hudHyperspaceInfo->SetText(stringf(Lang::HYPERSPACING_IN_N_SECONDS, formatarg("countdown", ceil(val))));
@@ -769,7 +776,7 @@ void WorldView::Update()
 	m_bodyLabels->SetLabelsVisible(m_labelsOn);
 
 	//death animation: slowly pan out
-	if (Pi::player->IsDead()) {
+	if (GetPlayerShip()->IsDead()) {
 		m_camType = CAM_EXTERNAL;
 		m_externalViewRotX = 0.0;
 		m_externalViewRotY = 0.0;
@@ -786,10 +793,10 @@ void WorldView::Update()
 				if (Pi::KeyState(SDLK_EQUALS)) m_externalViewDist -= 400*frameTime;
 				if (Pi::KeyState(SDLK_MINUS)) m_externalViewDist += 400*frameTime;
 				if (Pi::KeyState(SDLK_HOME)) m_externalViewDist = 200;
-				m_externalViewDist = std::max(Pi::player->GetBoundingRadius(), m_externalViewDist);
+				m_externalViewDist = std::max(GetPlayerShip()->GetBoundingRadius(), m_externalViewDist);
 
 				// when landed don't let external view look from below
-				if (Pi::player->GetFlightState() == Ship::LANDED || Pi::player->GetFlightState() == Ship::DOCKED)
+				if (GetPlayerShip()->GetFlightState() == Ship::LANDED || GetPlayerShip()->GetFlightState() == Ship::DOCKED)
 					m_externalViewRotX = Clamp(m_externalViewRotX, -170.0, -10.0);
 			}
 			if (GetCamType() == CAM_SIDEREAL) {
@@ -826,7 +833,7 @@ void WorldView::Update()
 				if (Pi::KeyState(SDLK_EQUALS)) m_siderealViewDist -= 400*frameTime;
 				if (Pi::KeyState(SDLK_MINUS)) m_siderealViewDist += 400*frameTime;
 				if (Pi::KeyState(SDLK_HOME)) m_siderealViewDist = 200;
-				m_siderealViewDist = std::max(Pi::player->GetBoundingRadius(), m_siderealViewDist);
+				m_siderealViewDist = std::max(GetPlayerShip()->GetBoundingRadius(), m_siderealViewDist);
 			}
 			if (KeyBindings::targetObject.IsActive()) {
 				/* Hitting tab causes objects in the crosshairs to be selected */
@@ -899,7 +906,7 @@ Gui::Button *WorldView::AddCommsOption(std::string msg, int ypos, int optnum)
 
 void WorldView::OnClickCommsNavOption(Body *target)
 {
-	Pi::player->SetNavTarget(target);
+	GetPlayerController()->SetNavTarget(target);
 	m_showTargetActionsTimeout = SDL_GetTicks();
 }
 
@@ -941,10 +948,10 @@ void WorldView::BuildCommsNavOptions()
 	}
 }
 
-static void PlayerRequestDockingClearance(SpaceStation *s)
+void WorldView::PlayerRequestDockingClearance(SpaceStation *s) const
 {
 	std::string msg;
-	s->GetDockingClearance(Pi::player, msg);
+	s->GetDockingClearance(GetPlayerShip(), msg);
 	Pi::cpan->MsgLog()->ImportantMessage(s->GetLabel(), msg);
 }
 
@@ -973,8 +980,8 @@ static void PlayerPayFine()
 
 void WorldView::OnHyperspaceTargetChanged()
 {
-	if (Pi::player->IsHyperspaceActive()) {
-		Pi::player->ResetHyperspaceCountdown();
+	if (GetPlayerShip()->IsHyperspaceActive()) {
+		GetPlayerShip()->ResetHyperspaceCountdown();
 		Pi::cpan->MsgLog()->Message("", Lang::HYPERSPACE_JUMP_ABORTED);
 	}
 
@@ -988,7 +995,7 @@ void WorldView::OnHyperspaceTargetChanged()
 
 	int fuelReqd;
 	double dur;
-	m_showHyperspaceButton = Pi::player->CanHyperspaceTo(&path, fuelReqd, dur);
+	m_showHyperspaceButton = GetPlayerShip()->CanHyperspaceTo(&path, fuelReqd, dur);
 }
 
 void WorldView::OnPlayerEquipmentChange(Equip::Type e)
@@ -996,12 +1003,12 @@ void WorldView::OnPlayerEquipmentChange(Equip::Type e)
 	const SystemPath path = Pi::sectorView->GetHyperspaceTarget();
 	int fuelReqd;
 	double dur;
-	m_showHyperspaceButton = Pi::player->CanHyperspaceTo(&path, fuelReqd, dur);
+	m_showHyperspaceButton = GetPlayerShip()->CanHyperspaceTo(&path, fuelReqd, dur);
 }
 
 void WorldView::OnPlayerChangeTarget()
 {
-	Body *b = Pi::player->GetNavTarget();
+	Body *b = GetPlayerController()->GetNavTarget();
 	if (b) {
 		Sound::PlaySfx("OK");
 		Ship *s = b->IsType(Object::HYPERSPACECLOUD) ? static_cast<HyperspaceCloud*>(b)->GetShip() : 0;
@@ -1014,18 +1021,18 @@ void WorldView::OnPlayerChangeTarget()
 
 static void autopilot_flyto(Body *b)
 {
-	WorldView::GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
-	Pi::player->AIFlyTo(b);
+	GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
+	GetPlayerShip()->AIFlyTo(b);
 }
 static void autopilot_dock(Body *b)
 {
-	WorldView::GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
-	Pi::player->AIDock(static_cast<SpaceStation*>(b));
+	GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
+	GetPlayerShip()->AIDock(static_cast<SpaceStation*>(b));
 }
 static void autopilot_orbit(Body *b, double alt)
 {
-	WorldView::GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
-	Pi::player->AIOrbit(b, alt);
+	GetPlayerController()->SetFlightControlState(CONTROL_AUTOPILOT);
+	GetPlayerShip()->AIOrbit(b, alt);
 }
 
 static void player_target_hypercloud(HyperspaceCloud *cloud)
@@ -1045,8 +1052,8 @@ void WorldView::UpdateCommsOptions()
 		BuildCommsNavOptions();
 	}
 
-	Body * const navtarget = Pi::player->GetNavTarget();
-	Body * const comtarget = Pi::player->GetCombatTarget();
+	Body * const navtarget = GetPlayerController()->GetNavTarget();
+	Body * const comtarget = GetPlayerController()->GetCombatTarget();
 	Gui::Button *button;
 	int ypos = 0;
 	int optnum = 1;
@@ -1054,7 +1061,7 @@ void WorldView::UpdateCommsOptions()
 		m_commsOptions->Add(new Gui::Label("#0f0"+std::string(Lang::NO_TARGET_SELECTED)), 16, float(ypos));
 	}
 
-	bool hasAutopilot = Pi::player->m_equipment.Get(Equip::SLOT_AUTOPILOT) == Equip::AUTOPILOT;
+	bool hasAutopilot = GetPlayerShip()->m_equipment.Get(Equip::SLOT_AUTOPILOT) == Equip::AUTOPILOT;
 
 	if (navtarget) {
 		m_commsOptions->Add(new Gui::Label("#0f0"+navtarget->GetLabel()), 16, float(ypos));
@@ -1064,7 +1071,7 @@ void WorldView::UpdateCommsOptions()
 			button->onClick.connect(sigc::bind(sigc::ptr_fun(&PlayerRequestDockingClearance), reinterpret_cast<SpaceStation*>(navtarget)));
 			ypos += 32;
 
-			if (Pi::player->m_equipment.Get(Equip::SLOT_AUTOPILOT) == Equip::AUTOPILOT) {
+			if (GetPlayerShip()->m_equipment.Get(Equip::SLOT_AUTOPILOT) == Equip::AUTOPILOT) {
 				button = AddCommsOption(Lang::AUTOPILOT_DOCK_WITH_STATION, ypos, optnum++);
 				button->onClick.connect(sigc::bind(sigc::ptr_fun(&autopilot_dock), navtarget));
 				ypos += 32;
@@ -1099,7 +1106,7 @@ void WorldView::UpdateCommsOptions()
 			}
 		}
 
-		const Equip::Type t = Pi::player->m_equipment.Get(Equip::SLOT_HYPERCLOUD);
+		const Equip::Type t = GetPlayerShip()->m_equipment.Get(Equip::SLOT_HYPERCLOUD);
 		if ((t != Equip::NONE) && navtarget->IsType(Object::HYPERSPACECLOUD)) {
 			HyperspaceCloud *cloud = static_cast<HyperspaceCloud*>(navtarget);
 			if (!cloud->IsArrival()) {
@@ -1117,29 +1124,22 @@ void WorldView::UpdateCommsOptions()
 	}
 }
 
-PlayerShipController *WorldView::GetPlayerController()
-{
-	PlayerShipController *c = dynamic_cast<PlayerShipController*>(Pi::game->GetPlayer()->GetShip()->GetController());
-	assert(c);
-	return c;
-}
-
 void WorldView::SelectBody(Body *target, bool reselectIsDeselect)
 {
-	if (!target || target == Pi::player) return;		// don't select self
+	if (!target || target == GetPlayerShip()) return;		// don't select self
 	if (target->IsType(Object::PROJECTILE)) return;
 
 	if (target->IsType(Object::SHIP)) {
-		if (Pi::player->GetCombatTarget() == target) {
-			if (reselectIsDeselect) Pi::player->SetCombatTarget(0);
+		if (GetPlayerController()->GetCombatTarget() == target) {
+			if (reselectIsDeselect) GetPlayerController()->SetCombatTarget(0);
 		} else {
-			Pi::player->SetCombatTarget(target, Pi::KeyState(SDLK_LCTRL) || Pi::KeyState(SDLK_RCTRL));
+			GetPlayerController()->SetCombatTarget(target, Pi::KeyState(SDLK_LCTRL) || Pi::KeyState(SDLK_RCTRL));
 		}
 	} else {
-		if (Pi::player->GetNavTarget() == target) {
-			if (reselectIsDeselect) Pi::player->SetNavTarget(0);
+		if (GetPlayerController()->GetNavTarget() == target) {
+			if (reselectIsDeselect) GetPlayerController()->SetNavTarget(0);
 		} else {
-			Pi::player->SetNavTarget(target, Pi::KeyState(SDLK_LCTRL) || Pi::KeyState(SDLK_RCTRL));
+			GetPlayerController()->SetNavTarget(target, Pi::KeyState(SDLK_LCTRL) || Pi::KeyState(SDLK_RCTRL));
 		}
 	}
 }
@@ -1150,7 +1150,7 @@ Body* WorldView::PickBody(const double screenX, const double screenY) const
 		i = m_projectedPos.begin(); i != m_projectedPos.end(); ++i) {
 		Body *b = i->first;
 
-		if (b == Pi::player || b->IsType(Object::PROJECTILE))
+		if (b == GetPlayerShip() || b->IsType(Object::PROJECTILE))
 			continue;
 
 		const double x1 = i->second.x - PICK_OBJECT_RECT_SIZE * 0.5;
@@ -1223,7 +1223,7 @@ void WorldView::UpdateProjectedObjects()
 		vector3d mouseDir = GetPlayerController()->GetMouseDir() * cam_rot;
 		if (GetCamType() == CAM_REAR)
 			mouseDir = -mouseDir;
-		UpdateIndicator(m_mouseDirIndicator, (Pi::player->GetBoundingRadius() * 1.5) * mouseDir);
+		UpdateIndicator(m_mouseDirIndicator, (GetPlayerShip()->GetBoundingRadius() * 1.5) * mouseDir);
 	} else
 		HideIndicator(m_mouseDirIndicator);
 
@@ -1267,10 +1267,10 @@ void WorldView::UpdateProjectedObjects()
 	}
 
 	// later we might want non-ship enemies (e.g., for assaults on military bases)
-	assert(!Pi::player->GetCombatTarget() || Pi::player->GetCombatTarget()->IsType(Object::SHIP));
+	assert(!GetPlayerController()->GetCombatTarget() || GetPlayerController()->GetCombatTarget()->IsType(Object::SHIP));
 
 	// update combat HUD
-	Ship *enemy = static_cast<Ship *>(Pi::player->GetCombatTarget());
+	Ship *enemy = static_cast<Ship *>(GetPlayerController()->GetCombatTarget());
 	if (enemy) {
 		char buf[128];
 		const vector3d targpos = enemy->GetInterpolatedPositionRelTo(playerShip) * cam_rot;
@@ -1507,7 +1507,7 @@ void WorldView::Draw()
 	View::Draw();
 
 	// don't draw crosshairs etc in hyperspace
-	if (Pi::player->GetFlightState() == Ship::HYPERSPACE) return;
+	if (Pi::game->IsHyperspace()) return;
 
 	m_renderer->SetBlendMode(Graphics::BLEND_ALPHA);
 

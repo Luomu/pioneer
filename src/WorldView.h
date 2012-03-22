@@ -52,11 +52,9 @@ public:
 	
 	matrix4x4d m_siderealViewOrient;
 	double m_siderealViewDist;
-	static PlayerShipController *GetPlayerController(); //XXX sigh, static+public because of some static funcs
 
 private:
 	void InitObject();
-	Ship *GetPlayerShip() const;
 	void RefreshButtonStateAndVisibility();
 	void UpdateCommsOptions();
 

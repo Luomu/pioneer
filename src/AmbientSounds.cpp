@@ -1,13 +1,13 @@
-#include "libs.h"
-#include "Pi.h"
-#include "WorldView.h"
-#include "Player.h"
 #include "AmbientSounds.h"
 #include "Frame.h"
+#include "Game.h"
+#include "libs.h"
+#include "Pi.h"
 #include "Planet.h"
+#include "Player.h"
 #include "Sound.h"
 #include "SpaceStation.h"
-#include "Game.h"
+#include "WorldView.h"
 
 static int astroNoiseSeed;
 static Sound::Event stationNoise;
@@ -15,6 +15,11 @@ static Sound::Event starNoise;
 static Sound::Event atmosphereNoise;
 static Sound::Event planetSurfaceNoise;
 static sigc::connection onChangeCamTypeConnection;
+
+static inline Ship *GetListener()
+{
+	return Pi::game->GetPlayer()->GetShip();
+}
 
 void AmbientSounds::Init()
 {
@@ -31,7 +36,7 @@ void AmbientSounds::Update()
 	WorldView::CamType cam = Pi::worldView->GetCamType();
 	float v_env = (cam == WorldView::CAM_EXTERNAL ? 1.0f : 0.5f) * Sound::GetSfxVolume();
 
-	if (Pi::player->GetFlightState() == Ship::DOCKED) {
+	if (GetListener()->GetFlightState() == Ship::DOCKED) {
 		if (starNoise.IsPlaying()) {
 			float target[2] = {0.0f,0.0f};
 			float dv_dt[2] = {1.0f,1.0f};
@@ -59,10 +64,10 @@ void AmbientSounds::Update()
 			};
 			// just use a random station noise until we have a
 			// concept of 'station size'
-			stationNoise.Play(sounds[Pi::player->GetDockedWith()->GetSBody()->seed % 3],
+			stationNoise.Play(sounds[GetListener()->GetDockedWith()->GetSBody()->seed % 3],
 					0.3f*v_env, 0.3f*v_env, true);
 		}
-	} else if (Pi::player->GetFlightState() == Ship::LANDED) {
+	} else if (GetListener()->GetFlightState() == Ship::LANDED) {
 		/* Planet surface noise on rough-landing */
 		if (starNoise.IsPlaying()) {
 			float target[2] = {0.0f,0.0f};
@@ -85,7 +90,7 @@ void AmbientSounds::Update()
 
 		// lets try something random for the time being
 		if (!planetSurfaceNoise.IsPlaying()) {
-			SBody *sbody = Pi::player->GetFrame()->GetSBodyFor();
+			SBody *sbody = GetListener()->GetFrame()->GetSBodyFor();
 			assert(sbody);
 			const char *sample = NULL;
 
@@ -115,10 +120,10 @@ void AmbientSounds::Update()
 		}
     } else if (planetSurfaceNoise.IsPlaying()) {
         // planetSurfaceNoise.IsPlaying() - if we are out of the atmosphere then stop playing
-        if (Pi::player->GetFrame()->m_astroBody) {
-            Body *astro = Pi::player->GetFrame()->m_astroBody;
+        if (GetListener()->GetFrame()->m_astroBody) {
+            Body *astro = GetListener()->GetFrame()->m_astroBody;
             if (astro->IsType(Object::PLANET)) {
-                double dist = Pi::player->GetPosition().Length();
+                double dist = GetListener()->GetPosition().Length();
                 double pressure, density;
                 static_cast<Planet*>(astro)->GetAtmosphericState(dist, &pressure, &density);
                 if (pressure < 0.001) {
@@ -153,7 +158,7 @@ void AmbientSounds::Update()
 		} 
 		// when all the sounds are in we can use the body we are in frame of reference to
 		if (!starNoise.IsPlaying()) {
-			Frame *f = Pi::player->GetFrame();
+			const Frame *f = GetListener()->GetFrame();
 			if (!f) return; // When player has no frame (game abort) then get outta here!!
 			const SBody *sbody = f->GetSBodyFor();
 			const char *sample = 0;
@@ -194,12 +199,12 @@ void AmbientSounds::Update()
 		}
 
 		Body *astro;
-		if ((astro = Pi::player->GetFrame()->m_astroBody) && (astro->IsType(Object::PLANET))) {
-			double dist = Pi::player->GetPosition().Length();
+		if ((astro = GetListener()->GetFrame()->m_astroBody) && (astro->IsType(Object::PLANET))) {
+			double dist = GetListener()->GetPosition().Length();
 			double pressure, density;
 			static_cast<Planet*>(astro)->GetAtmosphericState(dist, &pressure, &density);
 			// maximum volume at around 2km/sec at earth density, pressure
-			float volume = float(density * Pi::player->GetVelocity().Length() * 0.0005);
+			float volume = float(density * GetListener()->GetVelocity().Length() * 0.0005);
 			volume = Clamp(volume, 0.0f, 1.0f) * v_env;
 			if (atmosphereNoise.IsPlaying()) {
 				float target[2] = {volume, volume};

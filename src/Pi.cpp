@@ -146,6 +146,14 @@ ObjectViewerView *Pi::objectViewerView;
 
 Sound::MusicPlayer Pi::musicPlayer;
 
+//XXX refactoring
+static inline PlayerShipController *GetPlayerController()
+{
+	PlayerShipController *c = dynamic_cast<PlayerShipController*>(Pi::game->GetPlayer()->GetShip()->GetController());
+	assert(c);
+	return c;
+}
+
 static void draw_progress(float progress)
 {
 	float w, h;
@@ -729,27 +737,27 @@ void Pi::HandleEvents()
 						case SDLK_F12:
 						{
 							if(Pi::game) {
-								matrix4x4d m; Pi::player->GetRotMatrix(m);
+								matrix4x4d m; Pi::game->GetPlayer()->GetShip()->GetRotMatrix(m);
 								vector3d dir = m*vector3d(0,0,-1);
 								/* add test object */
 								if (KeyState(SDLK_RSHIFT)) {
 									Missile *missile =
-										new Missile(ShipType::MISSILE_GUIDED, Pi::player, Pi::player->GetCombatTarget());
+										new Missile(ShipType::MISSILE_GUIDED, Pi::game->GetPlayer()->GetShip(), GetPlayerController()->GetCombatTarget());
 									missile->SetRotMatrix(m);
-									missile->SetFrame(Pi::player->GetFrame());
-									missile->SetPosition(Pi::player->GetPosition()+50.0*dir);
-									missile->SetVelocity(Pi::player->GetVelocity());
+									missile->SetFrame(Pi::game->GetPlayer()->GetShip()->GetFrame());
+									missile->SetPosition(Pi::game->GetPlayer()->GetShip()->GetPosition()+50.0*dir);
+									missile->SetVelocity(Pi::game->GetPlayer()->GetShip()->GetVelocity());
 									game->GetSpace()->AddBody(missile);
 								} else if (KeyState(SDLK_LSHIFT)) {
-									SpaceStation *s = static_cast<SpaceStation*>(Pi::player->GetNavTarget());
+									SpaceStation *s = static_cast<SpaceStation*>(GetPlayerController()->GetNavTarget());
 									if (s) {
 										int port = s->GetFreeDockingPort();
 										if (port != -1) {
 											printf("Putting ship into station\n");
 											// Make police ship intent on killing the player
 											Ship *ship = new Ship(ShipType::LADYBIRD);
-											ship->AIKill(Pi::player);
-											ship->SetFrame(Pi::player->GetFrame());
+											ship->AIKill(Pi::game->GetPlayer()->GetShip());
+											ship->SetFrame(Pi::game->GetPlayer()->GetShip()->GetFrame());
 											ship->SetDockedWith(s, port);
 											game->GetSpace()->AddBody(ship);
 										} else {
@@ -761,10 +769,10 @@ void Pi::HandleEvents()
 								} else {
 									Ship *ship = new Ship(ShipType::LADYBIRD);
 									ship->m_equipment.Set(Equip::SLOT_LASER, 0, Equip::PULSECANNON_1MW);
-									ship->AIKill(Pi::player);
-									ship->SetFrame(Pi::player->GetFrame());
-									ship->SetPosition(Pi::player->GetPosition()+100.0*dir);
-									ship->SetVelocity(Pi::player->GetVelocity());
+									ship->AIKill(Pi::game->GetPlayer()->GetShip());
+									ship->SetFrame(Pi::game->GetPlayer()->GetShip()->GetFrame());
+									ship->SetPosition(Pi::game->GetPlayer()->GetShip()->GetPosition()+100.0*dir);
+									ship->SetVelocity(Pi::game->GetPlayer()->GetShip()->GetVelocity());
 									ship->m_equipment.Add(Equip::DRIVE_CLASS2);
 									ship->m_equipment.Add(Equip::RADAR_MAPPER);
 									ship->m_equipment.Add(Equip::SCANNER);
@@ -982,9 +990,10 @@ static void OnPlayerChangeEquipment(Equip::Type e)
 
 void Pi::StartGame()
 {
-	Pi::player->onDock.connect(sigc::ptr_fun(&OnPlayerDockOrUndock));
-	Pi::player->onUndock.connect(sigc::ptr_fun(&OnPlayerDockOrUndock));
-	Pi::player->m_equipment.onChange.connect(sigc::ptr_fun(&OnPlayerChangeEquipment));
+	//XXX emit these in player
+	Pi::game->GetPlayer()->GetShip()->onDock.connect(sigc::ptr_fun(&OnPlayerDockOrUndock));
+	Pi::game->GetPlayer()->GetShip()->onUndock.connect(sigc::ptr_fun(&OnPlayerDockOrUndock));
+	Pi::game->GetPlayer()->GetShip()->m_equipment.onChange.connect(sigc::ptr_fun(&OnPlayerChangeEquipment));
 	cpan->ShowAll();
 	cpan->SetAlertState(Ship::ALERT_NONE);
 	OnPlayerChangeEquipment(Equip::NONE);
@@ -1319,7 +1328,7 @@ void Pi::MainLoop()
 			accumulator = 0;				// fix for huge pauses 10000x -> 1x
 
 		// fuckadoodledoo, did the player die?
-		if (Pi::player->IsDead()) {
+		if (Pi::game->GetPlayer()->GetShip()->IsDead()) {
 			if (time_player_died > 0.0) {
 				if (Pi::game->GetTime() - time_player_died > 8.0) {
 					Pi::TombStoneLoop();
@@ -1330,7 +1339,7 @@ void Pi::MainLoop()
 				Pi::game->SetTimeAccel(Game::TIMEACCEL_1X);
 				Pi::cpan->HideAll();
 				Pi::SetView(static_cast<View*>(Pi::worldView));
-				Pi::player->Disable();
+				Pi::game->GetPlayer()->GetShip()->Disable();
 				time_player_died = Pi::game->GetTime();
 			}
 		} else {

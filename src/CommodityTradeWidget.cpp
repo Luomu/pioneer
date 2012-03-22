@@ -117,7 +117,7 @@ void CommodityTradeWidget::ShowAll()
 		m_stockLabels[i] = stocklabel;
 		innerbox->Add(stocklabel, 275, num*YSEP+iconOffset);
 		
-		snprintf(buf, sizeof(buf), "%dt", Pi::player->m_equipment.Count(Equip::SLOT_CARGO, static_cast<Equip::Type>(i))*Equip::types[i].mass);
+		snprintf(buf, sizeof(buf), "%dt", Pi::playerShip->m_equipment.Count(Equip::SLOT_CARGO, static_cast<Equip::Type>(i))*Equip::types[i].mass);
 		Gui::Label *cargolabel = new Gui::Label(buf);
 		m_cargoLabels[i] = cargolabel;
 		innerbox->Add(cargolabel, 325, num*YSEP+iconOffset);
@@ -151,7 +151,7 @@ void CommodityTradeWidget::ShowAll()
 void CommodityTradeWidget::UpdateStock(int commodity_type)
 {
 	char buf[128];
-	snprintf(buf, sizeof(buf), "%dt", Pi::player->m_equipment.Count(Equip::SLOT_CARGO, static_cast<Equip::Type>(commodity_type))*Equip::types[commodity_type].mass);
+	snprintf(buf, sizeof(buf), "%dt", Pi::playerShip->m_equipment.Count(Equip::SLOT_CARGO, static_cast<Equip::Type>(commodity_type))*Equip::types[commodity_type].mass);
 	m_cargoLabels[commodity_type]->SetText(buf);
 	
 	snprintf(buf, sizeof(buf), "%dt", m_seller->GetStock(static_cast<Equip::Type>(commodity_type))*Equip::types[commodity_type].mass);

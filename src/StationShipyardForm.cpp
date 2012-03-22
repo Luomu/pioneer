@@ -11,7 +11,7 @@
 
 StationShipyardForm::StationShipyardForm(FormController *controller) : FaceForm(controller)
 {
-	SetTitle(stringf(Lang::SOMEWHERE_SHIPYARD, formatarg("station", Pi::player->GetDockedWith()->GetLabel())));
+	SetTitle(stringf(Lang::SOMEWHERE_SHIPYARD, formatarg("station", Pi::playerShip->GetDockedWith()->GetLabel())));
 
 	Gui::SolidButton *b = new Gui::SolidButton();
 	b->SetShortcut(SDLK_1, KMOD_NONE);

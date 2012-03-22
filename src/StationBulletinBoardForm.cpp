@@ -8,7 +8,7 @@
 
 StationBulletinBoardForm::StationBulletinBoardForm(FormController *controller) : FaceForm(controller)
 {
-	m_station = Pi::player->GetDockedWith();
+	m_station = Pi::playerShip->GetDockedWith();
 
 	SetTitle(m_station->GetLabel() + " " + Lang::BULLETIN_BOARD);
 

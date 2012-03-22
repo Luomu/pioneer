@@ -72,7 +72,7 @@ SpaceStationView::SpaceStationView(): View()
 
 	m_videoLink = 0;
 	
-	m_undockConnection = Pi::player->onUndock.connect(sigc::mem_fun(m_formStack, &Gui::Stack::Clear));
+	m_undockConnection = Pi::playerShip->onUndock.connect(sigc::mem_fun(m_formStack, &Gui::Stack::Clear));
 }
 
 SpaceStationView::~SpaceStationView()
@@ -88,7 +88,7 @@ void SpaceStationView::Update()
 	char buf[64];
 	m_money->SetText(format_money(Pi::game->GetPlayer()->GetMoney()));
 
-	const shipstats_t *stats = Pi::player->CalcStats();
+	const shipstats_t *stats = Pi::playerShip->CalcStats();
 	snprintf(buf, sizeof(buf), "%dt", stats->used_capacity - stats->used_cargo);
 	m_equipmentMass->SetText(buf);
 	
@@ -98,10 +98,10 @@ void SpaceStationView::Update()
 	snprintf(buf, sizeof(buf), "%dt", stats->free_capacity);
 	m_cargoSpaceFree->SetText(buf);
 
-	snprintf(buf, sizeof(buf), "%d", Pi::player->m_equipment.Count(Equip::SLOT_CABIN, Equip::PASSENGER_CABIN));
+	snprintf(buf, sizeof(buf), "%d", Pi::playerShip->m_equipment.Count(Equip::SLOT_CABIN, Equip::PASSENGER_CABIN));
 	m_cabinsUsed->SetText(buf);
 		
-	snprintf(buf, sizeof(buf), "%d", Pi::player->m_equipment.Count(Equip::SLOT_CABIN, Equip::UNOCCUPIED_CABIN));
+	snprintf(buf, sizeof(buf), "%d", Pi::playerShip->m_equipment.Count(Equip::SLOT_CABIN, Equip::UNOCCUPIED_CABIN));
 	m_cabinsFree->SetText(buf);
 
 	if (m_formStack->Size() > 1)
@@ -135,7 +135,7 @@ void SpaceStationView::RefreshForForm(Form *f)
 			FaceForm *form = static_cast<FaceForm*>(f);
 
 			if (!form->GetFaceSeed())
-				form->SetFaceSeed(Pi::player->GetDockedWith()->GetSBody()->seed);
+				form->SetFaceSeed(Pi::playerShip->GetDockedWith()->GetSBody()->seed);
 
 			if (!m_videoLink || form->GetFaceFlags() != m_videoLink->GetFlags() ||
 				form->GetFaceSeed() != m_videoLink->GetSeed()) {

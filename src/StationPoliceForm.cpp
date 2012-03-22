@@ -12,7 +12,7 @@ void StationPoliceForm::OnOptionClicked(int option)
 {
 	switch (option) {
 		case 0: {
-			SpaceStation *station = Pi::player->GetDockedWith();
+			SpaceStation *station = Pi::playerShip->GetDockedWith();
 
 			SetTitle(stringf(Lang::SOMEWHERE_POLICE, formatarg("station", station->GetLabel())));
 

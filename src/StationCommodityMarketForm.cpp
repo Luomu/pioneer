@@ -7,7 +7,7 @@
 
 StationCommodityMarketForm::StationCommodityMarketForm(FormController *controller) : FaceForm(controller)
 {
-	m_station = Pi::player->GetDockedWith();
+	m_station = Pi::playerShip->GetDockedWith();
 
 	SetTitle(stringf(Lang::SOMEWHERE_COMMODITIES_MARKET, formatarg("station", m_station->GetLabel())));
 

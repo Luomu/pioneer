@@ -27,7 +27,7 @@ void Player::Save(Serializer::Writer &wr, Space *space)
 
 void Player::Load(Serializer::Reader &rd, Space *space)
 {
-	Pi::player = this;
+	Pi::playerShip = this;
 	Ship::Load(rd, space);
 }
 

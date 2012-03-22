@@ -11,7 +11,7 @@ StationShipViewForm::StationShipViewForm(FormController *controller, int marketI
 	BlankForm(controller),
 	m_marketIndex(marketIndex)
 {
-	m_station = Pi::player->GetDockedWith();
+	m_station = Pi::playerShip->GetDockedWith();
 
 	m_flavour = m_station->GetShipsOnSale()[marketIndex];
 
@@ -56,7 +56,7 @@ StationShipViewForm::StationShipViewForm(FormController *controller, int marketI
 	Gui::VBox *dataBox = new Gui::VBox();
 	dataBox->PackEnd(new Gui::Label(type.name));
 	dataBox->PackEnd(new Gui::Label(format_money(m_flavour.price)));
-	dataBox->PackEnd(new Gui::Label(format_money(m_flavour.price - Pi::player->GetFlavour()->price)));
+	dataBox->PackEnd(new Gui::Label(format_money(m_flavour.price - Pi::playerShip->GetFlavour()->price)));
 	dataBox->PackEnd(new Gui::Label(m_flavour.regid));
 	dataBox->PackEnd(new Gui::Label(" "));
 	dataBox->PackEnd(new Gui::Label(stringf(Lang::NUMBER_TONNES, formatarg("mass", type.hullMass))));
@@ -119,18 +119,18 @@ StationShipViewForm::StationShipViewForm(FormController *controller, int marketI
 
 void StationShipViewForm::BuyShip()
 {
-	Sint64 cost = m_flavour.price - Pi::player->GetFlavour()->price;
+	Sint64 cost = m_flavour.price - Pi::playerShip->GetFlavour()->price;
 	if (Pi::game->GetPlayer()->GetMoney() < cost) {
 		Pi::cpan->MsgLog()->Message("", Lang::YOU_NOT_ENOUGH_MONEY);
 		return;
 	}
 
-	ShipFlavour old = *(Pi::player->GetFlavour());
+	ShipFlavour old = *(Pi::playerShip->GetFlavour());
 
 	Pi::game->GetPlayer()->AddMoney(-cost);
-	Pi::player->ResetFlavour(&m_flavour);
-	Pi::player->m_equipment.Set(Equip::SLOT_ENGINE, 0, ShipType::types[m_flavour.type].hyperdrive);
-	Pi::player->UpdateMass();
+	Pi::playerShip->ResetFlavour(&m_flavour);
+	Pi::playerShip->m_equipment.Set(Equip::SLOT_ENGINE, 0, ShipType::types[m_flavour.type].hyperdrive);
+	Pi::playerShip->UpdateMass();
 
 	m_station->ReplaceShipOnSale(m_marketIndex, &old);
 

@@ -610,10 +610,10 @@ void Game::CreateViews()
 {
 	Pi::SetView(0);
 
-	// XXX views expect Pi::game and Pi::player to exist
+	// XXX views expect Pi::game and Pi::playerShip to exist
 	Pi::game = this;
-	Pi::player = m_player.Get();
-	m_playerCharacter->SetShip(Pi::player);
+	Pi::playerShip = m_player.Get();
+	m_playerCharacter->SetShip(Pi::playerShip);
 
 	Pi::cpan = new ShipCpanel(Pi::renderer);
 	Pi::sectorView = new SectorView();
@@ -643,9 +643,9 @@ void Game::LoadViews(Serializer::Reader &rd)
 {
 	Pi::SetView(0);
 
-	// XXX views expect Pi::game and Pi::player to exist
+	// XXX views expect Pi::game and Pi::playerShip to exist
 	Pi::game = this;
-	Pi::player = m_player.Get();
+	Pi::playerShip = m_player.Get();
 
 	Serializer::Reader section = rd.RdSection("ShipCpanel");
 	Pi::cpan = new ShipCpanel(section, Pi::renderer);

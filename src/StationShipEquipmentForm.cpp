@@ -27,7 +27,7 @@ private:
 
 StationShipEquipmentForm::StationShipEquipmentForm(FormController *controller) : FaceForm(controller)
 {
-	m_station = Pi::player->GetDockedWith();
+	m_station = Pi::playerShip->GetDockedWith();
 
 	SetTitle(stringf(Lang::SOMEWHERE_SHIP_EQUIPMENT, formatarg("station", m_station->GetLabel())));
 
@@ -50,7 +50,7 @@ StationShipEquipmentForm::StationShipEquipmentForm(FormController *controller) :
 	for (int i=Equip::FIRST_SHIPEQUIP, num=0; i<=Equip::LAST_SHIPEQUIP; i++) {
 		Equip::Type type = static_cast<Equip::Type>(i);
 		if (!m_station->GetStock(type) &&
-			!(Pi::player->m_equipment.Count(Equip::types[i].slot, type) &&
+			!(Pi::playerShip->m_equipment.Count(Equip::types[i].slot, type) &&
 			Equip::types[i].techLevel <= Pi::game->GetSpace()->GetStarSystem()->m_techlevel))
 			continue;
 		Gui::Label *l = new Gui::Label(Equip::types[i].name);
@@ -115,12 +115,12 @@ void StationShipEquipmentForm::RecalcButtonVisibility()
 	for (std::list<ButtonPair>::iterator i = m_buttons.begin(); i != m_buttons.end(); i++) {
 		Equip::Slot slot = Equip::types[(*i).type].slot;
 
-		if (Pi::player->m_equipment.FreeSpace(slot) && m_station->GetStock((*i).type))
+		if (Pi::playerShip->m_equipment.FreeSpace(slot) && m_station->GetStock((*i).type))
 			(*i).add->Show();
 		else
 			(*i).add->Hide();
 
-		if (Pi::player->m_equipment.Count(slot, (*i).type))
+		if (Pi::playerShip->m_equipment.Count(slot, (*i).type))
 			(*i).remove->Show();
 		else
 			(*i).remove->Hide();
@@ -131,8 +131,8 @@ void StationShipEquipmentForm::FitItem(Equip::Type t)
 {
 	Equip::Slot slot = Equip::types[t].slot;
 
-	const shipstats_t *stats = Pi::player->CalcStats();
-	int freespace = Pi::player->m_equipment.FreeSpace(slot);
+	const shipstats_t *stats = Pi::playerShip->CalcStats();
+	int freespace = Pi::playerShip->m_equipment.FreeSpace(slot);
 	
 	if (Pi::game->GetPlayer()->GetMoney() < m_station->GetPrice(t)) {
 		Pi::cpan->MsgLog()->Message("", Lang::YOU_NOT_ENOUGH_MONEY);
@@ -156,7 +156,7 @@ void StationShipEquipmentForm::FitItem(Equip::Type t)
 void StationShipEquipmentForm::RemoveItem(Equip::Type t) {
 	Equip::Slot slot = Equip::types[t].slot;
 
-	int num = Pi::player->m_equipment.Count(slot, t);
+	int num = Pi::playerShip->m_equipment.Count(slot, t);
 	if (!num)
 		return;
 
@@ -171,11 +171,11 @@ void StationShipEquipmentForm::RemoveItem(Equip::Type t) {
 
 void StationShipEquipmentForm::FitItemForce(Equip::Type t, int pos) {
 	if (pos < 0)
-		Pi::player->m_equipment.Add(t);
+		Pi::playerShip->m_equipment.Add(t);
 	else
-		Pi::player->m_equipment.Set(Equip::types[t].slot, pos, t);
+		Pi::playerShip->m_equipment.Set(Equip::types[t].slot, pos, t);
 
-	Pi::player->UpdateMass();
+	Pi::playerShip->UpdateMass();
 	Pi::game->GetPlayer()->AddMoney(-m_station->GetPrice(t));
 	Pi::cpan->MsgLog()->Message("", Lang::FITTING+std::string(Equip::types[t].name));
 
@@ -184,11 +184,11 @@ void StationShipEquipmentForm::FitItemForce(Equip::Type t, int pos) {
 
 void StationShipEquipmentForm::RemoveItemForce(Equip::Type t, int pos) {
 	if (pos < 0)
-		Pi::player->m_equipment.Remove(t, 1);
+		Pi::playerShip->m_equipment.Remove(t, 1);
 	else
-		Pi::player->m_equipment.Set(Equip::types[t].slot, pos, Equip::NONE);
+		Pi::playerShip->m_equipment.Set(Equip::types[t].slot, pos, Equip::NONE);
 
-	Pi::player->UpdateMass();
+	Pi::playerShip->UpdateMass();
 	Pi::game->GetPlayer()->AddMoney(m_station->GetPrice(t) * REMOVAL_VALUE_PERCENT / 100);
 	m_station->AddEquipmentStock(t, 1);
 	Pi::cpan->MsgLog()->Message("", Lang::REMOVING+std::string(Equip::types[t].name));
@@ -215,8 +215,8 @@ PickLaserMountForm::PickLaserMountForm(FormController *controller, StationShipEq
 	Equip::Slot slot = Equip::types[m_equipType].slot;
 
 	for (int i=0; i<ShipType::GUNMOUNT_MAX; i++) {
-		if (m_doFit && (Pi::player->m_equipment.Get(slot, i) != Equip::NONE)) continue;
-		if ((!m_doFit) && (Pi::player->m_equipment.Get(slot, i) != m_equipType)) continue;
+		if (m_doFit && (Pi::playerShip->m_equipment.Get(slot, i) != Equip::NONE)) continue;
+		if ((!m_doFit) && (Pi::playerShip->m_equipment.Get(slot, i) != m_equipType)) continue;
 
 		Gui::HBox *buttonBox = new Gui::HBox();
 		buttonBox->SetSpacing(5.0f);

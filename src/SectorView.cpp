@@ -430,7 +430,7 @@ void SectorView::UpdateSystemLabels(SystemLabels &labels, const SystemPath &path
 		int fuelRequired;
 		double dur;
 		enum Ship::HyperjumpStatus jumpStatus;
-		Pi::player->CanHyperspaceTo(&path, fuelRequired, dur, &jumpStatus);
+		Pi::playerShip->CanHyperspaceTo(&path, fuelRequired, dur, &jumpStatus);
 		const double DaysNeeded = dur*(1.0 / (24*60*60)); 
 		const double HoursNeeded = (DaysNeeded - floor(DaysNeeded))*24;
 
@@ -462,7 +462,7 @@ void SectorView::UpdateSystemLabels(SystemLabels &labels, const SystemPath &path
 		}
 	}
 
-	else if (path.IsSameSystem(Pi::player->GetHyperspaceDest())) {
+	else if (path.IsSameSystem(Pi::playerShip->GetHyperspaceDest())) {
 		snprintf(format, sizeof(format), "[ %s ]", Lang::IN_TRANSIT);
 		labels.distance->SetText(format);
 		labels.distance->Color(0.4f, 0.4f, 1.0f);
@@ -738,7 +738,7 @@ void SectorView::Update()
 	}
 	else {
 		m_inSystem = false;
-		m_current = Pi::player->GetHyperspaceDest();
+		m_current = Pi::playerShip->GetHyperspaceDest();
 	}
 
 	if (last_inSystem != m_inSystem || last_current != m_current) {
@@ -841,7 +841,7 @@ void SectorView::Update()
 
 	ShrinkCache();
 
-	m_playerHyperspaceRange = Pi::player->CalcStats()->hyperspace_range;
+	m_playerHyperspaceRange = Pi::playerShip->CalcStats()->hyperspace_range;
 }
 
 void SectorView::ShowAll()

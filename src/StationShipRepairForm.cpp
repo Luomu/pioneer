@@ -7,7 +7,7 @@
 
 StationShipRepairForm::StationShipRepairForm(FormController *controller) : FaceForm(controller)
 {
-	m_station = Pi::player->GetDockedWith();
+	m_station = Pi::playerShip->GetDockedWith();
 
 	SetTitle(stringf(Lang::SOMEWHERE_SHIP_REPAIRS, formatarg("station", m_station->GetLabel())));
 
@@ -57,26 +57,26 @@ void StationShipRepairForm::ShowAll()
 
 int StationShipRepairForm::GetRepairCost(float percent)
 {
-	return int(Pi::player->GetFlavour()->price * 0.001 * percent);
+	return int(Pi::playerShip->GetFlavour()->price * 0.001 * percent);
 }
 
 void StationShipRepairForm::RepairHull(float percent)
 {
-	float hullDamage = 100.0f - Pi::player->GetPercentHull();
+	float hullDamage = 100.0f - Pi::playerShip->GetPercentHull();
 	if (percent > hullDamage) percent = hullDamage;
 	int cost = GetRepairCost(percent);
 	if (Pi::game->GetPlayer()->GetMoney() < cost) {
 		Pi::cpan->MsgLog()->Message("", Lang::YOU_NOT_ENOUGH_MONEY);
 	} else {
 		Pi::game->GetPlayer()->AddMoney(-cost);
-		Pi::player->SetPercentHull(Pi::player->GetPercentHull() + percent);
+		Pi::playerShip->SetPercentHull(Pi::playerShip->GetPercentHull() + percent);
 		UpdateLabels();
 	}
 }
 
 void StationShipRepairForm::UpdateLabels()
 {
-	float hullPercent = Pi::player->GetPercentHull();
+	float hullPercent = Pi::playerShip->GetPercentHull();
 
 	if (hullPercent >= 100.0f)
 	{

@@ -126,7 +126,7 @@ public:
 		float ypos = 40 + 3*YSEP;
 		for (int i=1; i<Equip::TYPE_MAX; i++) {
 			if (Equip::types[i].slot != Equip::SLOT_CARGO) continue;
-			const int gotNum = Pi::player->m_equipment.Count(Equip::SLOT_CARGO, static_cast<Equip::Type>(i));
+			const int gotNum = Pi::playerShip->m_equipment.Count(Equip::SLOT_CARGO, static_cast<Equip::Type>(i));
 			if (!gotNum) continue;
 			Gui::Button *b = new Gui::SolidButton();
 			b->onClick.connect(sigc::bind(sigc::mem_fun(this, &CargoPage::JettisonCargo), static_cast<Equip::Type>(i)));
@@ -138,7 +138,7 @@ public:
 			ypos += YSEP;
 		}
 
-		if (Pi::player->m_equipment.Count(Equip::SLOT_CARGO, Equip::WATER) > 0) {
+		if (Pi::playerShip->m_equipment.Count(Equip::SLOT_CARGO, Equip::WATER) > 0) {
 			Gui::HBox *box = new Gui::HBox();
 			box->SetSpacing(5.0f);
 			Gui::Button *b = new Gui::SolidButton();
@@ -159,20 +159,20 @@ private:
 	}
 
 	void JettisonCargo(Equip::Type t) {
-		if (Pi::player->Jettison(t)) {
+		if (Pi::playerShip->Jettison(t)) {
 			Pi::cpan->MsgLog()->Message("", stringf(Lang::JETTISONED_1T_OF_X, formatarg("commodity", Equip::types[t].name)));
 			m_infoView->UpdateInfo();
 		}
 	}
 
 	void Refuel() {
-		float currentFuel = Pi::player->GetFuel();
+		float currentFuel = Pi::playerShip->GetFuel();
 		if (is_equal_exact(currentFuel, 1.0f)) return;
 
-		Pi::player->m_equipment.Remove(Equip::WATER, 1);
-		Pi::player->UpdateMass();
+		Pi::playerShip->m_equipment.Remove(Equip::WATER, 1);
+		Pi::playerShip->UpdateMass();
 
-		Pi::player->SetFuel(currentFuel + 1.0f/Pi::player->GetShipType().fuelTankMass);
+		Pi::playerShip->SetFuel(currentFuel + 1.0f/Pi::playerShip->GetShipType().fuelTankMass);
 
 		m_infoView->UpdateInfo();
 	}
@@ -196,7 +196,7 @@ public:
 		float ypos = 40.0f;
 		//XXX get combatrating from lua
 		//Add((new Gui::Label(Lang::COMBAT_RATING))->Shadow(true), 40, ypos);
-		//Add(new Gui::Label(Pi::combatRating[ Pi::CombatRating(Pi::player->GetKillCount()) ]), 40, ypos+YSEP);
+		//Add(new Gui::Label(Pi::combatRating[ Pi::CombatRating(Pi::playerShip->GetKillCount()) ]), 40, ypos+YSEP);
 
 		ypos = 160.0f;
 		Add((new Gui::Label(Lang::CRIMINAL_RECORD))->Shadow(true), 40, ypos);
@@ -228,7 +228,7 @@ public:
 	virtual void UpdateInfo() {
 		char buf[512];
 		std::string col1, col2;
-		const ShipType &stype = Pi::player->GetShipType();
+		const ShipType &stype = Pi::playerShip->GetShipType();
 		col1 = std::string(Lang::SHIP_INFORMATION_HEADER)+std::string(stype.name);
 		col1 += "\n\n";
         col1 += std::string(Lang::HYPERDRIVE);
@@ -250,11 +250,11 @@ public:
 		
 		col2 = "\n\n";
 
-		Equip::Type e = Pi::player->m_equipment.Get(Equip::SLOT_ENGINE);
+		Equip::Type e = Pi::playerShip->m_equipment.Get(Equip::SLOT_ENGINE);
 		col2 += std::string(Equip::types[e].name);
 
 		const shipstats_t *stats;
-		stats = Pi::player->CalcStats();
+		stats = Pi::playerShip->CalcStats();
 		snprintf(buf, sizeof(buf), "\n\n%dt\n"
 					       "%dt\n"
 					       "%dt\n"
@@ -262,16 +262,16 @@ public:
 				stats->free_capacity, stats->used_capacity, stats->total_mass);
 		col2 += std::string(buf);
 
-		int numLasers = Pi::player->m_equipment.GetSlotSize(Equip::SLOT_LASER);
+		int numLasers = Pi::playerShip->m_equipment.GetSlotSize(Equip::SLOT_LASER);
 		if (numLasers >= 1) {
-			e = Pi::player->m_equipment.Get(Equip::SLOT_LASER, 0);
+			e = Pi::playerShip->m_equipment.Get(Equip::SLOT_LASER, 0);
 			col2 += std::string("\n\n")+Equip::types[e].name;
 		} else {
 			col2 += "\n\n";
             col2 += std::string(Lang::NO_MOUNTING);
 		}
 		if (numLasers >= 2) {
-			e = Pi::player->m_equipment.Get(Equip::SLOT_LASER, 1);
+			e = Pi::playerShip->m_equipment.Get(Equip::SLOT_LASER, 1);
 			col2 += std::string("\n")+Equip::types[e].name;
 		} else {
 			col2 += "\n";
@@ -287,7 +287,7 @@ public:
 			Equip::Type t = Equip::Type(i) ;
 			Equip::Slot s = Equip::types[t].slot;
 			if ((s == Equip::SLOT_MISSILE) || (s == Equip::SLOT_ENGINE) || (s == Equip::SLOT_LASER)) continue;
-			int num = Pi::player->m_equipment.Count(s, t);
+			int num = Pi::playerShip->m_equipment.Count(s, t);
 			if (num == 1) {
 				col1 += stringf("%0\n", Equip::types[t].name);
 			} else if (num > 1) {
@@ -387,6 +387,6 @@ void InfoView::OnSwitchTo()
 	if (m_spinner)
 		Remove(m_spinner);
 
-	m_spinner = new ShipSpinnerWidget(*Pi::player->GetFlavour(), 320, 320);
+	m_spinner = new ShipSpinnerWidget(*Pi::playerShip->GetFlavour(), 320, 320);
 	Add(m_spinner, 450, 50);
 }

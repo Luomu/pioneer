@@ -241,7 +241,7 @@ void Space::KillBody(Body* b)
 		// XXX this seems like the wrong way to do it. since its still "alive"
 		// it still collides, moves, etc. better to just snapshot its position
 		// elsewhere
-		if (b != Pi::player)
+		if (b != Pi::playerShip)
 			m_killBodies.push_back(b);
 	}
 }

@@ -392,7 +392,7 @@ void SpaceStation::DoDockingAnimation(const double timeStep)
 			m_dockAnimState[i] -= 0.3*timeStep;
 
 			if (dt.stagePos >= 1.0) {
-				if (dt.ship == static_cast<Ship*>(Pi::player)) Pi::onDockingClearanceExpired.emit(this);
+				if (dt.ship == static_cast<Ship*>(Pi::playerShip)) Pi::onDockingClearanceExpired.emit(this);
 				dt.ship = 0;
 				dt.stage = 0;
 			}
@@ -462,16 +462,16 @@ void SpaceStation::DoLawAndOrder()
 {
 	Sint64 fine, crimeBitset;
 	Polit::GetCrime(&crimeBitset, &fine);
-	if (Pi::player->GetFlightState() != Ship::DOCKED
+	if (Pi::playerShip->GetFlightState() != Ship::DOCKED
 			&& m_numPoliceDocked
 			&& (fine > 1000)
-			&& (GetPositionRelTo(static_cast<Body*>(Pi::player)).Length() < 100000.0)) {
+			&& (GetPositionRelTo(static_cast<Body*>(Pi::playerShip)).Length() < 100000.0)) {
 		int port = GetFreeDockingPort();
 		if (port != -1) {
 			m_numPoliceDocked--;
 			// Make police ship intent on killing the player
 			Ship *ship = new Ship(ShipType::LADYBIRD);
-			ship->AIKill(Pi::player);
+			ship->AIKill(Pi::playerShip);
 			ship->SetFrame(GetFrame());
 			ship->SetDockedWith(this, port);
 			Pi::game->GetSpace()->AddBody(ship);
@@ -902,7 +902,7 @@ vector3d SpaceStation::GetTargetIndicatorPosition(const Frame *relTo) const
 	//return the docking point's position, if permission has been granted for player
 	for (int i=0; i<MAX_DOCKING_PORTS; i++) {
 		if (i >= m_type->numDockingPorts) break;
-		if ((m_shipDocking[i].ship == Pi::player) && (m_shipDocking[i].stage > 0)) {
+		if ((m_shipDocking[i].ship == Pi::playerShip) && (m_shipDocking[i].stage > 0)) {
 
 			SpaceStationType::positionOrient_t dport;
 			PiVerify(m_type->GetDockAnimPositionOrient(i, m_type->numDockingStages,

@@ -114,7 +114,7 @@ char Pi::keyState[SDLK_LAST];
 char Pi::mouseButton[6];
 int Pi::mouseMotion[2];
 bool Pi::doingMouseGrab = false;
-Player *Pi::player;
+Player *Pi::playerShip;
 View *Pi::currentView;
 WorldView *Pi::worldView = 0;
 SpaceStationView *Pi::spaceStationView;
@@ -1035,6 +1035,7 @@ void Pi::HandleMenuKey(int n)
 			game = new Game(SystemPath(1,-1,-1,0,4), vector3d(0,2*EARTH_RADIUS,0));  // somewhere over New Hope
 
 			Ship *enemy = new Ship(ShipType::EAGLE_LRF);
+			Player *player = Pi::playerShip;
 			enemy->SetFrame(player->GetFrame());
 			enemy->SetPosition(player->GetPosition()+vector3d(0,0,-9000.0));
 			enemy->SetVelocity(vector3d(0,0,0));
@@ -1224,7 +1225,7 @@ void Pi::EndGame()
 	assert(game);
 	delete game;
 	game = 0;
-	player = 0;
+	playerShip = 0;
 
 	StarSystem::ShrinkCache();
 }

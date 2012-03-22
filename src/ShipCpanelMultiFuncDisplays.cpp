@@ -154,7 +154,7 @@ void ScannerWidget::ToggleMode()
 
 void ScannerWidget::Draw()
 {
-	if (Pi::player->m_equipment.Get(Equip::SLOT_SCANNER) != Equip::SCANNER) return;
+	if (Pi::playerShip->m_equipment.Get(Equip::SLOT_SCANNER) != Equip::SCANNER) return;
 
 	float size[2];
 	GetSize(size);
@@ -211,7 +211,7 @@ void ScannerWidget::Update()
 {
 	m_contacts.clear();
 
-	if (Pi::player->m_equipment.Get(Equip::SLOT_SCANNER) != Equip::SCANNER) {
+	if (Pi::playerShip->m_equipment.Get(Equip::SLOT_SCANNER) != Equip::SCANNER) {
 		m_mode = SCANNER_MODE_AUTO;
 		m_currentRange = m_manualRange = m_targetRange = SCANNER_RANGE_MIN;
 		return;
@@ -223,21 +223,21 @@ void ScannerWidget::Update()
 
 	// collect the bodies to be displayed, and if AUTO, distances
 	for (Space::BodyIterator i = Pi::game->GetSpace()->BodiesBegin(); i != Pi::game->GetSpace()->BodiesEnd(); ++i) {
-		if ((*i) == Pi::player) continue;
+		if ((*i) == Pi::playerShip) continue;
 
-		float dist = float((*i)->GetPositionRelTo(Pi::player).Length());
+		float dist = float((*i)->GetPositionRelTo(Pi::playerShip).Length());
 		if (dist > SCANNER_RANGE_MAX) continue;
 
 		Contact c;
 		c.type = (*i)->GetType();
-		c.pos = (*i)->GetPositionRelTo(Pi::player);
+		c.pos = (*i)->GetPositionRelTo(Pi::playerShip);
 		c.isSpecial = false;
 
 		switch ((*i)->GetType()) {
 
 			case Object::MISSILE:
 				// player's own missiles are ignored for range calc but still shown
-				if (static_cast<Missile*>(*i)->GetOwner() == Pi::player) {
+				if (static_cast<Missile*>(*i)->GetOwner() == Pi::playerShip) {
 					c.isSpecial = true;
 					break;
 				}
@@ -249,7 +249,7 @@ void ScannerWidget::Update()
 				if (s->GetFlightState() != Ship::FLYING && s->GetFlightState() != Ship::LANDED)
 					continue;
 
-				if ((*i) == Pi::player->GetCombatTarget()) c.isSpecial = true;
+				if ((*i) == Pi::playerShip->GetCombatTarget()) c.isSpecial = true;
 
 				if (m_mode == SCANNER_MODE_AUTO && range_type != RANGE_COMBAT) {
 					if (c.isSpecial == true) {
@@ -268,7 +268,7 @@ void ScannerWidget::Update()
 			case Object::CARGOBODY:
 			case Object::HYPERSPACECLOUD:
 
-				if ((*i) == Pi::player->GetNavTarget()) c.isSpecial = true;
+				if ((*i) == Pi::playerShip->GetNavTarget()) c.isSpecial = true;
 
 				if (m_mode == SCANNER_MODE_AUTO && range_type < RANGE_NAV) {
 					if (c.isSpecial == true) {
@@ -392,7 +392,7 @@ void ScannerWidget::DrawBlobs(bool below)
 		}
 
 		matrix4x4d rot;
-		Pi::player->GetRotMatrix(rot);
+		Pi::playerShip->GetRotMatrix(rot);
 		vector3d pos = rot.InverseOf() * i->pos;
 
 		if ((pos.y > 0) && (below)) continue;
@@ -532,24 +532,24 @@ void UseEquipWidget::GetSizeRequested(float size[2])
 
 void UseEquipWidget::FireMissile(int idx)
 {
-	if (!Pi::player->GetCombatTarget()) {
+	if (!Pi::playerShip->GetCombatTarget()) {
 		Pi::cpan->MsgLog()->Message("", Lang::SELECT_A_TARGET);
 		return;
 	}
 
-	Pi::player->FireMissile(idx, static_cast<Ship*>(Pi::player->GetCombatTarget()));
+	Pi::playerShip->FireMissile(idx, static_cast<Ship*>(Pi::playerShip->GetCombatTarget()));
 }
 
 void UseEquipWidget::UpdateEquip()
 {
 	DeleteAllChildren();
-	int numSlots = Pi::player->m_equipment.GetSlotSize(Equip::SLOT_MISSILE);
+	int numSlots = Pi::playerShip->m_equipment.GetSlotSize(Equip::SLOT_MISSILE);
 
 	if (numSlots) {
 		float spacing = 380.0f / numSlots;
 
 		for (int i = 0; i < numSlots; ++i) {
-			const Equip::Type t = Pi::player->m_equipment.Get(Equip::SLOT_MISSILE, i);
+			const Equip::Type t = Pi::playerShip->m_equipment.Get(Equip::SLOT_MISSILE, i);
 			if (t == Equip::NONE) continue;
 
 			Gui::Button *b;
@@ -575,14 +575,14 @@ void UseEquipWidget::UpdateEquip()
 	}
 
 	{
-		const Equip::Type t = Pi::player->m_equipment.Get(Equip::SLOT_ECM);
+		const Equip::Type t = Pi::playerShip->m_equipment.Get(Equip::SLOT_ECM);
 		if (t != Equip::NONE) {
 			Gui::Button *b = 0;
 			if (t == Equip::ECM_BASIC) b = new Gui::ImageButton("icons/ecm_basic.png");
 			else if (t == Equip::ECM_ADVANCED) b = new Gui::ImageButton("icons/ecm_advanced.png");
 			assert(b);
 
-			b->onClick.connect(sigc::mem_fun(Pi::player, &Ship::UseECM));
+			b->onClick.connect(sigc::mem_fun(Pi::playerShip, &Ship::UseECM));
 
 			Add(b, 32, 0);
 		}

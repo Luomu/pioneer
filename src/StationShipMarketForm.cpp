@@ -9,7 +9,7 @@
 
 StationShipMarketForm::StationShipMarketForm(FormController *controller) : FaceForm(controller)
 {
-	m_station = Pi::player->GetDockedWith();
+	m_station = Pi::playerShip->GetDockedWith();
 
 	SetTitle(stringf(Lang::SOMEWHERE_SHIP_MARKET, formatarg("station", m_station->GetLabel())));
 
@@ -76,7 +76,7 @@ void StationShipMarketForm::UpdateShipList()
 		Gui::Label *l = new Gui::Label(ShipType::types[(*i).type].name);
 		f->Add(l,0,0);
 		f->Add(new Gui::Label(format_money((*i).price)), 200, 0);
-		f->Add(new Gui::Label(format_money((*i).price - Pi::player->GetFlavour()->price) ), 275, 0);
+		f->Add(new Gui::Label(format_money((*i).price - Pi::playerShip->GetFlavour()->price) ), 275, 0);
 		f->Add(new Gui::Label(stringf(Lang::NUMBER_TONNES, formatarg("mass", ShipType::types[(*i).type].capacity))), 370, 0);
 		
 		Gui::SolidButton *sb = new Gui::SolidButton();

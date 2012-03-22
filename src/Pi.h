@@ -142,7 +142,7 @@ public:
 #if WITH_DEVKEYS
 	static bool showDebugInfo;
 #endif
-	static Player *player;
+	static Player *playerShip;
 	static SectorView *sectorView;
 	static GalacticView *galacticView;
 	static GameMenuView *gameMenuView;

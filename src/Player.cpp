@@ -27,36 +27,6 @@ bool Player::OnDamage(Object *attacker, float kgDamage)
 	return r;
 }
 
-//XXX do in lua, or use the alert concept for all ships
-void Player::SetAlertState(Ship::AlertState as)
-{
-	Ship::AlertState prev = GetAlertState();
-
-	switch (as) {
-		case ALERT_NONE:
-			if (prev != ALERT_NONE)
-				Pi::cpan->MsgLog()->Message("", Lang::ALERT_CANCELLED);
-			break;
-
-		case ALERT_SHIP_NEARBY:
-			if (prev == ALERT_NONE)
-				Pi::cpan->MsgLog()->ImportantMessage("", Lang::SHIP_DETECTED_NEARBY);
-			else
-				Pi::cpan->MsgLog()->ImportantMessage("", Lang::DOWNGRADING_ALERT_STATUS);
-			Sound::PlaySfx("OK");
-			break;
-
-		case ALERT_SHIP_FIRING:
-			Pi::cpan->MsgLog()->ImportantMessage("", Lang::LASER_FIRE_DETECTED);
-			Sound::PlaySfx("warning", 0.2f, 0.2f, 0);
-			break;
-	}
-
-	Pi::cpan->SetAlertState(as);
-
-	Ship::SetAlertState(as);
-}
-
 void Player::NotifyRemoved(const Body* const removedBody)
 {
 	if (GetNavTarget() == removedBody)

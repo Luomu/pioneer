@@ -25,6 +25,7 @@ public:
 	void Update();
 	MsgLogWidget *MsgLog() { return m_msglog; }
 	void SetAlertState(Ship::AlertState as);
+	Ship::AlertState GetAlertState() const { return m_alertState; }
 
 	void TimeStepUpdate(float step);
 
@@ -66,6 +67,7 @@ private:
 	Gui::ImageRadioButton *m_timeAccelButtons[6];
 	Gui::Widget *m_mapViewButtons[4];
 	Gui::Image *m_alertLights[3];
+	Ship::AlertState m_alertState;
 };
 
 #endif /* _SHIP_CPANEL_H */

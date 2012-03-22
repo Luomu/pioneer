@@ -14,7 +14,6 @@ public:
 	Player(ShipType::Type shipType);
 	Player() { }; //default constructor used before Load
 	virtual bool OnDamage(Object *attacker, float kgDamage);
-	virtual void SetAlertState(Ship::AlertState as);
 	virtual void NotifyRemoved(const Body* const removedBody);
 
 	//XXX temporary things to avoid causing too many changes right now

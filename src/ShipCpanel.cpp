@@ -1,19 +1,20 @@
-#include "libs.h"
-#include "Pi.h"
 #include "ShipCpanel.h"
-#include "SpaceStationView.h"
-#include "Player.h"
-#include "InfoView.h"
-#include "WorldView.h"
-#include "SpaceStation.h"
-#include "ShipCpanelMultiFuncDisplays.h"
-#include "SectorView.h"
-#include "SystemView.h"
-#include "SystemInfoView.h"
+#include "libs.h"
 #include "GalacticView.h"
-#include "GameMenuView.h"
-#include "Lang.h"
 #include "Game.h"
+#include "GameMenuView.h"
+#include "InfoView.h"
+#include "Lang.h"
+#include "Pi.h"
+#include "Player.h"
+#include "SectorView.h"
+#include "ShipCpanelMultiFuncDisplays.h"
+#include "Sound.h"
+#include "SpaceStation.h"
+#include "SpaceStationView.h"
+#include "SystemInfoView.h"
+#include "SystemView.h"
+#include "WorldView.h"
 
 class CameraSwitchWidget : public Gui::Widget {
 public:
@@ -37,6 +38,7 @@ ShipCpanel::ShipCpanel(Graphics::Renderer *r): Gui::Fixed(float(Gui::Screen::Get
 	m_scanner = new ScannerWidget(r);
 
 	InitObject();
+	SetAlertState(Ship::ALERT_NONE);
 }
 
 ShipCpanel::ShipCpanel(Serializer::Reader &rd, Graphics::Renderer *r): Gui::Fixed(float(Gui::Screen::GetWidth()), 80)
@@ -374,23 +376,34 @@ void ShipCpanel::OnClickComms(Gui::MultiStateImageButton *b)
 
 void ShipCpanel::SetAlertState(Ship::AlertState as)
 {
+	Ship::AlertState prev = GetAlertState();
 	switch (as) {
 		case Ship::ALERT_NONE:
+			if (prev != Ship::ALERT_NONE)
+				MsgLog()->Message("", Lang::ALERT_CANCELLED);
 			m_alertLights[0]->Show();
 			m_alertLights[1]->Hide();
 			m_alertLights[2]->Hide();
 			break;
 		case Ship::ALERT_SHIP_NEARBY:
+			if (prev == Ship::ALERT_NONE)
+				MsgLog()->ImportantMessage("", Lang::SHIP_DETECTED_NEARBY);
+			else
+				MsgLog()->ImportantMessage("", Lang::DOWNGRADING_ALERT_STATUS);
+			Sound::PlaySfx("OK");
 			m_alertLights[0]->Hide();
 			m_alertLights[1]->Show();
 			m_alertLights[2]->Hide();
 			break;
 		case Ship::ALERT_SHIP_FIRING:
+			MsgLog()->ImportantMessage("", Lang::LASER_FIRE_DETECTED);
+			Sound::PlaySfx("warning", 0.2f, 0.2f, 0);
 			m_alertLights[0]->Hide();
 			m_alertLights[1]->Hide();
 			m_alertLights[2]->Show();
 			break;
 	}
+	m_alertState = as;
 }
 
 void ShipCpanel::TimeStepUpdate(float step)

@@ -136,6 +136,7 @@ public:
 		ALERT_SHIP_FIRING,
 	};
 	AlertState GetAlertState() { return m_alertState; }
+	virtual void SetAlertState(Ship::AlertState as);
 
 	bool AIMatchVel(const vector3d &vel);
 	bool AIChangeVelBy(const vector3d &diffvel);		// acts in obj space
@@ -209,16 +210,15 @@ public:
 
 	HyperspaceCloud *GetHyperspaceCloud() const { return m_hyperspaceCloud; }
 
-	sigc::signal<void> onDock;				// JJ: check what these are for
+	sigc::signal<void> onDock;
 	sigc::signal<void> onUndock;
+	sigc::signal<void, Ship::AlertState> onAlertStateChanged;
+
 protected:
 	virtual void Save(Serializer::Writer &wr, Space *space);
 	virtual void Load(Serializer::Reader &rd, Space *space);
-	void RenderLaserfire();
 
 	bool AITimeStep(float timeStep); // Called by controller. Returns true if complete
-
-	virtual void SetAlertState(AlertState as) { m_alertState = as; }
 
 	virtual void OnEnterHyperspace();
 	virtual void OnEnterSystem();

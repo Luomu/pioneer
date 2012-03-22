@@ -1231,6 +1231,13 @@ void Ship::ResetFlavour(const ShipFlavour *f)
 	Pi::luaOnShipFlavourChanged->Queue(this);
 }
 
+void Ship::SetAlertState(const Ship::AlertState as)
+{
+	Ship::AlertState prev = GetAlertState();
+	if (prev != as) onAlertStateChanged.emit(as);
+	m_alertState = as;
+}
+
 void Ship::EnterHyperspace() {
 	assert(GetFlightState() != Ship::HYPERSPACE);
 

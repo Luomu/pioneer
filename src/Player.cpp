@@ -15,20 +15,6 @@
 
 Player::Player(ShipType::Type shipType): Ship(shipType)
 {
-	isPlayerShip = true;
-	SetController(new PlayerShipController());
-	UpdateMass();
-}
-
-void Player::Save(Serializer::Writer &wr, Space *space)
-{
-	Ship::Save(wr, space);
-}
-
-void Player::Load(Serializer::Reader &rd, Space *space)
-{
-	Pi::playerShip = this;
-	Ship::Load(rd, space);
 }
 
 //XXX perhaps remove this, the sound is very annoying

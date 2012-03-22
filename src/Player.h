@@ -26,9 +26,6 @@ public:
 
 	Pioneer::Player *GetPlayer(); //XXX to avoid some lua work
 protected:
-	virtual void Save(Serializer::Writer &wr, Space *space);
-	virtual void Load(Serializer::Reader &rd, Space *space);
-
 	virtual void OnEnterSystem();
 	virtual void OnEnterHyperspace();
 };

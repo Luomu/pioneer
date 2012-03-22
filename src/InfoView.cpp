@@ -194,6 +194,7 @@ public:
 		DeleteAllChildren();
 
 		float ypos = 40.0f;
+		//XXX get combatrating from lua
 		//Add((new Gui::Label(Lang::COMBAT_RATING))->Shadow(true), 40, ypos);
 		//Add(new Gui::Label(Pi::combatRating[ Pi::CombatRating(Pi::player->GetKillCount()) ]), 40, ypos+YSEP);
 

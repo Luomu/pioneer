@@ -138,17 +138,6 @@ struct DetailLevel Pi::detail = { 0, 0 };
 bool Pi::joystickEnabled;
 bool Pi::mouseYInvert;
 std::vector<Pi::JoystickState> Pi::joysticks;
-const char * const Pi::combatRating[] = {
-	Lang::HARMLESS,
-	Lang::MOSTLY_HARMLESS,
-	Lang::POOR,
-	Lang::AVERAGE,
-	Lang::ABOVE_AVERAGE,
-	Lang::COMPETENT,
-	Lang::DANGEROUS,
-	Lang::DEADLY,
-	Lang::ELITE
-};
 Graphics::Renderer *Pi::renderer;
 
 #if WITH_OBJECTVIEWER
@@ -156,20 +145,6 @@ ObjectViewerView *Pi::objectViewerView;
 #endif
 
 Sound::MusicPlayer Pi::musicPlayer;
-
-int Pi::CombatRating(int kills)
-{
-	if (kills < 8) return 0;
-	if (kills < 16) return 1;
-	if (kills < 32) return 2;
-	if (kills < 64) return 3;
-	if (kills < 128) return 4;
-	if (kills < 512) return 5;
-	if (kills < 2400) return 6;
-	if (kills < 6000) return 7;
-	/* nothing better to do with their lives? */
-	return 8;
-}
 
 static void draw_progress(float progress)
 {

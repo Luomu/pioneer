@@ -17,6 +17,12 @@
 
 namespace Sound {
 
+//XXX refactoring
+static inline Body *GetListener()
+{
+	return Pi::game->GetPlayer()->GetShip();
+}
+
 class OggFileDataStream {
 public:
 	static const ov_callbacks CALLBACKS;
@@ -132,12 +138,12 @@ eventid BodyMakeNoise(const Body *b, const char *sfx, float vol)
 {
 	vector3d pos;
        
-	if (b == Pi::player) {
+	if (b == GetListener()) {
 		pos = vector3d(0.0);
 	} else {
-		pos = b->GetPositionRelTo(Pi::player->GetFrame()) - Pi::player->GetPosition();
+		pos = b->GetPositionRelTo(GetListener()->GetFrame()) - GetListener()->GetPosition();
 		matrix4x4d m;
-		Pi::player->GetRotMatrix(m);
+		GetListener()->GetRotMatrix(m);
 		pos = m.InverseOf() * pos;
 	}
 

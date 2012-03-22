@@ -118,7 +118,7 @@ static int GetCrimeIdxFromEnum(enum Crime crime)
 void NotifyOfCrime(Ship *s, enum Crime crime)
 {
 	// ignore crimes of NPCs for the time being
-	if (!s->IsType(Object::PLAYER)) return;
+	if (!s->IsPlayer()) return;
 	// find nearest starport to this evil criminal
 	SpaceStation *station = static_cast<SpaceStation*>(Pi::game->GetSpace()->FindNearestTo(s, Object::SPACESTATION));
 	if (station) {

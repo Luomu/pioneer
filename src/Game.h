@@ -34,7 +34,7 @@ public:
 
 	Space *GetSpace() const { return m_space.Get(); }
 	double GetTime() const { return m_time; }
-	Pioneer::Player *GetPlayer() const { return m_playerCharacter.Get(); }
+	Pioneer::Player *GetPlayer() const { return m_player.Get(); }
 
 	// physics step
 	void TimeStep(float step);
@@ -85,8 +85,7 @@ private:
 	ScopedPtr<Space> m_space;
 	double m_time;
 
-	ScopedPtr<Player> m_player;
-	ScopedPtr<Pioneer::Player> m_playerCharacter;
+	ScopedPtr<Pioneer::Player> m_player;
 
 	enum State {
 		STATE_NORMAL,

@@ -366,7 +366,7 @@ double Ship::AIFaceDirection(const vector3d &dir, double av)
 	// baseclass version in Ship would always be 0. the version in Player
 	// would be constructed from user input. that adjustment could then be
 	// considered by this method when computing the required change
-	if (IsType(Object::PLAYER) && (KeyBindings::rollLeft.IsActive() || KeyBindings::rollRight.IsActive()))
+	if (IsPlayer() && (KeyBindings::rollLeft.IsActive() || KeyBindings::rollRight.IsActive()))
 		diff.z = m_angThrusters.z;
 	SetAngThrusterState(diff);
 	return ang;

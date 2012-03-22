@@ -51,7 +51,6 @@ void Body::Serialize(Serializer::Writer &_wr, Space *space)
 		case Object::PLANET:
 		case Object::SPACESTATION:
 		case Object::SHIP:
-		case Object::PLAYER:
 		case Object::MISSILE:
 		case Object::CARGOBODY:
 		case Object::PROJECTILE:
@@ -83,8 +82,6 @@ Body *Body::Unserialize(Serializer::Reader &_rd, Space *space)
 			b = new SpaceStation(); break;
 		case Object::SHIP:
 			b = new Ship(); break;
-		case Object::PLAYER:
-			b = new Player(); break;
 		case Object::MISSILE:
 			b = new Missile(); break;
 		case Object::PROJECTILE:

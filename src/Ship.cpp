@@ -308,7 +308,7 @@ bool Ship::OnCollision(Object *b, Uint32 flags, double relVel)
 		Equip::Type item = dynamic_cast<CargoBody*>(b)->GetCargoType();
 		m_equipment.Add(item);
 		Pi::game->GetSpace()->KillBody(dynamic_cast<Body*>(b));
-		if (this->IsType(Object::PLAYER))
+		if (this->IsPlayer())
 			Pi::Message(stringf(Lang::CARGO_SCOOP_ACTIVE_1_TONNE_X_COLLECTED, formatarg("item", Equip::types[item].name)));
 		// XXX Sfx::Add(this, Sfx::TYPE_SCOOP);
 		UpdateMass();
@@ -329,7 +329,6 @@ bool Ship::OnCollision(Object *b, Uint32 flags, double relVel)
 	if (
 		b->IsType(Object::CITYONPLANET) ||
 		b->IsType(Object::SHIP) ||
-		b->IsType(Object::PLAYER) ||
 		b->IsType(Object::SPACESTATION) ||
 		b->IsType(Object::PLANET) ||
 		b->IsType(Object::STAR) ||
@@ -945,7 +944,7 @@ void Ship::StaticUpdate(const float timeStep)
 					double rate = speed*density*0.00001f;
 					if (Pi::rng.Double() < rate) {
 						m_equipment.Add(Equip::HYDROGEN);
-						if (this->IsType(Object::PLAYER)) {
+						if (this->IsPlayer()) {
 							Pi::Message(stringf(Lang::FUEL_SCOOP_ACTIVE_N_TONNES_H_COLLECTED,
 									formatarg("quantity", m_equipment.Count(Equip::SLOT_CARGO, Equip::HYDROGEN))));
 						}
@@ -967,7 +966,7 @@ void Ship::StaticUpdate(const float timeStep)
 			
 			if (m_equipment.Remove(t, 1)) {
 				m_equipment.Add(Equip::FERTILIZER);
-				if (this->IsType(Object::PLAYER)) {
+				if (this->IsPlayer()) {
 					Pi::Message(Lang::CARGO_BAY_LIFE_SUPPORT_LOST);
 				}
 			}

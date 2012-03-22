@@ -16,7 +16,6 @@
 #include <string>
 #include <vector>
 
-class Player;
 class SectorView;
 class SystemView;
 class WorldView;
@@ -142,7 +141,7 @@ public:
 #if WITH_DEVKEYS
 	static bool showDebugInfo;
 #endif
-	static Player *playerShip;
+	static Ship *playerShip;
 	static SectorView *sectorView;
 	static GalacticView *galacticView;
 	static GameMenuView *gameMenuView;

@@ -1,7 +1,6 @@
 #include "Game.h"
 #include "Space.h"
 #include "Player.h"
-#include "PlayerCharacter.h"
 #include "Body.h"
 #include "SpaceStation.h"
 #include "HyperspaceCloud.h"
@@ -37,11 +36,11 @@ Game::Game(const SystemPath &path) :
 
 	CreatePlayer();
 
-	m_space->AddBody(m_player.Get());
+	m_space->AddBody(m_player->GetShip());
 
-	m_player->Enable();
-	m_player->SetFrame(station->GetFrame());
-	m_player->SetDockedWith(station, 0);
+	m_player->GetShip()->Enable();
+	m_player->GetShip()->SetFrame(station->GetFrame());
+	m_player->GetShip()->SetDockedWith(station, 0);
 
 	CreateViews();
 }
@@ -60,13 +59,13 @@ Game::Game(const SystemPath &path, const vector3d &pos) :
 
 	CreatePlayer();
 
-	m_space->AddBody(m_player.Get());
+	m_space->AddBody(m_player->GetShip());
 
-	m_player->Enable();
-	m_player->SetFrame(b->GetFrame());
+	m_player->GetShip()->Enable();
+	m_player->GetShip()->SetFrame(b->GetFrame());
 
-	m_player->SetPosition(pos);
-	m_player->SetVelocity(vector3d(0,0,0));
+	m_player->GetShip()->SetPosition(pos);
+	m_player->GetShip()->SetVelocity(vector3d(0,0,0));
 
 	CreateViews();
 }
@@ -91,7 +90,7 @@ Game::~Game()
 	// is owned by the space, and the game part that holds all the player
 	// attributes and whatever else
 
-	m_space->RemoveBody(m_player.Get());
+	m_space->RemoveBody(m_player->GetShip());
 	m_space.Reset();
 	m_player.Reset();
 }
@@ -123,7 +122,7 @@ Game::Game(Serializer::Reader &rd) :
 	// game state and space transition state
 	section = rd.RdSection("Game");
 
-	m_player.Reset(static_cast<Player*>(m_space->GetBodyByIndex(section.Int32())));
+	Ship *playerShip = static_cast<Ship*>(m_space->GetBodyByIndex(section.Int32()));
 
 	// hyperspace clouds being brought over from the previous system
 	Uint32 nclouds = section.Int32();
@@ -140,8 +139,9 @@ Game::Game(Serializer::Reader &rd) :
 
 	//player
 	section = rd.RdSection("Player");
-	m_playerCharacter.Reset(new Pioneer::Player());
-	m_playerCharacter->Load(section);
+	m_player.Reset(new Pioneer::Player());
+	m_player->Load(section);
+	m_player->SetShip(playerShip);
 
 	// system political stuff
 	section = rd.RdSection("Polit");
@@ -181,7 +181,8 @@ void Game::Serialize(Serializer::Writer &wr)
 	// game state and space transition state
 	section = Serializer::Writer();
 
-	section.Int32(m_space->GetIndexForBody(m_player.Get()));
+	//XXX player should probably save this
+	section.Int32(m_space->GetIndexForBody(m_player->GetShip()));
 
 	// hyperspace clouds being brought over from the previous system
 	section.Int32(m_hyperspaceClouds.size());
@@ -199,7 +200,7 @@ void Game::Serialize(Serializer::Writer &wr)
 	wr.WrSection("Game", section.GetData());
 
 	section = Serializer::Writer();
-	m_playerCharacter->Save(section);
+	m_player->Save(section);
 	wr.WrSection("Player", section.GetData());
 
 	// system political data (crime etc)
@@ -246,7 +247,7 @@ void Game::TimeStep(float step)
 	if (m_state == STATE_HYPERSPACE) {
 		if (Pi::game->GetTime() > m_hyperspaceEndTime) {
 			SwitchToNormalSpace();
-			m_player->EnterSystem();
+			m_player->GetShip()->EnterSystem();
 			RequestTimeAccel(TIMEACCEL_1X);
 		}
 		else
@@ -272,33 +273,33 @@ bool Game::UpdateTimeAccel()
 	TimeAccel newTimeAccel = m_requestedTimeAccel;
 
 	// ludicrous speed
-	if (m_player->GetFlightState() == Ship::HYPERSPACE) {
+	if (m_player->GetShip()->GetFlightState() == Ship::HYPERSPACE) {
 		newTimeAccel = Game::TIMEACCEL_HYPERSPACE;
 		RequestTimeAccel(newTimeAccel);
 	}
 
 	// force down to timeaccel 1 during the docking sequence
-	else if (m_player->GetFlightState() == Ship::DOCKING) {
+	else if (m_player->GetShip()->GetFlightState() == Ship::DOCKING) {
 		newTimeAccel = std::min(newTimeAccel, Game::TIMEACCEL_1X);
 		RequestTimeAccel(newTimeAccel);
 	}
 
 	// normal flight
-	else if (m_player->GetFlightState() == Ship::FLYING) {
+	else if (m_player->GetShip()->GetFlightState() == Ship::FLYING) {
 
 		// special timeaccel lock rules while in alert
-		if (m_player->GetAlertState() == Ship::ALERT_SHIP_NEARBY)
+		if (m_player->GetShip()->GetAlertState() == Ship::ALERT_SHIP_NEARBY)
 			newTimeAccel = std::min(newTimeAccel, Game::TIMEACCEL_10X);
-		else if (m_player->GetAlertState() == Ship::ALERT_SHIP_FIRING)
+		else if (m_player->GetShip()->GetAlertState() == Ship::ALERT_SHIP_FIRING)
 			newTimeAccel = std::min(newTimeAccel, Game::TIMEACCEL_1X);
 
 		else if (!m_forceTimeAccel) {
 			// check we aren't too near to objects for timeaccel //
 			for (Space::BodyIterator i = m_space->BodiesBegin(); i != m_space->BodiesEnd(); ++i) {
-				if ((*i) == m_player) continue;
+				if ((*i) == m_player->GetShip()) continue;
 				if ((*i)->IsType(Object::HYPERSPACECLOUD)) continue;
 			
-				vector3d toBody = m_player->GetPosition() - (*i)->GetPositionRelTo(m_player->GetFrame());
+				vector3d toBody = m_player->GetShip()->GetPosition() - (*i)->GetPositionRelTo(m_player->GetShip()->GetFrame());
 				double dist = toBody.Length();
 				double rad = (*i)->GetBoundingRadius();
 
@@ -345,7 +346,7 @@ void Game::SwitchToHyperspace()
 	// remember where we came from so we can properly place the player on exit
 	m_hyperspaceSource = m_space->GetStarSystem()->GetPath();
 
-	const SystemPath &dest = m_player->GetHyperspaceDest();
+	const SystemPath &dest = m_player->GetShip()->GetHyperspaceDest();
 
 	// find all the departure clouds, convert them to arrival clouds and store
 	// them for the next system
@@ -370,7 +371,7 @@ void Game::SwitchToHyperspace()
 		// want the player to have any memory of what they were (we're just
 		// reusing them for convenience). tell the player it was deleted so it
 		// can clean up
-		m_player->NotifyRemoved(cloud);
+		m_player->GetShip()->NotifyRemoved(cloud);
 
 		// turn the cloud arround
 		cloud->GetShip()->SetHyperspaceDest(m_hyperspaceSource);
@@ -383,24 +384,24 @@ void Game::SwitchToHyperspace()
 	printf(SIZET_FMT " clouds brought over\n", m_hyperspaceClouds.size());
 
 	// remove the player from space
-	m_space->RemoveBody(m_player.Get());
+	m_space->RemoveBody(m_player->GetShip());
 
 	// create hyperspace :)
 	m_space.Reset(new Space(this));
 
 	// put the player in it
-	m_player->SetFrame(m_space->GetRootFrame());
-	m_space->AddBody(m_player.Get());
+	m_player->GetShip()->SetFrame(m_space->GetRootFrame());
+	m_space->AddBody(m_player->GetShip());
 
 	// put player at the origin. kind of unnecessary since it won't be moving
 	// but at least it gives some consistency
-	m_player->SetPosition(vector3d(0,0,0));
-	m_player->SetVelocity(vector3d(0,0,0));
-	m_player->SetRotMatrix(matrix4x4d::Identity());
+	m_player->GetShip()->SetPosition(vector3d(0,0,0));
+	m_player->GetShip()->SetVelocity(vector3d(0,0,0));
+	m_player->GetShip()->SetRotMatrix(matrix4x4d::Identity());
 
 	// animation and end time counters
 	m_hyperspaceProgress = 0;
-	m_hyperspaceDuration = m_player->GetHyperspaceDuration();
+	m_hyperspaceDuration = m_player->GetShip()->GetHyperspaceDuration();
 	m_hyperspaceEndTime = Pi::game->GetTime() + m_hyperspaceDuration;
 
 	m_state = STATE_HYPERSPACE;
@@ -412,25 +413,25 @@ void Game::SwitchToHyperspace()
 void Game::SwitchToNormalSpace()
 {
 	// remove the player from hyperspace
-	m_space->RemoveBody(m_player.Get());
+	m_space->RemoveBody(m_player->GetShip());
 
 	// create a new space for the system
-	const SystemPath &dest = m_player->GetHyperspaceDest();
+	const SystemPath &dest = m_player->GetShip()->GetHyperspaceDest();
 	m_space.Reset(new Space(this, dest));
 
 	// put the player in it
-	m_player->SetFrame(m_space->GetRootFrame());
-	m_space->AddBody(m_player.Get());
+	m_player->GetShip()->SetFrame(m_space->GetRootFrame());
+	m_space->AddBody(m_player->GetShip());
 
 	// place it
-	m_player->SetPosition(m_space->GetHyperspaceExitPoint(m_hyperspaceSource));
-	m_player->SetVelocity(vector3d(0,0,-100.0));
-	m_player->SetRotMatrix(matrix4x4d::Identity());
+	m_player->GetShip()->SetPosition(m_space->GetHyperspaceExitPoint(m_hyperspaceSource));
+	m_player->GetShip()->SetVelocity(vector3d(0,0,-100.0));
+	m_player->GetShip()->SetRotMatrix(matrix4x4d::Identity());
 
 	// place the exit cloud
 	HyperspaceCloud *cloud = new HyperspaceCloud(0, Pi::game->GetTime(), true);
 	cloud->SetFrame(m_space->GetRootFrame());
-	cloud->SetPosition(m_player->GetPosition());
+	cloud->SetPosition(m_player->GetShip()->GetPosition());
 	m_space->AddBody(cloud);
 
 	for (std::list<HyperspaceCloud*>::iterator i = m_hyperspaceClouds.begin(); i != m_hyperspaceClouds.end(); ++i) {
@@ -544,9 +545,9 @@ void Game::SetTimeAccel(TimeAccel t)
 {
 	// don't want player to spin like mad when hitting time accel
 	if ((t != m_timeAccel) && (t > TIMEACCEL_1X)) {
-		m_player->SetAngVelocity(vector3d(0,0,0));
-		m_player->SetTorque(vector3d(0,0,0));
-		m_player->SetAngThrusterState(vector3d(0.0));
+		m_player->GetShip()->SetAngVelocity(vector3d(0,0,0));
+		m_player->GetShip()->SetTorque(vector3d(0,0,0));
+		m_player->GetShip()->SetAngThrusterState(vector3d(0.0));
 	}
 
 	// Give all ships a half-step acceleration to stop autopilot overshoot
@@ -571,7 +572,8 @@ void Game::RequestTimeAccel(TimeAccel t, bool force)
 
 void Game::CreatePlayer()
 {
-	m_playerCharacter.Reset(new Pioneer::Player());
+	m_player.Reset(new Pioneer::Player());
+	Ship *ship = 0; //player ship
 	// XXX this should probably be in lua somewhere
 	// XXX no really, it should. per system hacks? oh my.
 
@@ -579,29 +581,30 @@ void Game::CreatePlayer()
 
 	if (startPath.IsSameSystem(SystemPath(-2,1,90,0))) {
 		// Lave
-		m_player.Reset(new Player("Cobra Mk III"));
-		m_player->m_equipment.Set(Equip::SLOT_ENGINE, 0, Equip::DRIVE_CLASS3);
-		m_player->m_equipment.Set(Equip::SLOT_LASER, 0, Equip::PULSECANNON_1MW);
-		m_player->m_equipment.Add(Equip::HYDROGEN, 2);
-		m_player->m_equipment.Add(Equip::MISSILE_GUIDED);
-		m_player->m_equipment.Add(Equip::MISSILE_GUIDED);
-		m_player->m_equipment.Add(Equip::SCANNER);
+		ship = new Ship("Cobra Mk III");
+		ship->m_equipment.Set(Equip::SLOT_ENGINE, 0, Equip::DRIVE_CLASS3);
+		ship->m_equipment.Set(Equip::SLOT_LASER, 0, Equip::PULSECANNON_1MW);
+		ship->m_equipment.Add(Equip::HYDROGEN, 2);
+		ship->m_equipment.Add(Equip::MISSILE_GUIDED);
+		ship->m_equipment.Add(Equip::MISSILE_GUIDED);
+		ship->m_equipment.Add(Equip::SCANNER);
 	}
 
 	else {
-		m_player.Reset(new Player("Eagle Long Range Fighter"));
-		m_player->m_equipment.Set(Equip::SLOT_ENGINE, 0, Equip::DRIVE_CLASS1);
-		m_player->m_equipment.Set(Equip::SLOT_LASER, 0, Equip::PULSECANNON_1MW);
-		m_player->m_equipment.Add(Equip::HYDROGEN, 1);
-		m_player->m_equipment.Add(Equip::ATMOSPHERIC_SHIELDING);
-		m_player->m_equipment.Add(Equip::MISSILE_GUIDED);
-		m_player->m_equipment.Add(Equip::MISSILE_GUIDED);
-		m_player->m_equipment.Add(Equip::AUTOPILOT);
-		m_player->m_equipment.Add(Equip::SCANNER);
+		ship = new Ship("Eagle Long Range Fighter");
+		ship->m_equipment.Set(Equip::SLOT_ENGINE, 0, Equip::DRIVE_CLASS1);
+		ship->m_equipment.Set(Equip::SLOT_LASER, 0, Equip::PULSECANNON_1MW);
+		ship->m_equipment.Add(Equip::HYDROGEN, 1);
+		ship->m_equipment.Add(Equip::ATMOSPHERIC_SHIELDING);
+		ship->m_equipment.Add(Equip::MISSILE_GUIDED);
+		ship->m_equipment.Add(Equip::MISSILE_GUIDED);
+		ship->m_equipment.Add(Equip::AUTOPILOT);
+		ship->m_equipment.Add(Equip::SCANNER);
 	}
 
-	m_player->UpdateMass();
-	GetPlayer()->SetMoney(10000);
+	ship->UpdateMass();
+	m_player->SetMoney(10000);
+	m_player->SetShip(ship);
 }
 
 // XXX this should be in some kind of central UI management class that
@@ -616,8 +619,7 @@ void Game::CreateViews()
 
 	// XXX views expect Pi::game and Pi::playerShip to exist
 	Pi::game = this;
-	Pi::playerShip = m_player.Get();
-	m_playerCharacter->SetShip(Pi::playerShip);
+	Pi::playerShip = m_player->GetShip();
 
 	Pi::cpan = new ShipCpanel(Pi::renderer);
 	Pi::sectorView = new SectorView();
@@ -649,7 +651,7 @@ void Game::LoadViews(Serializer::Reader &rd)
 
 	// XXX views expect Pi::game and Pi::playerShip to exist
 	Pi::game = this;
-	Pi::playerShip = m_player.Get();
+	Pi::playerShip = m_player->GetShip();
 
 	Serializer::Reader section = rd.RdSection("ShipCpanel");
 	Pi::cpan = new ShipCpanel(section, Pi::renderer);

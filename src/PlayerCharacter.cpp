@@ -94,4 +94,33 @@ Sint64 Player::GetPrice(Equip::Type t) const
 	}
 }
 
+//temporary targeting stuff
+Body *Player::GetCombatTarget() const
+{
+	return static_cast<PlayerShipController*>(GetShip()->GetController())->GetCombatTarget();
+}
+
+Body *Player::GetNavTarget() const
+{
+	return static_cast<PlayerShipController*>(GetShip()->GetController())->GetNavTarget();
+}
+
+Body *Player::GetSetSpeedTarget() const
+{
+	return static_cast<PlayerShipController*>(GetShip()->GetController())->GetSetSpeedTarget();
+}
+
+void Player::SetCombatTarget(Body* const target, bool setSpeedTo)
+{
+	static_cast<PlayerShipController*>(GetShip()->GetController())->SetCombatTarget(target, setSpeedTo);
+	Pi::onPlayerChangeTarget.emit();
+}
+
+void Player::SetNavTarget(Body* const target, bool setSpeedTo)
+{
+	static_cast<PlayerShipController*>(GetShip()->GetController())->SetNavTarget(target, setSpeedTo);
+	Pi::onPlayerChangeTarget.emit();
+}
+//temporary targeting stuff ends
+
 }

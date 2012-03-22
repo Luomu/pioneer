@@ -25,7 +25,7 @@ struct Mission : RefItem<Mission> {
 
 namespace Pioneer {
 
-class Player : public MarketAgent {
+class Player : public MarketAgent, public DeleteEmitter {
 public:
 	Player();
 	~Player();
@@ -45,6 +45,13 @@ public:
 	bool CanSell(Equip::Type t, bool verbose) const;
 	bool DoesSell(Equip::Type t) const { return true; }
 	Sint64 GetPrice(Equip::Type t) const;
+
+	//XXX temporary things to avoid causing too many changes right now
+	Body *GetCombatTarget() const;
+	Body *GetNavTarget() const;
+	Body *GetSetSpeedTarget() const;
+	void SetCombatTarget(Body* const target, bool setSpeedTo = false);
+	void SetNavTarget(Body* const target, bool setSpeedTo = false);
 
 protected:
 	void Bought(Equip::Type t);

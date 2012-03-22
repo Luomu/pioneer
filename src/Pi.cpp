@@ -1048,7 +1048,7 @@ void Pi::HandleMenuKey(int n)
 			enemy->AIKill(player);
 			game->GetSpace()->AddBody(enemy);
 
-			player->SetCombatTarget(enemy);
+			game->GetPlayer()->SetCombatTarget(enemy);
 
 			const ShipType *shipdef;
 			double mass, acc1, acc2, acc3;

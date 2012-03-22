@@ -98,8 +98,8 @@ void HyperspaceCloud::TimeStepUpdate(const float timeStep)
 		Pi::game->GetSpace()->AddBody(m_ship);
 		m_ship->Enable();
 
-		if (Pi::playerShip->GetNavTarget() == this && !Pi::playerShip->GetCombatTarget())
-			Pi::playerShip->SetCombatTarget(m_ship, Pi::playerShip->GetSetSpeedTarget() == this);
+		if (Pi::game->GetPlayer()->GetNavTarget() == this && !Pi::game->GetPlayer()->GetCombatTarget())
+			Pi::game->GetPlayer()->SetCombatTarget(m_ship, Pi::game->GetPlayer()->GetSetSpeedTarget() == this);
 
 		m_ship->EnterSystem();
 

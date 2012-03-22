@@ -83,7 +83,7 @@ void ObjectViewerView::Draw3D()
 				matrix4x4d::RotateYMatrix(-0.002*m[0]) * m_camRot;
 	}
 		
-	Body *body = Pi::playerShip->GetNavTarget();
+	Body *body = Pi::game->GetPlayer()->GetNavTarget();
 	if (body) {
 		if (body->IsType(Object::STAR))
 			light.SetPosition(vector3f(0.f));
@@ -108,7 +108,7 @@ void ObjectViewerView::Update()
 	viewingDist = Clamp(viewingDist, 10.0f, 1e12f);
 
 	char buf[128];
-	Body *body = Pi::playerShip->GetNavTarget();
+	Body *body = Pi::game->GetPlayer()->GetNavTarget();
 	if(body && (body != lastTarget)) {
 		// Reset view distance for new target.
 		viewingDist = body->GetBoundingRadius() * 2.0f;
@@ -147,7 +147,7 @@ void ObjectViewerView::OnChangeTerrain()
 	// terrain, whatever else holds a const pointer to the same toplevel
 	// sbody. one day objectviewer should be far more contained and not
 	// actually modify the space
-	Body *body = Pi::playerShip->GetNavTarget();
+	Body *body = Pi::game->GetPlayer()->GetNavTarget();
 	SBody *sbody = const_cast<SBody*>(body->GetSBody());
 
 	sbody->seed = atoi(m_sbodySeed->GetText().c_str());

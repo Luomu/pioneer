@@ -13,7 +13,6 @@ public:
 	OBJDEF(Player, Ship, PLAYER);
 	Player(ShipType::Type shipType);
 	Player() { }; //default constructor used before Load
-	virtual void NotifyRemoved(const Body* const removedBody);
 
 	//XXX temporary things to avoid causing too many changes right now
 	Body *GetCombatTarget() const;

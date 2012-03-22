@@ -37,6 +37,7 @@ public:
 	virtual void PostLoadFixup(Space *) { }
 	virtual void StaticUpdate(float timeStep);
 	virtual void SetFlightControlState(FlightControlState s) { }
+	virtual void NotifyRemoved(const Body* const removedBody) { }
 	Ship *m_ship;
 
 	//XXX temporary. To stop input when switching ships.
@@ -62,6 +63,7 @@ public:
 	vector3d GetMouseDir() const { return m_mouseDir; }
 	void SetMouseForRearView(bool enable) { m_invertMouse = enable; }
 	void SetFlightControlState(FlightControlState s);
+	virtual void NotifyRemoved(const Body* const removedBody);
 
 	//targeting
 	//XXX AI should utilize one or more of these

@@ -1,6 +1,7 @@
 #include "ShipController.h"
 #include "Frame.h"
 #include "Game.h"
+#include "HyperspaceCloud.h"
 #include "KeyBindings.h"
 #include "Pi.h"
 #include "Player.h"
@@ -281,6 +282,19 @@ void PlayerShipController::SetFlightControlState(FlightControlState s)
 		}
 		//XXX global stuff
 		Pi::onPlayerChangeFlightControlState.emit();
+	}
+}
+
+void PlayerShipController::NotifyRemoved(const Body* const removedBody)
+{
+	if (GetNavTarget() == removedBody)
+		SetNavTarget(0);
+
+	else if (GetCombatTarget() == removedBody) {
+		SetCombatTarget(0);
+
+		if (!GetNavTarget() && removedBody->IsType(Object::SHIP))
+			SetNavTarget(static_cast<const Ship*>(removedBody)->GetHyperspaceCloud());
 	}
 }
 

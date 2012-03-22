@@ -123,7 +123,7 @@ void Camera::Draw(Renderer *renderer)
 	matrix4x4d trans2bg;
 	Frame::GetFrameRenderTransform(Pi::game->GetSpace()->GetRootFrame(), m_camFrame, trans2bg);
 	trans2bg.ClearToRotOnly();
-	Pi::game->GetSpace()->GetBackground().Draw(renderer, trans2bg);
+	Pi::game->GetSpace()->GetBackground().Draw(renderer, trans2bg, Pi::game);
 
 	// Pick up to four suitable system light sources (stars)
 	std::vector<Light> lights;

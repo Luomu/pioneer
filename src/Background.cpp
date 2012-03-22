@@ -79,7 +79,7 @@ void Starfield::Fill(unsigned long seed)
 	}
 }
 
-void Starfield::Draw(Graphics::Renderer *renderer)
+void Starfield::Draw(Graphics::Renderer *renderer, const Game *game)
 {
 	if (AreShadersEnabled()) {
 		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE_ARB);
@@ -88,26 +88,26 @@ void Starfield::Draw(Graphics::Renderer *renderer)
 		glPointSize(1.0f);
 	}
 
-	// XXX would be nice to get rid of the Pi:: stuff here
-	if (!Pi::game || Pi::player->GetFlightState() != Ship::HYPERSPACE) {
+	if (!game || game->IsNormalSpace()) {
 		renderer->DrawStaticMesh(m_model);
 	} else {
+		const Ship *ship = game->GetPlayer()->GetShip();
 		/* HYPERSPACING!!!!!!!!!!!!!!!!!!! */
 		/* all this jizz isn't really necessary, since the player will
 		 * be in the root frame when hyperspacing... */
 		matrix4x4d m, rot;
-		Frame::GetFrameTransform(Pi::game->GetSpace()->GetRootFrame(), Pi::player->GetFrame(), m);
+		Frame::GetFrameTransform(game->GetSpace()->GetRootFrame(), ship->GetFrame(), m);
 		m.ClearToRotOnly();
-		Pi::player->GetRotMatrix(rot);
+		ship->GetRotMatrix(rot);
 		m = rot.InverseOf() * m;
 		vector3d pz(m[2], m[6], m[10]);
 
 		// roughly, the multiplier gets smaller as the duration gets larger.
 		// the time-looking bits in this are completely arbitrary - I figured
 		// it out by tweaking the numbers until it looked sort of right
-		double mult = 0.0015 / (Pi::player->GetHyperspaceDuration() / (60.0*60.0*24.0*7.0));
+		double mult = 0.0015 / (ship->GetHyperspaceDuration() / (60.0*60.0*24.0*7.0));
 
-		double hyperspaceProgress = Pi::game->GetHyperspaceProgress();
+		double hyperspaceProgress = game->GetHyperspaceProgress();
 
 		//XXX this is a lot of lines
 		if (m_hyperVtx == 0) {
@@ -126,7 +126,7 @@ void Starfield::Draw(Graphics::Renderer *renderer)
 			m_hyperVtx[i*2+1] = v;
 			m_hyperCol[i*2+1] = va->diffuse[i];
 		}
-		Pi::renderer->DrawLines(BG_STAR_MAX*2, m_hyperVtx, m_hyperCol);
+		renderer->DrawLines(BG_STAR_MAX*2, m_hyperVtx, m_hyperCol);
 	}
 
 	if (AreShadersEnabled()) {
@@ -218,7 +218,7 @@ void Container::Refresh(unsigned long seed)
 	m_starField.Fill(seed);
 }
 
-void Container::Draw(Graphics::Renderer *renderer, const matrix4x4d &transform) const
+void Container::Draw(Graphics::Renderer *renderer, const matrix4x4d &transform, const Game *game) const
 {
 	//XXX not really const - renderer can modify the buffers
 	glPushMatrix();
@@ -228,8 +228,8 @@ void Container::Draw(Graphics::Renderer *renderer, const matrix4x4d &transform) 
 	// squeeze the starfield a bit to get more density near horizon
 	matrix4x4d starTrans = transform * matrix4x4d::ScaleMatrix(1.0, 0.4, 1.0);
 	renderer->SetTransform(starTrans);
-	const_cast<Starfield&>(m_starField).Draw(renderer);
-	Pi::renderer->SetDepthTest(true);
+	const_cast<Starfield&>(m_starField).Draw(renderer, game);
+	renderer->SetDepthTest(true);
 	glPopMatrix();
 }
 

@@ -2,16 +2,16 @@
 #define _BACKGROUND_H
 
 #include "libs.h"
-
+/*
+ * Classes to draw background stars and the milky way
+ */
 namespace Graphics {
 	class Renderer;
 	class StaticMesh;
 	class Shader;
 }
 
-/*
- * Classes to draw background stars and the milky way
- */
+class Game;
 
 namespace Background
 {
@@ -22,7 +22,7 @@ namespace Background
 		Starfield();
 		Starfield(unsigned long seed);
 		~Starfield();
-		void Draw(Graphics::Renderer *r);
+		void Draw(Graphics::Renderer *r, const Game *g=0);
 		//create or recreate the starfield
 		void Fill(unsigned long seed);
 	private:
@@ -55,7 +55,7 @@ namespace Background
 		// default constructor, needs Refresh with proper seed to show starfield
 		Container();
 		Container(unsigned long seed);
-		void Draw(Graphics::Renderer *r, const matrix4x4d &transform) const;
+		void Draw(Graphics::Renderer *r, const matrix4x4d &transform, const Game *g=0) const;
 		void Refresh(unsigned long seed);
 
 	private:

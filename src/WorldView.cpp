@@ -44,30 +44,19 @@ static inline PlayerShipController *GetPlayerController()
 
 WorldView::WorldView(): View()
 {
-	m_showHyperspaceButton = false;
-	m_externalViewRotX = m_externalViewRotY = 0;
-	m_externalViewDist = 200;
-	m_siderealViewOrient = matrix4x4d::Identity();
-	m_siderealViewDist = 200;
-	m_prevShipOrient = GetPlayerShip()->GetTransformRelTo(Pi::game->GetSpace()->GetRootFrame());
 	m_camType = CAM_FRONT;
-
 	InitObject();
 }
 
 WorldView::WorldView(Serializer::Reader &rd): View()
 {
-	m_externalViewRotX = rd.Float();
-	m_externalViewRotY = rd.Float();
-	m_externalViewDist = rd.Float();
-	for (int i = 0; i < 16; i++) m_siderealViewOrient[i] = rd.Float();
-	m_siderealViewDist = rd.Float();
-	m_prevShipOrient = GetPlayerShip()->GetTransformRelTo(Pi::game->GetSpace()->GetRootFrame());
 	m_camType = CamType(rd.Int32());
-	m_showHyperspaceButton = rd.Bool();
-
 	InitObject();
+	m_externalCamera->Load(rd);
+	m_siderealCamera->Load(rd);
 }
+
+static const float LOW_THRUST_LEVELS[] = { 0.75, 0.5, 0.25, 0.1, 0.05, 0.01 };
 
 void WorldView::InitObject()
 {
@@ -75,6 +64,7 @@ void WorldView::InitObject()
 	GetSize(size);
 	
 	m_showTargetActionsTimeout = 0;
+	m_showLowThrustPowerTimeout = 0;
 	m_numLights = 1;
 	m_labelsOn = true;
 	SetTransparency(true);
@@ -98,6 +88,26 @@ void WorldView::InitObject()
 	m_commsNavOptions->SetSpacing(5);
 	portal->Add(m_commsNavOptions);
 
+	m_lowThrustPowerOptions = new Gui::Fixed(size[0], size[1]/2);
+	m_lowThrustPowerOptions->SetTransparency(true);
+	Add(m_lowThrustPowerOptions, 10, 200);
+	for (int i = 0; i < int(sizeof(LOW_THRUST_LEVELS)/sizeof(LOW_THRUST_LEVELS[0])); ++i) {
+		assert(i < 9); // otherwise the shortcuts break
+		const int ypos = i*32;
+
+		Gui::Label *label = new Gui::Label(
+				stringf(Lang::SET_LOW_THRUST_POWER_LEVEL_TO_X_PERCENT,
+					formatarg("power", 100.0f * LOW_THRUST_LEVELS[i], "f.0")));
+		m_lowThrustPowerOptions->Add(label, 50, float(ypos));
+
+		char buf[8];
+		snprintf(buf, sizeof(buf), "%d", (i + 1));
+		Gui::Button *btn = new Gui::LabelButton(new Gui::Label(buf));
+		btn->SetShortcut(SDLKey(SDLK_1 + i), KMOD_NONE);
+		m_lowThrustPowerOptions->Add(btn, 16, float(ypos));
+
+		btn->onClick.connect(sigc::bind(sigc::mem_fun(this, &WorldView::OnSelectLowThrustPower), LOW_THRUST_LEVELS[i]));
+	}
 
 	m_wheelsButton = new Gui::MultiStateImageButton();
 	m_wheelsButton->SetShortcut(SDLK_F6, KMOD_NONE);
@@ -106,12 +116,11 @@ void WorldView::InitObject()
 	m_wheelsButton->onClick.connect(sigc::mem_fun(this, &WorldView::OnChangeWheelsState));
 	m_rightButtonBar->Add(m_wheelsButton, 34, 2);
 
-	Gui::MultiStateImageButton *labels_button = new Gui::MultiStateImageButton();
-	labels_button->SetShortcut(SDLK_F8, KMOD_NONE);
-	labels_button->AddState(1, "icons/labels_on.png", Lang::OBJECT_LABELS_ARE_ON);
-	labels_button->AddState(0, "icons/labels_off.png", Lang::OBJECT_LABELS_ARE_OFF);
-	labels_button->onClick.connect(sigc::mem_fun(this, &WorldView::OnChangeLabelsState));
-	m_rightButtonBar->Add(labels_button, 98, 2);
+	Gui::ImageButton *set_low_thrust_power_button = new Gui::ImageButton("icons/set_low_thrust_power.png");
+	set_low_thrust_power_button->SetShortcut(SDLK_F8, KMOD_NONE);
+	set_low_thrust_power_button->SetToolTip(Lang::SELECT_LOW_THRUST_POWER_LEVEL);
+	set_low_thrust_power_button->onClick.connect(sigc::mem_fun(this, &WorldView::OnClickLowThrustPower));
+	m_rightButtonBar->Add(set_low_thrust_power_button, 98, 2);
 
 	m_hyperspaceButton = new Gui::ImageButton("icons/hyperspace_f8.png");
 	m_hyperspaceButton->SetShortcut(SDLK_F7, KMOD_NONE);
@@ -211,17 +220,16 @@ void WorldView::InitObject()
 	Pi::renderer->GetNearFarRange(znear, zfar);
 
 	const float fovY = Pi::config->Float("FOVVertical");
-	m_frontCamera = new Camera(GetPlayerShip(), Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
-	m_rearCamera = new Camera(GetPlayerShip(), Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
-	m_externalCamera = new Camera(GetPlayerShip(), Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
-	m_siderealCamera = new Camera(GetPlayerShip(), Pi::GetScrWidth(), Pi::GetScrHeight(), fovY, znear, zfar);
-	
-	m_rearCamera->SetOrientation(matrix4x4d::RotateYMatrix(M_PI));
+
+	const vector2f camSize(Pi::GetScrWidth(), Pi::GetScrHeight());
+	m_frontCamera = new FrontCamera(Pi::playerShip, camSize, fovY, znear, zfar);
+	m_rearCamera = new RearCamera(Pi::playerShip, camSize, fovY, znear, zfar);
+	m_externalCamera = new ExternalCamera(Pi::playerShip, camSize, fovY, znear, zfar);
+	m_siderealCamera = new SiderealCamera(Pi::playerShip, camSize, fovY, znear, zfar);
+	SetCamType(m_camType); //set the active camera
 	
 	m_onHyperspaceTargetChangedCon =
 		Pi::sectorView->onHyperspaceTargetChanged.connect(sigc::mem_fun(this, &WorldView::OnHyperspaceTargetChanged));
-	m_onPlayerEquipmentChangeCon =
-		Pi::playerShip->m_equipment.onChange.connect(sigc::mem_fun(this, &WorldView::OnPlayerEquipmentChange));
 
 	m_onPlayerChangeTargetCon =
 		Pi::onPlayerChangeTarget.connect(sigc::mem_fun(this, &WorldView::OnPlayerChangeTarget));
@@ -229,10 +237,9 @@ void WorldView::InitObject()
 		Pi::onPlayerChangeFlightControlState.connect(sigc::mem_fun(this, &WorldView::OnPlayerChangeFlightControlState));
 	m_onMouseButtonDown =
 		Pi::onMouseButtonDown.connect(sigc::mem_fun(this, &WorldView::MouseButtonDown));
-	m_onPlayerEquipmentChangeCon =
-		Pi::playerShip->m_equipment.onChange.connect(sigc::mem_fun(this, &WorldView::OnPlayerEquipmentChange));
 
 	GetPlayerController()->SetMouseForRearView(m_camType == CAM_REAR);
+	KeyBindings::toggleHudMode.onPress.connect(sigc::mem_fun(this, &WorldView::OnToggleLabels));
 }
 
 WorldView::~WorldView()
@@ -243,8 +250,6 @@ WorldView::~WorldView()
 	delete m_siderealCamera;
 
 	m_onHyperspaceTargetChangedCon.disconnect();
-	m_onPlayerEquipmentChangeCon.disconnect();
-
 	m_onPlayerChangeTargetCon.disconnect();
 	m_onChangeFlightControlStateCon.disconnect();
 	m_onMouseButtonDown.disconnect();
@@ -252,13 +257,9 @@ WorldView::~WorldView()
 
 void WorldView::Save(Serializer::Writer &wr)
 {
-	wr.Float(float(m_externalViewRotX));
-	wr.Float(float(m_externalViewRotY));
-	wr.Float(float(m_externalViewDist));
-	for (int i = 0; i < 16; i++) wr.Float(float(m_siderealViewOrient[i]));
-	wr.Float(float(m_siderealViewDist));
 	wr.Int32(int(m_camType));
-	wr.Bool(bool(m_showHyperspaceButton));
+	m_externalCamera->Save(wr);
+	m_siderealCamera->Save(wr);
 }
 
 void WorldView::SetCamType(enum CamType c)
@@ -268,44 +269,20 @@ void WorldView::SetCamType(enum CamType c)
 		GetPlayerController()->SetMouseForRearView(c == CAM_REAR);
 		onChangeCamType.emit();
 	}
-}
-
-vector3d WorldView::GetExternalViewTranslation()
-{
-	vector3d p = vector3d(0, 0, m_externalViewDist);
-	p = matrix4x4d::RotateXMatrix(-DEG2RAD(m_externalViewRotX)) * p;
-	p = matrix4x4d::RotateYMatrix(-DEG2RAD(m_externalViewRotY)) * p;
-	return p;
-}
-
-matrix4x4d WorldView::GetExternalViewRotation()
-{
-	return
-		matrix4x4d::RotateYMatrix(-DEG2RAD(m_externalViewRotY)) *
-		matrix4x4d::RotateXMatrix(-DEG2RAD(m_externalViewRotX));
-}
-
-void WorldView::UpdateSiderealView()
-{
-	matrix4x4d curShipOrient = GetPlayerShip()->GetInterpolatedTransformRelTo(Pi::game->GetSpace()->GetRootFrame());
-	
-	matrix4x4d invAngDisp = curShipOrient.InverseOf() * m_prevShipOrient;
-	m_siderealViewOrient = invAngDisp * m_siderealViewOrient;
-	
-	m_siderealViewOrient.Renormalize();
-	m_siderealViewOrient.ClearToRotOnly();
-	
-	m_prevShipOrient = curShipOrient;
-}
-
-vector3d WorldView::GetSiderealViewTranslation()
-{
-	return m_siderealViewOrient * vector3d(0, 0, m_siderealViewDist);
-}
-
-matrix4x4d WorldView::GetSiderealViewRotation()
-{
-	return m_siderealViewOrient;
+	switch(m_camType) {
+		case CAM_REAR:
+			m_activeCamera = m_rearCamera;
+			break;
+		case CAM_EXTERNAL:
+			m_activeCamera = m_externalCamera;
+			break;
+		case CAM_SIDEREAL:
+			m_activeCamera = m_siderealCamera;
+			break;
+		default:
+			m_activeCamera = m_frontCamera;
+	}
+	m_activeCamera->Activate();
 }
 
 void WorldView::OnChangeWheelsState(Gui::MultiStateImageButton *b)
@@ -345,12 +322,6 @@ void WorldView::OnChangeFlightState(Gui::MultiStateImageButton *b)
 void WorldView::OnPlayerChangeFlightControlState()
 {
 	m_flightControlButton->SetActiveState(GetPlayerController()->GetFlightControlState());
-}
-
-void WorldView::OnChangeLabelsState(Gui::MultiStateImageButton *b)
-{
-	Pi::BoinkNoise();
-	m_labelsOn = b->GetState()!=0;
 }
 
 void WorldView::OnClickBlastoff()
@@ -406,6 +377,13 @@ void WorldView::Draw3D()
 	m_activeCamera->Draw(m_renderer);
 }
 
+void WorldView::OnToggleLabels()
+{
+	if (Pi::GetView() == this) {
+		m_labelsOn = !m_labelsOn;
+	}
+}
+
 void WorldView::ShowAll()
 {
 	View::ShowAll(); // by default, just delegate back to View
@@ -424,6 +402,13 @@ static Color get_color_for_warning_meter_bar(float v) {
 	return c;
 }
 
+void WorldView::RefreshHyperspaceButton() {
+	if (Pi::player->CanHyperspaceTo(Pi::sectorView->GetHyperspaceTarget()))
+		m_hyperspaceButton->Show();
+	else
+		m_hyperspaceButton->Hide();
+}
+
 void WorldView::RefreshButtonStateAndVisibility()
 {
 	if (!GetPlayerShip() || GetPlayerShip()->IsDead() || !Pi::game) {
@@ -432,11 +417,7 @@ void WorldView::RefreshButtonStateAndVisibility()
 	}
 	else {
 		m_wheelsButton->SetActiveState(int(GetPlayerShip()->GetWheelState()));
-
-		if (m_showHyperspaceButton && GetPlayerShip()->GetFlightState() == Ship::FLYING)
-			m_hyperspaceButton->Show();
-		else
-			m_hyperspaceButton->Hide();
+		RefreshHyperspaceButton();
 
 		switch(GetPlayerShip()->GetFlightState()) {
 			case Ship::LANDED:
@@ -515,6 +496,15 @@ void WorldView::RefreshButtonStateAndVisibility()
 	} else {
 		m_commsOptions->Hide();
 		m_commsNavOptionsContainer->Hide();
+	}
+
+	if (m_showLowThrustPowerTimeout) {
+		if (SDL_GetTicks() - m_showLowThrustPowerTimeout > 20000) {
+			m_showLowThrustPowerTimeout = 0;
+		}
+		m_lowThrustPowerOptions->Show();
+	} else {
+		m_lowThrustPowerOptions->Hide();
 	}
 #if WITH_DEVKEYS
 	if (Pi::showDebugInfo) {
@@ -776,65 +766,24 @@ void WorldView::Update()
 	m_bodyLabels->SetLabelsVisible(m_labelsOn);
 
 	//death animation: slowly pan out
-	if (GetPlayerShip()->IsDead()) {
-		m_camType = CAM_EXTERNAL;
-		m_externalViewRotX = 0.0;
-		m_externalViewRotY = 0.0;
-		m_externalViewDist += 80 * frameTime;
+	if (Pi::playerShip->IsDead()) {
+		SetCamType(CAM_EXTERNAL);
+		static_cast<ExternalCamera*>(m_externalCamera)->SetRotationAngles(0.0, 0.0);
+		m_externalCamera->ZoomOut(frameTime * 0.4);
 		m_labelsOn = false;
 	} else {
 		// XXX ugly hack checking for console here
 		if (!Pi::IsConsoleActive()) {
-			if (GetCamType() == CAM_EXTERNAL) {
-				if (Pi::KeyState(SDLK_UP)) m_externalViewRotX -= 45*frameTime;
-				if (Pi::KeyState(SDLK_DOWN)) m_externalViewRotX += 45*frameTime;
-				if (Pi::KeyState(SDLK_LEFT)) m_externalViewRotY -= 45*frameTime;
-				if (Pi::KeyState(SDLK_RIGHT)) m_externalViewRotY += 45*frameTime;
-				if (Pi::KeyState(SDLK_EQUALS)) m_externalViewDist -= 400*frameTime;
-				if (Pi::KeyState(SDLK_MINUS)) m_externalViewDist += 400*frameTime;
-				if (Pi::KeyState(SDLK_HOME)) m_externalViewDist = 200;
-				m_externalViewDist = std::max(GetPlayerShip()->GetBoundingRadius(), m_externalViewDist);
+			if (Pi::KeyState(SDLK_UP)) m_activeCamera->RotateUp(frameTime);
+			if (Pi::KeyState(SDLK_DOWN)) m_activeCamera->RotateDown(frameTime);
+			if (Pi::KeyState(SDLK_LEFT)) m_activeCamera->RotateLeft(frameTime);
+			if (Pi::KeyState(SDLK_RIGHT)) m_activeCamera->RotateRight(frameTime);
+			if (Pi::KeyState(SDLK_MINUS)) m_activeCamera->ZoomOut(frameTime);
+			if (Pi::KeyState(SDLK_EQUALS)) m_activeCamera->ZoomIn(frameTime);
+			if (Pi::KeyState(SDLK_COMMA)) m_activeCamera->RollLeft(frameTime);
+			if (Pi::KeyState(SDLK_PERIOD)) m_activeCamera->RollRight(frameTime);
+			if (Pi::KeyState(SDLK_HOME)) m_activeCamera->Reset();
 
-				// when landed don't let external view look from below
-				if (GetPlayerShip()->GetFlightState() == Ship::LANDED || GetPlayerShip()->GetFlightState() == Ship::DOCKED)
-					m_externalViewRotX = Clamp(m_externalViewRotX, -170.0, -10.0);
-			}
-			if (GetCamType() == CAM_SIDEREAL) {
-				if (Pi::KeyState(SDLK_UP)) {
-					vector3d rotAxis = m_siderealViewOrient * vector3d(1,0,0);
-					m_siderealViewOrient = matrix4x4d::RotateMatrix(-M_PI/4 * frameTime, rotAxis.x, rotAxis.y, rotAxis.z)
-						* m_siderealViewOrient;
-				}
-				if (Pi::KeyState(SDLK_DOWN)) {
-					vector3d rotAxis = m_siderealViewOrient * vector3d(1,0,0);
-					m_siderealViewOrient = matrix4x4d::RotateMatrix(M_PI/4 * frameTime, rotAxis.x, rotAxis.y, rotAxis.z)
-						* m_siderealViewOrient;
-				}
-				if (Pi::KeyState(SDLK_LEFT)) {
-					vector3d rotAxis = m_siderealViewOrient * vector3d(0,1,0);
-					m_siderealViewOrient = matrix4x4d::RotateMatrix(-M_PI/4 * frameTime, rotAxis.x, rotAxis.y, rotAxis.z)
-						* m_siderealViewOrient;
-				}
-				if (Pi::KeyState(SDLK_RIGHT)) {
-					vector3d rotAxis = m_siderealViewOrient * vector3d(0,1,0);
-					m_siderealViewOrient = matrix4x4d::RotateMatrix(M_PI/4 * frameTime, rotAxis.x, rotAxis.y, rotAxis.z)
-						* m_siderealViewOrient;
-				}
-				if (Pi::KeyState(SDLK_PERIOD)) {
-					vector3d rotAxis = m_siderealViewOrient * vector3d(0,0,1);
-					m_siderealViewOrient = matrix4x4d::RotateMatrix(-M_PI/4 * frameTime, rotAxis.x, rotAxis.y, rotAxis.z)
-						* m_siderealViewOrient;
-				}
-				if (Pi::KeyState(SDLK_COMMA)) {
-					vector3d rotAxis = m_siderealViewOrient * vector3d(0,0,1);
-					m_siderealViewOrient = matrix4x4d::RotateMatrix(M_PI/4 * frameTime, rotAxis.x, rotAxis.y, rotAxis.z)
-						* m_siderealViewOrient;
-				}
-				if (Pi::KeyState(SDLK_EQUALS)) m_siderealViewDist -= 400*frameTime;
-				if (Pi::KeyState(SDLK_MINUS)) m_siderealViewDist += 400*frameTime;
-				if (Pi::KeyState(SDLK_HOME)) m_siderealViewDist = 200;
-				m_siderealViewDist = std::max(GetPlayerShip()->GetBoundingRadius(), m_siderealViewDist);
-			}
 			if (KeyBindings::targetObject.IsActive()) {
 				/* Hitting tab causes objects in the crosshairs to be selected */
 				Body* const target = PickBody(double(Gui::Screen::GetWidth())/2.0, double(Gui::Screen::GetHeight())/2.0);
@@ -843,23 +792,7 @@ void WorldView::Update()
 		}
 	}
 
-	if (GetCamType() == CAM_EXTERNAL) {
-		m_externalCamera->SetPosition(GetExternalViewTranslation());
-		m_externalCamera->SetOrientation(GetExternalViewRotation());
-	}
-	
-	if (GetCamType() == CAM_SIDEREAL) {
-		UpdateSiderealView();
-		m_siderealCamera->SetPosition(GetSiderealViewTranslation());
-		m_siderealCamera->SetOrientation(GetSiderealViewRotation());
-	}
-
-	m_activeCamera =
-		GetCamType() == CAM_FRONT    ? m_frontCamera    :
-		GetCamType() == CAM_REAR     ? m_rearCamera     :
-		GetCamType() == CAM_EXTERNAL ? m_externalCamera :
-			                       m_siderealCamera;
-
+	m_activeCamera->UpdateTransform();
 	m_activeCamera->Update();
 	UpdateProjectedObjects();
 }
@@ -881,6 +814,7 @@ void WorldView::ShowTargetActions()
 {
 	m_showTargetActionsTimeout = SDL_GetTicks();
 	UpdateCommsOptions();
+	HideLowThrustPowerOptions();
 }
 
 void WorldView::HideTargetActions()
@@ -908,6 +842,7 @@ void WorldView::OnClickCommsNavOption(Body *target)
 {
 	GetPlayerController()->SetNavTarget(target);
 	m_showTargetActionsTimeout = SDL_GetTicks();
+	HideLowThrustPowerOptions();
 }
 
 void WorldView::AddCommsNavOption(std::string msg, Body *target)
@@ -946,6 +881,34 @@ void WorldView::BuildCommsNavOptions()
 			AddCommsNavOption((*j)->name, body);
 		}
 	}
+}
+
+void WorldView::HideLowThrustPowerOptions()
+{
+	m_showLowThrustPowerTimeout = 0;
+	m_lowThrustPowerOptions->Hide();
+}
+
+void WorldView::ShowLowThrustPowerOptions()
+{
+	m_showLowThrustPowerTimeout = SDL_GetTicks();
+	m_lowThrustPowerOptions->Show();
+	HideTargetActions();
+}
+
+void WorldView::OnClickLowThrustPower()
+{
+	Pi::BoinkNoise();
+	if (m_showLowThrustPowerTimeout)
+		HideLowThrustPowerOptions();
+	else
+		ShowLowThrustPowerOptions();
+}
+
+void WorldView::OnSelectLowThrustPower(float power)
+{
+	Pi::player->GetPlayerController()->SetLowThrustPower(power);
+	HideLowThrustPowerOptions();
 }
 
 static void PlayerRequestDockingClearance(SpaceStation *s)
@@ -989,21 +952,6 @@ void WorldView::OnHyperspaceTargetChanged()
 
 	RefCountedPtr<StarSystem> system = StarSystem::GetCached(path);
 	Pi::cpan->MsgLog()->Message("", stringf(Lang::SET_HYPERSPACE_DESTINATION_TO, formatarg("system", system->GetName())));
-
-	if (Pi::game->IsHyperspace())
-		return;
-
-	int fuelReqd;
-	double dur;
-	m_showHyperspaceButton = GetPlayerShip()->CanHyperspaceTo(&path, fuelReqd, dur);
-}
-
-void WorldView::OnPlayerEquipmentChange(Equip::Type e)
-{
-	const SystemPath path = Pi::sectorView->GetHyperspaceTarget();
-	int fuelReqd;
-	double dur;
-	m_showHyperspaceButton = GetPlayerShip()->CanHyperspaceTo(&path, fuelReqd, dur);
 }
 
 void WorldView::OnPlayerChangeTarget()
@@ -1716,17 +1664,9 @@ void WorldView::MouseButtonDown(int button, int x, int y)
 	if (this == Pi::GetView())
 	{
 		const float ft = Pi::GetFrameTime();
-		if(GetCamType() == CAM_EXTERNAL) {
-			if (Pi::MouseButtonState(SDL_BUTTON_WHEELDOWN))
-				m_externalViewDist += 400*ft;
-			if (Pi::MouseButtonState(SDL_BUTTON_WHEELUP))
-				m_externalViewDist -= 400*ft;
-		}
-		if (GetCamType() == CAM_SIDEREAL) {
-			if (Pi::MouseButtonState(SDL_BUTTON_WHEELDOWN))
-				m_siderealViewDist += 400*ft;
-			if (Pi::MouseButtonState(SDL_BUTTON_WHEELUP))
-				m_siderealViewDist -= 400*ft;
-		}
+		if (Pi::MouseButtonState(SDL_BUTTON_WHEELDOWN))
+			m_activeCamera->ZoomOut(ft);
+		if (Pi::MouseButtonState(SDL_BUTTON_WHEELUP))
+			m_activeCamera->ZoomIn(ft);
 	}
 }

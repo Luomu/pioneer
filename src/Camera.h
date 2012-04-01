@@ -36,6 +36,9 @@ public:
 	// get the frustum. use for projection
 	const Graphics::Frustum &GetFrustum() const { return m_frustum; }
 
+protected:
+	bool m_showCameraBody;
+
 private:
 	void OnBodyDeleted();
 	sigc::connection m_onBodyDeletedConnection;
@@ -43,7 +46,6 @@ private:
 	void DrawSpike(double rad, const vector3d &viewCoords, const matrix4x4d &viewTransform);
 
 	const Body *m_body;
-
 	float m_width;
 	float m_height;
 	float m_fovAng;

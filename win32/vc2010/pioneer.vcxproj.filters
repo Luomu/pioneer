@@ -666,7 +666,10 @@
     <ClCompile Include="..\..\src\ShipController.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\PlayerCharacter.cpp">
+    <ClCompile Include="..\..\src\WorldViewCamera.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\CRC32.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
@@ -1253,7 +1256,10 @@
     <ClInclude Include="..\..\src\ShipController.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\PlayerCharacter.h">
+    <ClInclude Include="..\..\src\WorldViewCamera.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\CRC32.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

@@ -62,6 +62,9 @@ public:
 	int GetDockingPort() const { return m_dockedWithPort; }
 	virtual void Render(Graphics::Renderer *r, const vector3d &viewCoords, const matrix4x4d &viewTransform);
 
+	const vector3d &GetFrontCameraOffset() const { return m_frontCameraOffset; }
+	const vector3d &GetRearCameraOffset() const { return m_rearCameraOffset; }
+
 	void SetThrusterState(int axis, double level) {
 		if (m_thrusterFuel <= 0.f) level = 0.0;
 		m_thrusters[axis] = Clamp(level, -1.0, 1.0);
@@ -88,6 +91,7 @@ public:
 	bool Undock();
 	virtual void TimeStepUpdate(const float timeStep);
 	virtual void StaticUpdate(const float timeStep);
+	void ApplyAccel(const float timeStep);
 
 	virtual void NotifyRemoved(const Body* const removedBody);
 	virtual bool OnCollision(Object *o, Uint32 flags, double relVel);
@@ -102,7 +106,7 @@ public:
 	};
 
 	FlightState GetFlightState() const { return m_flightState; }
-	void SetFlightState(FlightState s) { m_flightState = s; }
+	void SetFlightState(FlightState s);
 	float GetWheelState() const { return m_wheelState; }
 	bool Jettison(Equip::Type t);
 
@@ -114,11 +118,24 @@ public:
 		HYPERJUMP_OK,
 		HYPERJUMP_CURRENT_SYSTEM,
 		HYPERJUMP_NO_DRIVE,
+		HYPERJUMP_DRIVE_ACTIVE,
 		HYPERJUMP_OUT_OF_RANGE,
 		HYPERJUMP_INSUFFICIENT_FUEL,
+		HYPERJUMP_SAFETY_LOCKOUT
 	};
-	bool CanHyperspaceTo(const SystemPath *dest, int &outFuelRequired, double &outDurationSecs, enum HyperjumpStatus *outStatus = 0);
-	void UseHyperspaceFuel(const SystemPath *dest);
+
+	HyperjumpStatus GetHyperspaceDetails(const SystemPath &dest, int &outFuelRequired, double &outDurationSecs);
+	HyperjumpStatus CheckHyperspaceTo(const SystemPath &dest, int &outFuelRequired, double &outDurationSecs);
+	HyperjumpStatus CheckHyperspaceTo(const SystemPath &dest) {
+		int unusedFuel;
+		double unusedDuration;
+		return CheckHyperspaceTo(dest, unusedFuel, unusedDuration);
+	}
+	bool CanHyperspaceTo(const SystemPath &dest, HyperjumpStatus &status) {
+		status = CheckHyperspaceTo(dest);
+		return (status == HYPERJUMP_OK);
+	}
+	bool CanHyperspaceTo(const SystemPath &dest) { return (CheckHyperspaceTo(dest) == HYPERJUMP_OK); }
 
 	Ship::HyperjumpStatus StartHyperspaceCountdown(const SystemPath &dest);
 	float GetHyperspaceCountdown() const { return m_hyperspace.countdown; }
@@ -159,6 +176,7 @@ public:
 	void AIClearInstructions();
 	bool AIIsActive() { return m_curAICmd ? true : false; }
 	void AIGetStatusText(char *str);
+	Frame *AIGetRiskFrame();
 
 	enum AIError { // <enum scope='Ship' name=ShipAIError prefix=AIERROR_>
 		AIERROR_NONE=0,
@@ -251,6 +269,8 @@ private:
 
 	vector3d m_thrusters;
 	vector3d m_angThrusters;
+	vector3d m_frontCameraOffset;
+	vector3d m_rearCameraOffset;
 
 	AlertState m_alertState;
 	double m_lastFiringAlert;

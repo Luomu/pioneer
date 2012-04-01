@@ -90,9 +90,8 @@ void ExternalCamera::Reset()
 void ExternalCamera::UpdateTransform()
 {
 	// when landed don't let external view look from below
-	// XXX shouldn't be limited to player
 	const Body *b = GetBody();
-	if (b->IsType(Object::PLAYER)) {
+	if (b->IsType(Object::SHIP)) {
 		if (static_cast<const Ship*>(b)->GetFlightState() == Ship::LANDED ||
 			static_cast<const Ship*>(b)->GetFlightState() == Ship::DOCKED) {
 			m_rotX = Clamp(m_rotX, -170.0, -10.0);

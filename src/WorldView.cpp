@@ -403,7 +403,7 @@ static Color get_color_for_warning_meter_bar(float v) {
 }
 
 void WorldView::RefreshHyperspaceButton() {
-	if (Pi::player->CanHyperspaceTo(Pi::sectorView->GetHyperspaceTarget()))
+	if (Pi::playerShip->CanHyperspaceTo(Pi::sectorView->GetHyperspaceTarget()))
 		m_hyperspaceButton->Show();
 	else
 		m_hyperspaceButton->Hide();
@@ -907,7 +907,7 @@ void WorldView::OnClickLowThrustPower()
 
 void WorldView::OnSelectLowThrustPower(float power)
 {
-	Pi::player->GetPlayerController()->SetLowThrustPower(power);
+	GetPlayerController()->SetLowThrustPower(power);
 	HideLowThrustPowerOptions();
 }
 

@@ -24,7 +24,7 @@ public:
 	Material();
 
 	Texture *texture0;
-	//Texture *texture1;
+	Texture *texture1;
 	Color diffuse;
 	//Color ambient;
 	//Color specular;

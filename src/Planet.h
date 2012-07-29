@@ -36,6 +36,7 @@ private:
 
 	double m_clipRadius;
 	RefCountedPtr<Graphics::Texture> m_ringTexture;
+	RefCountedPtr<Graphics::Texture> m_ringNoiseTexture;
 	Graphics::VertexArray m_ringVertices;
 };
 

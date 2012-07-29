@@ -3,10 +3,11 @@
 #include "WorldView.h"
 #include "GeoSphere.h"
 #include "perlin.h"
+#include "graphics/Graphics.h"
 #include "graphics/Material.h"
 #include "graphics/Renderer.h"
-#include "graphics/Graphics.h"
 #include "graphics/Texture.h"
+#include "graphics/TextureBuilder.h"
 #include "graphics/VertexArray.h"
 
 #ifdef _MSC_VER
@@ -172,6 +173,9 @@ void Planet::GenerateRings(Graphics::Renderer *renderer)
 	m_ringTexture->Update(
 			static_cast<void*>(buf.Get()), texSize,
 			Graphics::IMAGE_RGBA, Graphics::IMAGE_UNSIGNED_BYTE);
+
+	m_ringNoiseTexture.Reset(Graphics::TextureBuilder::Model(
+		"textures/ring_noise.png").GetOrCreateTexture(renderer, "model"));
 }
 
 void Planet::DrawGasGiantRings(Renderer *renderer)
@@ -189,6 +193,7 @@ void Planet::DrawGasGiantRings(Renderer *renderer)
 	mat.unlit = true;
 	mat.twoSided = true;
 	mat.texture0 = m_ringTexture.Get();
+	mat.texture1 = m_ringNoiseTexture.Get();
 	// XXX worldview numlights always 1!
 	mat.shader = Graphics::planetRingsShader[Pi::worldView->GetNumLights()-1];
 

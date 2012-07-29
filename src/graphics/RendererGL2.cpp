@@ -127,12 +127,21 @@ void RendererGL2::ApplyMaterial(const Material *mat)
 		static_cast<TextureGL*>(mat->texture0)->Bind();
 		s->SetUniform("texture0", 0);
 	}
+	if (mat->texture1) {
+		glActiveTexture(GL_TEXTURE1);
+		static_cast<TextureGL*>(mat->texture1)->Bind();
+		s->SetUniform("texture1", 1);
+	}
 }
 
 void RendererGL2::UnApplyMaterial(const Material *mat)
 {
 	glPopAttrib();
 	if (mat) {
+		if (mat->texture1) {
+			static_cast<TextureGL*>(mat->texture1)->Unbind();
+			glActiveTexture(GL_TEXTURE0);
+		}
 		if (mat->texture0) {
 			static_cast<TextureGL*>(mat->texture0)->Unbind();
 		}

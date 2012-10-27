@@ -146,6 +146,8 @@ void Ship::Load(Serializer::Reader &rd, Space *space)
 
 void Ship::Init()
 {
+	InitSystems();
+
 	// XXX the animation namespace must match that in LuaConstants
 	// note: this must be set before generating the collision mesh
 	// (which happens in SetModel()) and before rendering
@@ -217,7 +219,6 @@ void Ship::SetController(ShipController *c)
 	m_controller = c;
 	m_controller->m_ship = this;
 }
-
 
 float Ship::GetPercentHull() const
 {
@@ -965,6 +966,8 @@ void Ship::StaticUpdate(const float timeStep)
 
 	if (m_controller) m_controller->StaticUpdate(timeStep);
 
+	SystemUpdate(timeStep);
+
 	if (GetHullTemperature() > 1.0)
 		Explode();
 
@@ -1331,4 +1334,50 @@ void Ship::EnterSystem() {
 
 void Ship::OnEnterSystem() {
 	m_hyperspaceCloud = 0;
+}
+
+void Ship::InitSystems()
+{
+	m_systems.clear();
+
+	Hyperdrive *drive = new Hyperdrive();
+	PowerSource *reactor = new PowerSource();
+	Radiator *radiator = new Radiator();
+	Sensor *sensor = new Sensor();
+	Shield *shield = new Shield();
+	Thrusters *thrusters = new Thrusters();
+
+	//add power consumers
+	//they will be energized in this order
+	reactor->AddConsumer(radiator);
+	reactor->AddConsumer(thrusters);
+	reactor->AddConsumer(drive);
+	reactor->AddConsumer(sensor);
+	reactor->AddConsumer(shield);
+
+	m_hyperdrive.Reset(drive);
+	m_radiator.Reset(radiator);
+	m_reactor.Reset(reactor);
+	m_sensor.Reset(sensor);
+	m_shield.Reset(shield);
+	m_thruster.Reset(thrusters);
+
+	m_systems.push_back(reactor);
+	m_systems.push_back(radiator);
+	m_systems.push_back(drive);
+	m_systems.push_back(sensor);
+	m_systems.push_back(shield);
+	m_systems.push_back(thrusters);
+}
+
+void Ship::SystemUpdate(float time)
+{
+	//do non-maintenance update
+	for (std::vector<ShipSystem*>::iterator it = m_systems.begin(); it != m_systems.end(); ++it) {
+		(*it)->Update(time);
+	}
+
+	//do maintenance
+	for (std::vector<ShipSystem*>::iterator it = m_systems.begin(); it != m_systems.end(); ++it) {
+	}
 }

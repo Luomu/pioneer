@@ -10,6 +10,9 @@
     <Filter Include="src\posix">
       <UniqueIdentifier>{6d264ce7-1454-4144-a050-a665481a0a20}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\ShipSystems">
+      <UniqueIdentifier>{7080d6be-fa45-4c3b-9729-e625e5688402}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\AmbientSounds.cpp">
@@ -407,6 +410,27 @@
     </ClCompile>
     <ClCompile Include="..\..\src\Tombstone.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ShipSystem.cpp">
+      <Filter>src\ShipSystems</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\Thrusters.cpp">
+      <Filter>src\ShipSystems</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\PowerSource.cpp">
+      <Filter>src\ShipSystems</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\Hyperdrive.cpp">
+      <Filter>src\ShipSystems</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\Sensor.cpp">
+      <Filter>src\ShipSystems</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\Shield.cpp">
+      <Filter>src\ShipSystems</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\Radiator.cpp">
+      <Filter>src\ShipSystems</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -843,7 +867,7 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\LuaPushPull.h">
-	  <Filter>src</Filter>
+      <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Factions.h">
       <Filter>src</Filter>
@@ -865,6 +889,27 @@
     </ClInclude>
     <ClInclude Include="..\..\src\Cutscene.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ShipSystem.h">
+      <Filter>src\ShipSystems</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Thrusters.h">
+      <Filter>src\ShipSystems</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\PowerSource.h">
+      <Filter>src\ShipSystems</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Hyperdrive.h">
+      <Filter>src\ShipSystems</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Sensor.h">
+      <Filter>src\ShipSystems</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Shield.h">
+      <Filter>src\ShipSystems</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Radiator.h">
+      <Filter>src\ShipSystems</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

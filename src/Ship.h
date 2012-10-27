@@ -5,20 +5,27 @@
 #define _SHIP_H
 
 #include "libs.h"
-#include "DynamicBody.h"
-#include "ShipType.h"
-#include "EquipSet.h"
-#include "ShipFlavour.h"
-#include "galaxy/SystemPath.h"
 #include "BezierCurve.h"
-#include "Serializer.h"
 #include "Camera.h"
+#include "DynamicBody.h"
+#include "EquipSet.h"
+#include "galaxy/SystemPath.h"
+#include "Hyperdrive.h"
+#include "PowerSource.h"
+#include "Radiator.h"
+#include "Sensor.h"
+#include "Serializer.h"
+#include "Shield.h"
+#include "ShipFlavour.h"
+#include "ShipSystem.h"
+#include "ShipType.h"
+#include "Thrusters.h"
 #include <list>
 
-class SpaceStation;
-class HyperspaceCloud;
 class AICommand;
+class HyperspaceCloud;
 class ShipController;
+class SpaceStation;
 namespace Graphics { class Renderer; }
 
 struct shipstats_t {
@@ -241,6 +248,9 @@ public:
 	// actually changing state
 	mutable sigc::signal<void> onFlavourChanged;
 
+	//Ship systems
+	std::vector<ShipSystem*> &GetSystems() { return m_systems; }
+
 protected:
 	virtual void Save(Serializer::Writer &wr, Space *space);
 	virtual void Load(Serializer::Reader &rd, Space *space);
@@ -262,6 +272,17 @@ protected:
 	float m_ecmRecharge;
 
 	ShipController *m_controller;
+
+	//Ship systems
+	void InitSystems();
+	void SystemUpdate(float time);
+	std::vector<ShipSystem*> m_systems;
+	ScopedPtr<Hyperdrive> m_hyperdrive; //always available - easier to proto
+	ScopedPtr<PowerSource> m_reactor;
+	ScopedPtr<Radiator> m_radiator;
+	ScopedPtr<Sensor> m_sensor;
+	ScopedPtr<Shield> m_shield; //always available - easier to proto
+	ScopedPtr<Thrusters> m_thruster;
 
 private:
 	float GetECMRechargeTime();

@@ -13,6 +13,7 @@
 class Sensor : public ShipSystem {
 public:
 	Sensor();
+	virtual void Update(float time);
 };
 
 #endif

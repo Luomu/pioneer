@@ -53,7 +53,7 @@ public:
 
 	virtual float RequestPower(float time) const;
 	virtual void AddHeat(float heat);
-	virtual void AddPower(float power);
+	virtual void DeliverEnergy(float e, float time);
 	virtual void OnDamage(float damage);
 	virtual void Repair(float time);
 	virtual void Update(float time);

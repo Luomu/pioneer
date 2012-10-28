@@ -9,7 +9,7 @@ ShipSystem::ShipSystem(Type t, const std::string &n)
 , m_energy(0.f)
 , m_health(1.f)
 , m_heat(0.f)
-, m_maxEnergy(1000.f)
+, m_maxEnergy(100.f)
 , m_powerLevel(1.f)
 , m_powerUseRate(100.f)
 , m_ship(0)
@@ -34,7 +34,8 @@ ShipSystem::Status ShipSystem::GetStatus() const
 
 float ShipSystem::RequestPower(float timestep) const
 {
-	if (!m_active || m_energy >= m_maxEnergy) return 0.f;
+	//if (!m_active || m_energy >= m_maxEnergy) return 0.f;
+	if (!m_active) return 0.f;
 
 	return m_powerLevel * m_powerUseRate * timestep;
 }
@@ -44,9 +45,13 @@ void ShipSystem::AddHeat(float heat)
 	m_heat += heat;
 }
 
-void ShipSystem::AddPower(float power)
+void ShipSystem::DeliverEnergy(float energy, float time)
 {
-	m_energy = Clamp(m_energy + power, 0.f, m_maxEnergy);
+	//avoid zero division
+	time = std::max(time, 0.00001f);
+
+	//basic systems do not accumulate energy
+	m_energy = Clamp(energy/time, 0.f, m_maxEnergy);
 }
 
 void ShipSystem::OnDamage(float damage)

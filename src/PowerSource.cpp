@@ -5,8 +5,8 @@
 
 PowerSource::PowerSource()
 : ShipSystem(POWERSOURCE, "Reactor")
+, m_output(1000.f)
 {
-	m_output = 10e3;
 }
 
 void PowerSource::Update(float time)
@@ -21,10 +21,14 @@ void PowerSource::Update(float time)
 
 		if (request > 0.f) {
 			//energize the system
-			system->AddPower(request);
+			system->DeliverEnergy(request, time);
 			powerAvailable -= request;
 		}
 	}
+
+	//using these to show used % on worldview
+	m_maxEnergy = m_output;
+	m_energy = powerAvailable/std::max(0.001f, time);
 
 	//add heat depending on power use
 }

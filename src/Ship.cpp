@@ -257,6 +257,11 @@ bool Ship::OnDamage(Object *attacker, float kgDamage)
 			}
 		}
 
+		//Randomly damage systems
+		int sys = Pi::rng.Int32(0, m_systems.size());
+		if (sys > 0)
+			m_systems.at(sys-1)->OnDamage(0.25);
+
 		m_stats.hull_mass_left -= dam;
 		if (m_stats.hull_mass_left < 0) {
 			if (attacker) {

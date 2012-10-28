@@ -23,6 +23,8 @@ void FuelScoop::Update(float time)
 		m_ship->GetEquipment().Get(Equip::SLOT_FUELSCOOP) == Equip::NONE)
 	return;
 
+	SetPowerLevel(0.2f); //standby power
+
 	Body *astro = m_ship->GetFrame()->m_astroBody;
 	if (astro && astro->IsType(Object::PLANET)) {
 		Planet *p = static_cast<Planet*>(astro);
@@ -39,6 +41,7 @@ void FuelScoop::Update(float time)
 			const double dot = vdir.Dot(pdir);
 			//The ship must be flying approximately horizontally and fast enough
 			if ((m_ship->GetStats().free_capacity) && (dot > 0.95) && (speed > 2000.0) && (density > 1.0)) {
+				SetPowerLevel(1.f);
 				const double rate = speed*density*0.00001f;
 				if (Pi::rng.Double() < rate) {
 					m_ship->GetEquipment().Add(Equip::HYDROGEN);

@@ -56,6 +56,7 @@ void ShipSystem::DeliverEnergy(float energy, float time)
 
 void ShipSystem::OnDamage(float damage)
 {
+	m_repair = true;
 	m_health -= damage;
 }
 

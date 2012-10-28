@@ -5,6 +5,9 @@
 #define _SHIPSYSTEM_H_
 
 #include "libs.h"
+
+class Ship;
+
 /*
  * Ship subsystem
  * Systems:
@@ -21,6 +24,7 @@ public:
 		HYPERDRIVE,
 		POWERSOURCE,
 		RADIATOR,
+		SCOOP,
 		SENSOR,
 		SHIELD,
 		THRUSTER,
@@ -44,6 +48,7 @@ public:
 
 	void SetActive(bool b) { m_active = b; } //switches state instantly, but might want to add a delay
 	void SetPowerLevel(float f) { m_powerLevel = f; }
+	void SetShip(Ship *s) { m_ship = s; }
 
 	virtual float RequestPower(float time) const;
 	virtual void AddHeat(float heat);
@@ -62,6 +67,7 @@ protected:
 	float m_maxEnergy;
 	float m_powerLevel; // 0-1
 	float m_powerUseRate;
+	Ship *m_ship;
 	std::string m_name;
 	Type m_type;
 };

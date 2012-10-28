@@ -12,6 +12,7 @@ ShipSystem::ShipSystem(Type t, const std::string &n)
 , m_maxEnergy(1000.f)
 , m_powerLevel(1.f)
 , m_powerUseRate(10.f)
+, m_ship(0)
 , m_name(n)
 , m_type(t)
 {

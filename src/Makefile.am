@@ -154,6 +154,7 @@ noinst_HEADERS = \
 	View.h \
 	WorldView.h \
 	WorldViewCamera.h \
+	FuelScoop.h \
 	Hyperdrive.h \
 	PowerSource.h \
 	Radiator.h \
@@ -296,6 +297,7 @@ pioneer_SOURCES	= \
 	View.cpp \
 	WorldView.cpp \
 	WorldViewCamera.cpp \
+	FuelScoop.cpp \
 	Hyperdrive.cpp \
 	PowerSource.cpp \
 	Radiator.cpp \

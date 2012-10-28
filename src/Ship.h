@@ -20,6 +20,7 @@
 #include "ShipSystem.h"
 #include "ShipType.h"
 #include "Thrusters.h"
+#include "FuelScoop.h"
 #include <list>
 
 class AICommand;
@@ -209,6 +210,7 @@ public:
 
 	void AIBodyDeleted(const Body* const body) {};		// todo: signals
 
+	SerializableEquipSet &GetEquipment() { return m_equipment; }
 	SerializableEquipSet m_equipment;			// shouldn't be public?...
 
 	virtual void PostLoadFixup(Space *space);
@@ -277,11 +279,12 @@ protected:
 	void InitSystems();
 	void SystemUpdate(float time);
 	std::vector<ShipSystem*> m_systems;
-	ScopedPtr<Hyperdrive> m_hyperdrive; //always available - easier to proto
+	ScopedPtr<FuelScoop> m_fuelScoop; //always available - easier to proto. Applies to hyperdrive etc. as well
+	ScopedPtr<Hyperdrive> m_hyperdrive;
 	ScopedPtr<PowerSource> m_reactor;
 	ScopedPtr<Radiator> m_radiator;
 	ScopedPtr<Sensor> m_sensor;
-	ScopedPtr<Shield> m_shield; //always available - easier to proto
+	ScopedPtr<Shield> m_shield;
 	ScopedPtr<Thrusters> m_thruster;
 
 private:

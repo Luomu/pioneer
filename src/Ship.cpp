@@ -973,37 +973,6 @@ void Ship::StaticUpdate(const float timeStep)
 
 	UpdateAlertState();
 
-	/* FUEL SCOOPING!!!!!!!!! */
-	if ((m_flightState == FLYING) && (m_equipment.Get(Equip::SLOT_FUELSCOOP) != Equip::NONE)) {
-		Body *astro = GetFrame()->m_astroBody;
-		if (astro && astro->IsType(Object::PLANET)) {
-			Planet *p = static_cast<Planet*>(astro);
-			if (p->GetSystemBody()->IsScoopable()) {
-				double dist = GetPosition().Length();
-				double pressure, density;
-				p->GetAtmosphericState(dist, &pressure, &density);
-
-				double speed = GetVelocity().Length();
-				vector3d vdir = GetVelocity().Normalized();
-				matrix4x4d rot;
-				GetRotMatrix(rot);
-				vector3d pdir = -vector3d(rot[8], rot[9], rot[10]).Normalized();
-				double dot = vdir.Dot(pdir);
-				if ((m_stats.free_capacity) && (dot > 0.95) && (speed > 2000.0) && (density > 1.0)) {
-					double rate = speed*density*0.00001f;
-					if (Pi::rng.Double() < rate) {
-						m_equipment.Add(Equip::HYDROGEN);
-						UpdateEquipStats();
-						if (this->IsType(Object::PLAYER)) {
-							Pi::Message(stringf(Lang::FUEL_SCOOP_ACTIVE_N_TONNES_H_COLLECTED,
-									formatarg("quantity", m_equipment.Count(Equip::SLOT_CARGO, Equip::HYDROGEN))));
-						}
-					}
-				}
-			}
-		}
-	}
-
 	// Cargo bay life support
 	if (m_equipment.Get(Equip::SLOT_CARGOLIFESUPPORT) != Equip::CARGO_LIFE_SUPPORT) {
 		// Hull is pressure-sealed, it just doesn't provide
@@ -1340,6 +1309,7 @@ void Ship::InitSystems()
 {
 	m_systems.clear();
 
+	FuelScoop *fuelscoop = new FuelScoop(this);
 	Hyperdrive *drive = new Hyperdrive();
 	PowerSource *reactor = new PowerSource();
 	Radiator *radiator = new Radiator();
@@ -1354,7 +1324,9 @@ void Ship::InitSystems()
 	reactor->AddConsumer(drive);
 	reactor->AddConsumer(sensor);
 	reactor->AddConsumer(shield);
+	reactor->AddConsumer(fuelscoop);
 
+	m_fuelScoop.Reset(fuelscoop);
 	m_hyperdrive.Reset(drive);
 	m_radiator.Reset(radiator);
 	m_reactor.Reset(reactor);
@@ -1362,12 +1334,15 @@ void Ship::InitSystems()
 	m_shield.Reset(shield);
 	m_thruster.Reset(thrusters);
 
+	//this order may also be important,
+	//at least reactor should be first
 	m_systems.push_back(reactor);
 	m_systems.push_back(radiator);
 	m_systems.push_back(drive);
 	m_systems.push_back(sensor);
 	m_systems.push_back(shield);
 	m_systems.push_back(thrusters);
+	m_systems.push_back(fuelscoop);
 }
 
 void Ship::SystemUpdate(float time)

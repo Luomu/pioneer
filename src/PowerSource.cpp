@@ -6,7 +6,7 @@
 PowerSource::PowerSource()
 : ShipSystem(POWERSOURCE, "Reactor")
 {
-	m_output = 1000.f;
+	m_output = 10e3;
 }
 
 void PowerSource::Update(float time)
@@ -21,7 +21,7 @@ void PowerSource::Update(float time)
 
 		if (request > 0.f) {
 			//energize the system
-			system->AddPower(request, time);
+			system->AddPower(request);
 			powerAvailable -= request;
 		}
 	}

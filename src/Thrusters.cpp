@@ -6,5 +6,6 @@
 Thrusters::Thrusters()
 : ShipSystem(THRUSTER, "Thrusters")
 {
-
+	m_maxEnergy = 500.f;
+	m_powerUseRate = 500.f;
 }

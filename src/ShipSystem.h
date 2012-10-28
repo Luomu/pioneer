@@ -40,6 +40,7 @@ public:
 
 	bool GetActive() const { return m_active; }
 	const std::string &GetName() const { return m_name; }
+	float GetCharge() const { return m_energy / m_maxEnergy; }
 	float GetHealth() const { return m_health; }
 	float GetHeat() const { return m_heat; }
 	float GetPowerLevel() const { return m_powerLevel; }
@@ -52,7 +53,7 @@ public:
 
 	virtual float RequestPower(float time) const;
 	virtual void AddHeat(float heat);
-	virtual void AddPower(float power, float time);
+	virtual void AddPower(float power);
 	virtual void OnDamage(float damage);
 	virtual void Repair(float time);
 	virtual void Update(float time);
@@ -65,7 +66,7 @@ protected:
 	float m_health;
 	float m_heat;
 	float m_maxEnergy;
-	float m_powerLevel; // 0-1
+	float m_powerLevel; // 0-1. A switched on system should be 1 (penalties/bonuses might affect this)
 	float m_powerUseRate;
 	Ship *m_ship;
 	std::string m_name;

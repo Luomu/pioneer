@@ -1379,5 +1379,8 @@ void Ship::SystemUpdate(float time)
 
 	//do maintenance
 	for (std::vector<ShipSystem*>::iterator it = m_systems.begin(); it != m_systems.end(); ++it) {
+		if ((*it)->GetStatus() == ShipSystem::YELLOW)
+			(*it)->SetRepair(true);
+		(*it)->Repair(time);
 	}
 }

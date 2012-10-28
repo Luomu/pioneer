@@ -154,6 +154,13 @@ noinst_HEADERS = \
 	View.h \
 	WorldView.h \
 	WorldViewCamera.h \
+	Hyperdrive.h \
+	PowerSource.h \
+	Radiator.h \
+	Sensor.h \
+	Shield.h \
+	ShipSystem.h \
+	Thrusters.h \
 	SmartPtr.h \
 	buildopts.h \
 	fixed.h \
@@ -289,6 +296,13 @@ pioneer_SOURCES	= \
 	View.cpp \
 	WorldView.cpp \
 	WorldViewCamera.cpp \
+	Hyperdrive.cpp \
+	PowerSource.cpp \
+	Radiator.cpp \
+	Sensor.cpp \
+	Shield.cpp \
+	ShipSystem.cpp \
+	Thrusters.cpp \
 	main.cpp \
 	mtrand.cpp \
 	perlin.cpp \

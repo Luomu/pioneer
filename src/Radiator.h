@@ -12,6 +12,7 @@
 class Radiator : public ShipSystem {
 public:
 	Radiator();
+	virtual void Update(float time);
 };
 
 #endif

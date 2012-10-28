@@ -6,19 +6,42 @@
 PowerSource::PowerSource()
 : ShipSystem(POWERSOURCE, "Reactor")
 {
+	m_output = 1000.f;
 }
 
 void PowerSource::Update(float time)
 {
+	float powerAvailable = m_active ? m_output * m_powerLevel * time : 0.f;
+
 	std::vector<ShipSystem*>::iterator it = m_consumers.begin();
 	for (; it != m_consumers.end(); ++it) {
-		float request = (*it)->RequestPower(time);
+		ShipSystem *system = (*it);
 
-		//energize the system, if power available
+		const float request = std::min(powerAvailable, system->RequestPower(time));
+
+		if (request > 0.f) {
+			//energize the system
+			system->AddPower(request, time);
+			powerAvailable -= request;
+		}
 	}
+
+	//add heat depending on power use
 }
 
 void PowerSource::AddConsumer(ShipSystem *c)
 {
 	m_consumers.push_back(c);
 }
+
+void PowerSource::RemoveConsumer(ShipSystem *c)
+{
+	std::vector<ShipSystem*>::iterator it = m_consumers.begin();
+	for (; it != m_consumers.end(); ++it) {
+		if ((*it) == c) {
+			m_consumers.erase(it);
+			return;
+		}
+	}
+}
+

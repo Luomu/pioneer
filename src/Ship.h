@@ -23,6 +23,7 @@
 #include <list>
 
 class AICommand;
+class CargoBody;
 class HyperspaceCloud;
 class ShipController;
 class SpaceStation;
@@ -120,7 +121,7 @@ public:
 	FlightState GetFlightState() const { return m_flightState; }
 	void SetFlightState(FlightState s);
 	float GetWheelState() const { return m_wheelState; }
-	bool Jettison(Equip::Type t);
+	bool SpawnCargo(CargoBody * c_body) const;
 
 	virtual bool IsInSpace() const { return (m_flightState != HYPERSPACE); }
 

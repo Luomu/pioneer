@@ -411,6 +411,9 @@
     <ClCompile Include="..\..\src\Tombstone.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\LuaFaction.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\ShipSystem.cpp">
       <Filter>src\ShipSystems</Filter>
     </ClCompile>
@@ -888,6 +891,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Cutscene.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\LuaFaction.h">
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\ShipSystem.h">

@@ -17,9 +17,11 @@ public:
 	virtual void Update(float time);
 
 	void AddConsumer(ShipSystem*);
+	void RemoveConsumer(ShipSystem*);
 
 private:
 	std::vector<ShipSystem*> m_consumers;
+	float m_output;
 };
 
 #endif

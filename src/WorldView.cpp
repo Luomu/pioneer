@@ -24,9 +24,11 @@
 #include "graphics/Frustum.h"
 #include "graphics/TextureBuilder.h"
 #include "graphics/Drawables.h"
+#include "ui/Context.h"
 #include "matrix4x4.h"
 #include "Quaternion.h"
 #include <algorithm>
+#include <sstream>
 
 const double WorldView::PICK_OBJECT_RECT_SIZE = 20.0;
 static const Color s_hudTextColor(0.0f,1.0f,0.0f,0.9f);
@@ -276,7 +278,7 @@ void WorldView::SetCamType(enum CamType c)
 	Pi::player->GetPlayerController()->SetMouseForRearView(m_camType == CAM_INTERNAL && m_internalCamera->GetMode() == InternalCamera::MODE_REAR);
 
 	onChangeCamType.emit();
-	
+
 	UpdateCameraName();
 }
 
@@ -303,7 +305,7 @@ void WorldView::UpdateCameraName()
 	float w, h;
 	Gui::Screen::MeasureString(cameraName, w, h);
 	Add(m_showCameraName, 0.5f*(Gui::Screen::GetWidth()-w), 20);
-	
+
 	m_showCameraNameTimeout = SDL_GetTicks();
 }
 
@@ -1492,6 +1494,31 @@ double getSquareHeight(double distance, double angle) {
 	return distance * tan(angle);
 }
 
+static void draw_system_status(Text::TextureFont *font, Ship *s)
+{
+	std::stringstream ss;
+	std::vector<ShipSystem*> &systems = s->GetSystems();
+
+	std::vector<ShipSystem*>::iterator it = systems.begin();
+	while (it != systems.end()) {
+		ShipSystem *sys = (*it);
+		switch (sys->GetStatus()) {
+		case ShipSystem::RED:
+			ss << "#f00";
+			break;
+		case ShipSystem::YELLOW:
+			ss << "#ff0";
+			break;
+		default:
+			ss << "#0f0";
+		}
+
+		ss << stringf("%0 %1{d}%%\n", sys->GetName(), int(sys->GetCharge() * 100.f));
+		++it;
+	}
+	font->RenderMarkup(ss.str().c_str(), 10.f, 10.f);
+}
+
 void WorldView::Draw()
 {
 	assert(Pi::game);
@@ -1543,6 +1570,9 @@ void WorldView::Draw()
 				break;
 		}
 	}
+
+	Text::TextureFont *font = Pi::ui->GetFont().Get();
+	draw_system_status(font, Pi::player);
 
 	glPopAttrib();
 
@@ -1692,7 +1722,7 @@ void WorldView::MouseButtonDown(int button, int x, int y)
 	{
 		if (m_activeCamera->IsExternal()) {
 			MoveableCamera *cam = static_cast<MoveableCamera*>(m_activeCamera);
-			
+
 			if (Pi::MouseButtonState(SDL_BUTTON_WHEELDOWN))	// Zoom out
 				cam->ZoomEvent( ZOOM_SPEED * WHEEL_SENSITIVITY);
 			else if (Pi::MouseButtonState(SDL_BUTTON_WHEELUP))

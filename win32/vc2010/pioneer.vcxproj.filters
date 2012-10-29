@@ -435,6 +435,9 @@
     <ClCompile Include="..\..\src\Radiator.cpp">
       <Filter>src\ShipSystems</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\FuelScoop.cpp">
+      <Filter>src\ShipSystems</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\Aabb.h">
@@ -915,6 +918,9 @@
       <Filter>src\ShipSystems</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Radiator.h">
+      <Filter>src\ShipSystems</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\FuelScoop.h">
       <Filter>src\ShipSystems</Filter>
     </ClInclude>
   </ItemGroup>

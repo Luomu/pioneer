@@ -9,6 +9,7 @@
 /*
  * Main drive + navigational thrusters all-in-one
  * Power & heat relative to usage
+ * Should move fuel logic here
  */
 class Thrusters : public ShipSystem {
 public:

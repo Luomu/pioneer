@@ -8,3 +8,8 @@ Radiator::Radiator()
 {
 
 }
+
+void Radiator::Update(float time)
+{
+
+}

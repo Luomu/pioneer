@@ -6,5 +6,4 @@
 Thrusters::Thrusters()
 : ShipSystem(THRUSTER, "Thrusters")
 {
-
 }

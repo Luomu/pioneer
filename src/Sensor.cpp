@@ -8,3 +8,7 @@ Sensor::Sensor()
 {
 
 }
+
+void Sensor::Update(float time)
+{
+}

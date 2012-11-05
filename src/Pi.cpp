@@ -80,6 +80,7 @@
 #include "galaxy/StarSystem.h"
 #include "graphics/Graphics.h"
 #include "graphics/Renderer.h"
+#include "graphics/RenderTarget.h"
 #include "ui/Context.h"
 #include "ui/Lua.h"
 #include "SDLWrappers.h"
@@ -780,6 +781,18 @@ void Pi::Start()
 				while (SDL_PollEvent(&event)) {}
 		}
 
+		//BG prepass
+		Graphics::RenderTarget* rt = 0;
+		if (Pi::renderer->GetRenderTarget()) {
+			rt = static_cast<Graphics::RenderTarget*>(Pi::renderer->GetRenderTarget());
+			rt->BeginRTT();
+			Pi::renderer->BeginFrame();
+			Pi::renderer->SetPerspectiveProjection(75, Pi::GetScrAspect(), 1.f, 10000.f);
+			Pi::renderer->SetTransform(matrix4x4f::Identity());
+			intro->Draw(_time);
+			Pi::renderer->EndFrame();
+			rt->EndRTT();
+		}
 		Pi::renderer->BeginFrame();
 		Pi::renderer->SetPerspectiveProjection(75, Pi::GetScrAspect(), 1.f, 10000.f);
 		Pi::renderer->SetTransform(matrix4x4f::Identity());

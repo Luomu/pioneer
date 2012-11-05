@@ -5,6 +5,7 @@
 #include "IniConfig.h"
 #include "graphics/TextureBuilder.h"
 #include "graphics/VertexArray.h"
+#include "graphics/RendererGL2.h"
 #include "FileSystem.h"
 
 namespace UI {
@@ -28,9 +29,17 @@ Skin::Skin(const std::string &filename, Graphics::Renderer *renderer, float scal
 	m_texture.Reset(Graphics::TextureBuilder::UI(cfg.String("TextureFile")).GetOrCreateTexture(m_renderer, "ui"));
 
 	Graphics::MaterialDescriptor desc;
-	desc.textures = 1;
-	m_material.Reset(m_renderer->CreateMaterial(desc));
-	m_material->texture0 = m_texture.Get();
+	Graphics::RendererGL2 *gl2rend = dynamic_cast<Graphics::RendererGL2*>(m_renderer);
+	if (gl2rend) {
+		desc.textures = 15; //hack - use diffuse texture + blurred background
+		m_material.Reset(m_renderer->CreateMaterial(desc));
+		m_material->texture0 = m_texture.Get();
+		m_material->texture1 = static_cast<Graphics::RenderTarget*>(gl2rend->GetRenderTarget())->GetTexture();
+	} else {
+		desc.textures = 1;
+		m_material.Reset(m_renderer->CreateMaterial(desc));
+		m_material->texture0 = m_texture.Get();
+	}
 	m_material->diffuse = Color::WHITE;
 
 	m_backgroundNormal        = LoadBorderedRectElement(cfg.String("BackgroundNormal"));

@@ -17,6 +17,8 @@ MultiProgram::MultiProgram(const MaterialDescriptor &desc)
 	std::stringstream ss;
 	if (desc.textures > 0)
 		ss << "#define TEXTURE0\n";
+	if (desc.textures == 15)
+		ss << "#define UIBACKGROUND\n";
 	if (desc.vertexColors)
 		ss << "#define VERTEXCOLOR\n";
 
@@ -44,6 +46,11 @@ void MultiMaterial::Apply()
 		static_cast<TextureGL*>(texture0)->Bind();
 		p->texture0.Set(0);
 	}
+	if (texture1) {
+		glActiveTexture(GL_TEXTURE1);
+		static_cast<TextureGL*>(texture1)->Bind();
+		p->texture1.Set(1);
+	}
 
 	glPushAttrib(GL_ENABLE_BIT);
 	if (this->twoSided)
@@ -53,6 +60,10 @@ void MultiMaterial::Apply()
 void MultiMaterial::Unapply()
 {
 	glPopAttrib();
+	if (texture1) {
+		static_cast<TextureGL*>(texture1)->Unbind();
+		glActiveTexture(GL_TEXTURE0);
+	}
 	if (texture0) {
 		static_cast<TextureGL*>(texture0)->Unbind();
 	}

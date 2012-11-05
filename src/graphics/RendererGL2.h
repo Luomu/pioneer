@@ -13,6 +13,7 @@
  */
 #include "Renderer.h"
 #include "RendererLegacy.h"
+#include "RenderTarget.h"
 
 namespace Graphics {
 
@@ -45,6 +46,8 @@ public:
 
 	virtual bool ReloadShaders();
 
+	virtual void* GetRenderTarget() const { return m_renderTarget.Get(); }
+
 private:
 	friend class GL2::GeoSphereSurfaceMaterial;
 	friend class GL2::GeoSphereSkyMaterial;
@@ -52,6 +55,7 @@ private:
 	friend class GL2::RingMaterial;
 	std::vector<std::pair<MaterialDescriptor, GL2::Program*> > m_programs;
 	float m_invLogZfarPlus1;
+	ScopedPtr<RenderTarget> m_renderTarget;
 };
 
 }

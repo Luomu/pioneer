@@ -93,6 +93,7 @@
     <ClCompile Include="..\..\..\src\graphics\Renderer.cpp" />
     <ClCompile Include="..\..\..\src\graphics\RendererGL2.cpp" />
     <ClCompile Include="..\..\..\src\graphics\RendererLegacy.cpp" />
+    <ClCompile Include="..\..\..\src\graphics\RenderTarget.cpp" />
     <ClCompile Include="..\..\..\src\graphics\StaticMesh.cpp" />
     <ClCompile Include="..\..\..\src\graphics\TextureBuilder.cpp" />
     <ClCompile Include="..\..\..\src\graphics\TextureGL.cpp" />
@@ -122,6 +123,7 @@
     <ClInclude Include="..\..\..\src\graphics\RendererGL2.h" />
     <ClInclude Include="..\..\..\src\graphics\RendererGLBuffers.h" />
     <ClInclude Include="..\..\..\src\graphics\RendererLegacy.h" />
+    <ClInclude Include="..\..\..\src\graphics\RenderTarget.h" />
     <ClInclude Include="..\..\..\src\graphics\StaticMesh.h" />
     <ClInclude Include="..\..\..\src\graphics\Surface.h" />
     <ClInclude Include="..\..\..\src\graphics\Texture.h" />

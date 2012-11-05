@@ -11,12 +11,13 @@ namespace Graphics {
 
 class TextureGL : public Texture {
 public:
+	TextureGL();
 	virtual void Update(const void *data, const vector2f &dataSize, ImageFormat format, ImageType type);
 
 	virtual ~TextureGL();
 
-	void Bind();
-	void Unbind();
+	virtual void Bind();
+	virtual void Unbind();
 
 	// XXX for LMR, which can't use the normal Bind methods. remove once all
 	// its drawing goes through the renderer

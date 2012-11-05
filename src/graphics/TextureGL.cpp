@@ -54,6 +54,12 @@ inline GLint GLImageTypeForTextureFormat(TextureFormat format) {
 	}
 }
 
+TextureGL::TextureGL()
+: m_target(GL_TEXTURE_2D)
+, m_texture(0)
+{
+}
+
 TextureGL::TextureGL(const TextureDescriptor &descriptor, const bool useCompressed) : 
 	Texture(descriptor), m_target(GL_TEXTURE_2D) // XXX don't force target
 {

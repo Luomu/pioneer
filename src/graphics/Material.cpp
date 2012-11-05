@@ -7,6 +7,7 @@ namespace Graphics {
 
 Material::Material() :
 	texture0(0),
+	texture1(0),
 	diffuse(1.f), //default white
 	emissive(Color::BLACK),
 	twoSided(false),

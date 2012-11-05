@@ -39,6 +39,8 @@ RendererGL2::RendererGL2(const Graphics::Settings &vs)
 	desc.vertexColors = true;
 	vtxColorProg = new GL2::MultiProgram(desc);
 	m_programs.push_back(std::make_pair(desc, vtxColorProg));
+
+	m_renderTarget.Reset(new RenderTarget(vs.width, vs.height));
 }
 
 RendererGL2::~RendererGL2()

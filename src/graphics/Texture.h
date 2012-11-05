@@ -63,6 +63,7 @@ public:
 
 class Texture : public RefCounted {
 public:
+	Texture() { }
 	const TextureDescriptor &GetDescriptor() const { return m_descriptor; }
 
 	// XXX include position

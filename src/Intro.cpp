@@ -15,7 +15,7 @@ Intro::Intro(Graphics::Renderer *r, int width, int height)
 	const Color lc(1.f, 1.f, 1.f, 0.f);
 	m_lights.push_back(Graphics::Light(Graphics::Light::LIGHT_DIRECTIONAL, vector3f(0.f, 1.f, 1.f), lc, lc, lc));
 
-	m_model = LmrLookupModelByName("lanner_ub");
+	m_model = LmrLookupModelByName("tombstone");
 
 	// Model parameters
 	LmrObjParams params = {

@@ -149,6 +149,8 @@ public:
 		Renderer *m_renderer;
 	};
 
+	virtual void* GetRenderTarget() const { return 0; }
+
 protected:
 	int m_width;
 	int m_height;

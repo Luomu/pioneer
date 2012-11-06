@@ -26,13 +26,13 @@ local onChat = function (form, ref, option)
 	end
 
 	if option == 0 then
-		form:SetFace({ female = ad.isfemale, seed = ad.faceseed, name = ad.client })
+		form:SetFace(ad.client)
 
 		local sys   = ad.location:GetStarSystem()
 		local sbody = ad.location:GetSystemBody()
 
 		local introtext = string.interp(delivery_flavours[ad.flavour].introtext, {
-			name     = ad.client,
+			name     = ad.client.name,
 			cash     = Format.Money(ad.reward),
 			starport = sbody.name,
 			system   = sys.name,
@@ -68,7 +68,7 @@ local onChat = function (form, ref, option)
 		ads[ref] = nil
 
 		local mission = {
-			type	 = t("Delivery"),
+			type	 = "Delivery",
 			client	 = ad.client,
 			location = ad.location,
 			risk	 = ad.risk,
@@ -77,7 +77,7 @@ local onChat = function (form, ref, option)
 			flavour	 = ad.flavour
 		}
 
-		local mref = Game.player:AddMission(mission)
+		local mref = Mission.Add(mission)
 		missions[mref] = mission
 
 		form:SetMessage(t("Excellent. I will let the recipient know you are on your way."))
@@ -102,8 +102,7 @@ local nearbysystems
 local makeAdvert = function (station)
 	local reward, due, location, nearbysystem
 	local delivery_flavours = Translate:GetFlavours('DeliverPackage')
-	local isfemale = Engine.rand:Integer(1) == 1
-	local client = NameGen.FullName(isfemale)
+	local client = Character.New()
 	local flavour = Engine.rand:Integer(1,#delivery_flavours)
 	local urgency = delivery_flavours[flavour].urgency
 	local risk = delivery_flavours[flavour].risk
@@ -230,14 +229,14 @@ local onEnterSystem = function (player)
 
 			if ship then
 				local pirate_greeting = string.interp(t('PIRATE_TAUNTS')[Engine.rand:Integer(1,#(t('PIRATE_TAUNTS')))], {
-					client = mission.client, location = mission.location,})
+					client = mission.client.name, location = mission.location,})
 				Comms.ImportantMessage(pirate_greeting, ship.label)
 			end
 		end
 
 		if not mission.status and Game.time > mission.due then
 			mission.status = 'FAILED'
-			player:UpdateMission(ref, mission)
+			Mission.Update(ref, mission)
 		end
 	end
 end
@@ -257,18 +256,18 @@ local onShipDocked = function (player, station)
 		if mission.location == station.path then
 
 			if Game.time > mission.due then
-				Comms.ImportantMessage(delivery_flavours[mission.flavour].failuremsg, mission.client)
+				Comms.ImportantMessage(delivery_flavours[mission.flavour].failuremsg, mission.client.name)
 			else
-				Comms.ImportantMessage(delivery_flavours[mission.flavour].successmsg, mission.client)
+				Comms.ImportantMessage(delivery_flavours[mission.flavour].successmsg, mission.client.name)
 				player:AddMoney(mission.reward)
 			end
 
-			player:RemoveMission(ref)
+			Mission.Remove(ref)
 			missions[ref] = nil
 
 		elseif not mission.status and Game.time > mission.due then
 			mission.status = 'FAILED'
-			player:UpdateMission(ref, mission)
+			Mission.Update(ref, mission)
 		end
 
 	end
@@ -286,10 +285,8 @@ local onGameStart = function ()
 		local ref = ad.station:AddAdvert(ad.desc, onChat, onDelete)
 		ads[ref] = ad
 	end
-	for k,mission in pairs(loaded_data.missions) do
-		local mref = Game.player:AddMission(mission)
-		missions[mref] = mission
-	end
+
+	missions = loaded_data.missions
 
 	loaded_data = nil
 end

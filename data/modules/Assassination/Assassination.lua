@@ -69,10 +69,9 @@ local onChat = function (form, ref, option)
 		ads[ref] = nil
 
 		local mission = {
-			type		= t("Assassination"),
+			type		= "Assassination",
 			backstation	= backstation,
-			boss		= ad.client.name,
-			client		= ad.shipname .. "\n(" .. ad.shipregid .. ")",
+			client		= ad.client,
 			danger		= ad.danger,
 			due		= ad.due,
 			flavour		= ad.flavour,
@@ -85,7 +84,7 @@ local onChat = function (form, ref, option)
 			target		= ad.target,
 		}
 
-		local mref = Game.player:AddMission(mission)
+		local mref = Mission.Add(mission)
 		missions[mref] = mission
 
 		form:SetMessage(t("Excellent."))
@@ -188,12 +187,11 @@ local onShipDestroyed = function (ship, body)
 				mission.notplayer = 'TRUE'
 			else -- well done, comrade
 				mission.status = 'COMPLETED'
-				mission.client = mission.boss
 				mission.location = mission.backstation
 				mission.notplayer = 'FALSE'
 			end
 			mission.ship = nil
-			Game.player:UpdateMission(ref, mission)
+			Mission.Update(ref, mission)
 			return
 		end
 	end
@@ -248,14 +246,14 @@ local onEnterSystem = function (ship)
 					end
 				else	-- too late
 					mission.status = 'FAILED'
-					ship:UpdateMission(ref, mission)
+					Mission.Update(ref, mission)
 				end
 			else
 				if not mission.ship:exists() then
 					mission.ship = nil
 					if mission.due < Game.time then
 						mission.status = 'FAILED'
-						ship:UpdateMission(ref, mission)
+						Mission.Update(ref, mission)
 					end
 				end
 			end
@@ -280,9 +278,9 @@ local onShipDocked = function (ship, station)
 					target	= mission.target,
 					cash	= Format.Money(mission.reward),
 				})
-				Comms.ImportantMessage(text, mission.boss)
+				Comms.ImportantMessage(text, mission.client.name)
 				ship:AddMoney(mission.reward)
-				ship:RemoveMission(ref)
+				Mission.Remove(ref)
 				missions[ref] = nil
 			elseif mission.status == 'FAILED' then
 				local ass_flavours = Translate:GetFlavours('Assassination')
@@ -296,14 +294,14 @@ local onShipDocked = function (ship, station)
 						target	= mission.target,
 					})
 				end
-				Comms.ImportantMessage(text, mission.boss)
-				ship:RemoveMission(ref)
+				Comms.ImportantMessage(text, mission.client.name)
+				Mission.Remove(ref)
 				missions[ref] = nil
 			end
 		else
 			if mission.ship == ship then
 				mission.status = 'FAILED'
-				Game.player:UpdateMission(ref, mission)
+				Mission.Update(ref, mission)
 			end
 		end
 		return
@@ -395,10 +393,8 @@ local onGameStart = function ()
 		local ref = ad.station:AddAdvert(ad.desc, onChat, onDelete)
 		ads[ref] = ad
 	end
-	for k,mission in pairs(loaded_data.missions) do
-		local mref = Game.player:AddMission(mission)
-		missions[mref] = mission
-	end
+
+	missions = loaded_data.missions
 
 	loaded_data = nil
 end

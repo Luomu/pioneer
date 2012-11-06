@@ -10,6 +10,9 @@
     <Filter Include="src\posix">
       <UniqueIdentifier>{6d264ce7-1454-4144-a050-a665481a0a20}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\gameui">
+      <UniqueIdentifier>{d3faf2ea-f30f-4ad0-953d-818a02478aec}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\AmbientSounds.cpp">
@@ -409,6 +412,27 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\PngWriter.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\gameui\Face.cpp">
+      <Filter>src\gameui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\gameui\Lua.cpp">
+      <Filter>src\gameui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\gameui\LuaFace.cpp">
+      <Filter>src\gameui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\gameui\LuaShipSpinner.cpp">
+      <Filter>src\gameui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\gameui\Panel.cpp">
+      <Filter>src\gameui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\gameui\ShipSpinner.cpp">
+      <Filter>src\gameui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\UIView.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
@@ -870,6 +894,24 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\PngWriter.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\gameui\Face.h">
+      <Filter>src\gameui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\gameui\GameUI.h">
+      <Filter>src\gameui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\gameui\Lua.h">
+      <Filter>src\gameui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\gameui\Panel.h">
+      <Filter>src\gameui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\gameui\ShipSpinner.h">
+      <Filter>src\gameui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\UIView.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

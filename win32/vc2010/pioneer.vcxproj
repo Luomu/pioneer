@@ -128,6 +128,12 @@
     <ClCompile Include="..\..\src\GameConfig.cpp" />
     <ClCompile Include="..\..\src\GameLoaderSaver.cpp" />
     <ClCompile Include="..\..\src\GameMenuView.cpp" />
+    <ClCompile Include="..\..\src\gameui\Face.cpp" />
+    <ClCompile Include="..\..\src\gameui\Lua.cpp" />
+    <ClCompile Include="..\..\src\gameui\LuaFace.cpp" />
+    <ClCompile Include="..\..\src\gameui\LuaShipSpinner.cpp" />
+    <ClCompile Include="..\..\src\gameui\Panel.cpp" />
+    <ClCompile Include="..\..\src\gameui\ShipSpinner.cpp" />
     <ClCompile Include="..\..\src\GeoSphere.cpp" />
     <ClCompile Include="..\..\src\HyperspaceCloud.cpp" />
     <ClCompile Include="..\..\src\InfoView.cpp" />
@@ -233,6 +239,7 @@
     <ClCompile Include="..\..\src\SystemView.cpp" />
     <ClCompile Include="..\..\src\TerrainBody.cpp" />
     <ClCompile Include="..\..\src\Tombstone.cpp" />
+    <ClCompile Include="..\..\src\UIView.cpp" />
     <ClCompile Include="..\..\src\utils.cpp" />
     <ClCompile Include="..\..\src\View.cpp" />
     <ClCompile Include="..\..\src\win32\FileSystemWin32.cpp" />
@@ -285,6 +292,11 @@
     <ClInclude Include="..\..\src\gameconsts.h" />
     <ClInclude Include="..\..\src\GameLoaderSaver.h" />
     <ClInclude Include="..\..\src\GameMenuView.h" />
+    <ClInclude Include="..\..\src\gameui\Face.h" />
+    <ClInclude Include="..\..\src\gameui\GameUI.h" />
+    <ClInclude Include="..\..\src\gameui\Lua.h" />
+    <ClInclude Include="..\..\src\gameui\Panel.h" />
+    <ClInclude Include="..\..\src\gameui\ShipSpinner.h" />
     <ClInclude Include="..\..\src\GeoSphere.h" />
     <ClInclude Include="..\..\src\HyperspaceCloud.h" />
     <ClInclude Include="..\..\src\InfoView.h" />
@@ -389,6 +401,7 @@
     <ClInclude Include="..\..\src\SystemView.h" />
     <ClInclude Include="..\..\src\TerrainBody.h" />
     <ClInclude Include="..\..\src\Tombstone.h" />
+    <ClInclude Include="..\..\src\UIView.h" />
     <ClInclude Include="..\..\src\utils.h" />
     <ClInclude Include="..\..\contrib\vcacheopt\vcacheopt.h" />
     <ClInclude Include="..\..\src\vector2.h" />

@@ -40,7 +40,7 @@ RendererGL2::RendererGL2(const Graphics::Settings &vs)
 	vtxColorProg = new GL2::MultiProgram(desc);
 	m_programs.push_back(std::make_pair(desc, vtxColorProg));
 
-	m_renderTarget.Reset(new RenderTarget(vs.width, vs.height));
+	m_renderTarget.Reset(new RenderTarget(vs.width/4, vs.height/4));
 }
 
 RendererGL2::~RendererGL2()

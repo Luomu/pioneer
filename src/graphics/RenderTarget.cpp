@@ -78,12 +78,14 @@ RenderTarget::RenderTarget(unsigned int w, unsigned int h)
 }
 
 void RenderTarget::BeginRTT() {
+	glPushAttrib(GL_VIEWPORT_BIT);
 	m_fbo->Bind();
 	glViewport(0, 0, m_width, m_height);
 }
 
 void RenderTarget::EndRTT() {
 	m_fbo->Unbind();
+	glPopAttrib();
 }
 
 GLTexture *RenderTarget::GetTexture() const {

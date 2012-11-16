@@ -36,7 +36,6 @@ public:
 	Player(ShipType::Id shipId);
 	Player() { }; //default constructor used before Load
 	virtual void SetDockedWith(SpaceStation *, int port);
-	virtual bool OnDamage(Object *attacker, float kgDamage);
 	virtual bool SetWheelState(bool down); // returns success of state change, NOT state itself
 	virtual bool FireMissile(int idx, Ship *target);
 	virtual void SetAlertState(Ship::AlertState as);

@@ -249,7 +249,6 @@ void SpaceStation::Save(Serializer::Writer &wr, Space *space)
 	wr.Bool(m_bbCreated);
 	wr.Double(m_lastUpdatedShipyard);
 	wr.Int32(space->GetIndexForSystemBody(m_sbody));
-	wr.Int32(m_numPoliceDocked);
 }
 
 void SpaceStation::Load(Serializer::Reader &rd, Space *space)
@@ -284,7 +283,6 @@ void SpaceStation::Load(Serializer::Reader &rd, Space *space)
 	m_bbCreated = rd.Bool();
 	m_lastUpdatedShipyard = rd.Double();
 	m_sbody = space->GetSystemBodyByIndex(rd.Int32());
-	m_numPoliceDocked = rd.Int32();
 	InitStation();
 }
 
@@ -304,7 +302,6 @@ SpaceStation::SpaceStation(const SystemBody *sbody): ModelBody()
 {
 	m_sbody = sbody;
 	m_lastUpdatedShipyard = 0;
-	m_numPoliceDocked = Pi::rng.Int32(3,10);
 	m_bbCreated = false;
 	m_bbShuffled = false;
 
@@ -473,48 +470,6 @@ void SpaceStation::DoDockingAnimation(const double timeStep)
 	}
 }
 
-void SpaceStation::DoLawAndOrder()
-{
-	Sint64 fine, crimeBitset;
-	Polit::GetCrime(&crimeBitset, &fine);
-	if (Pi::player->GetFlightState() != Ship::DOCKED
-			&& m_numPoliceDocked
-			&& (fine > 1000)
-			&& (GetPositionRelTo(static_cast<Body*>(Pi::player)).Length() < 100000.0)) {
-		int port = GetFreeDockingPort();
-		if (port != -1) {
-			m_numPoliceDocked--;
-			// Make police ship intent on killing the player
-			Ship *ship = new Ship(ShipType::LADYBIRD);
-			ship->AIKill(Pi::player);
-			ship->SetFrame(GetFrame());
-			ship->SetDockedWith(this, port);
-			Pi::game->GetSpace()->AddBody(ship);
-			{ // blue and white thang
-				ShipFlavour f;
-				f.id = ShipType::LADYBIRD;
-				f.regid = Lang::POLICE_SHIP_REGISTRATION;
-				f.price = ship->GetFlavour()->price;
-				LmrMaterial m;
-				m.diffuse[0] = 0.0f; m.diffuse[1] = 0.0f; m.diffuse[2] = 1.0f; m.diffuse[3] = 1.0f;
-				m.specular[0] = 0.0f; m.specular[1] = 0.0f; m.specular[2] = 1.0f; m.specular[3] = 1.0f;
-				m.emissive[0] = 0.0f; m.emissive[1] = 0.0f; m.emissive[2] = 0.0f; m.emissive[3] = 0.0f;
-				m.shininess = 50.0f;
-				f.primaryColor = m;
-				m.shininess = 0.0f;
-				m.diffuse[0] = 1.0f; m.diffuse[1] = 1.0f; m.diffuse[2] = 1.0f; m.diffuse[3] = 1.0f;
-				f.secondaryColor = m;
-				ship->ResetFlavour(&f);
-			}
-			ship->m_equipment.Set(Equip::SLOT_LASER, 0, Equip::PULSECANNON_DUAL_1MW);
-			ship->m_equipment.Add(Equip::SHIELD_GENERATOR);
-			ship->m_equipment.Add(Equip::LASER_COOLING_BOOSTER);
-			ship->m_equipment.Add(Equip::ATMOSPHERIC_SHIELDING);
-			ship->UpdateStats();
-		}
-	}
-}
-
 void SpaceStation::TimeStepUpdate(const float timeStep)
 {
 	bool update = false;
@@ -538,7 +493,6 @@ void SpaceStation::TimeStepUpdate(const float timeStep)
 	}
 
 	DoDockingAnimation(timeStep);
-	DoLawAndOrder();
 }
 
 bool SpaceStation::IsGroundStation() const

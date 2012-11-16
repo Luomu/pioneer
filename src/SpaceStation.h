@@ -144,7 +144,6 @@ protected:
 	void Sold(Equip::Type t);
 private:
 	void DoDockingAnimation(const double timeStep);
-	void DoLawAndOrder();
 	void CalcLighting(Planet *planet, double &ambient, double &intensity, const std::vector<Camera::LightSource> &lightSources);
 
 	/* Stage 0 means docking port empty
@@ -176,7 +175,6 @@ private:
 	double m_lastUpdatedShipyard;
 	CityOnPlanet *m_adjacentCity;
 	double m_distFromPlanet;
-	int m_numPoliceDocked;
 	enum { NUM_STATIC_SLOTS = 4 };
 	bool m_staticSlot[NUM_STATIC_SLOTS];
 

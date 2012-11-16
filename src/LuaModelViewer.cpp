@@ -330,7 +330,7 @@ void Viewer::SetModel(LmrModel *model)
 		if (it != ShipType::types.end())
 			g_equipment.InitSlotSizes(it->first);
 		else
-			g_equipment.InitSlotSizes(ShipType::EAGLE_LRF);
+			g_equipment.InitSlotSizes("lanner");
 		g_params.equipment = &g_equipment;
 	} else {
 		m_modelCategory = MODEL_SPACESTATION;

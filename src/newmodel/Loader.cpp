@@ -100,6 +100,7 @@ NModel *Loader::CreateModel(ModelDefinition &def)
 		const std::string &diffTex = (*it).tex_diff;
 		const std::string &specTex = (*it).tex_spec;
 		const std::string &glowTex = (*it).tex_glow;
+		const std::string &normTex = (*it).tex_norm;
 
 		Graphics::MaterialDescriptor matDesc;
 		matDesc.lighting = true;
@@ -113,8 +114,10 @@ NModel *Loader::CreateModel(ModelDefinition &def)
 		matDesc.textures = 1;
 		matDesc.specularMap = !specTex.empty();
 		matDesc.glowMap = !glowTex.empty();
+		matDesc.normalMap = !normTex.empty();
 
 		//Create material and set parameters
+		//XXX would be nice to check if renderer actually supports requested features
 		RefCountedPtr<Material> mat(m_renderer->CreateMaterial(matDesc));
 		mat->diffuse = (*it).diffuse;
 		mat->specular = (*it).specular;
@@ -134,8 +137,10 @@ NModel *Loader::CreateModel(ModelDefinition &def)
 			mat->texture1 = Graphics::TextureBuilder::Model(specTex).GetOrCreateTexture(m_renderer, "model");
 		if (!glowTex.empty())
 			mat->texture2 = Graphics::TextureBuilder::Model(glowTex).GetOrCreateTexture(m_renderer, "model");
-		//texture3 is reserved for pattern
-		//texture4 is reserved for color gradient
+		if (!normTex.empty())
+			mat->texture3 = Graphics::TextureBuilder::Model(normTex).GetOrCreateTexture(m_renderer, "model");
+		//texture4 is reserved for pattern
+		//texture5 is reserved for color gradient
 
 		model->m_materials.push_back(std::make_pair((*it).name, mat));
 	}
@@ -274,6 +279,7 @@ RefCountedPtr<Node> Loader::LoadMesh(const std::string &filename, const AnimList
 		aiProcess_GenUVCoords		| //only if they don't exist
 		aiProcess_FlipUVs			|
 		aiProcess_SplitLargeMeshes	|
+		aiProcess_CalcTangentSpace	|
 		aiProcess_GenSmoothNormals);  //only if normals not specified
 
 	if(!scene)
@@ -375,11 +381,12 @@ void Loader::ConvertAiMeshesToSurfaces(std::vector<RefCountedPtr<Graphics::Surfa
 
 		assert(mat.Valid());
 
-		Graphics::VertexArray *vts =
-			new Graphics::VertexArray(
-				Graphics::ATTRIB_POSITION |
-				Graphics::ATTRIB_NORMAL |
-				Graphics::ATTRIB_UV0);
+		const bool normalMapping = mesh->HasTangentsAndBitangents();
+		const Graphics::AttributeSet attribSet =
+			! normalMapping
+			? (Graphics::ATTRIB_POSITION | Graphics::ATTRIB_NORMAL | Graphics::ATTRIB_UV0)
+			: (Graphics::ATTRIB_POSITION | Graphics::ATTRIB_NORMAL | Graphics::ATTRIB_UV0 | Graphics::ATTRIB_TANGENT);
+		Graphics::VertexArray *vts = new Graphics::VertexArray(attribSet, mesh->mNumVertices);
 
 		RefCountedPtr<Graphics::Surface> surface(new Graphics::Surface(Graphics::TRIANGLES, vts, mat));
 		std::vector<unsigned short> &indices = surface->GetIndices();
@@ -398,9 +405,15 @@ void Loader::ConvertAiMeshesToSurfaces(std::vector<RefCountedPtr<Graphics::Surfa
 			const aiVector3D &vtx = mesh->mVertices[v];
 			const aiVector3D &norm = mesh->mNormals[v];
 			const aiVector3D &uv0 = mesh->mTextureCoords[0][v];
+
 			vts->Add(vector3f(vtx.x, vtx.y, vtx.z),
 				vector3f(norm.x, norm.y, norm.z),
 				vector2f(uv0.x, uv0.y));
+
+			if (normalMapping) {
+				const aiVector3D &tang = mesh->mTangents[v];
+				vts->tangent.push_back(vector3f(tang.x, tang.y, tang.z));
+			}
 		}
 
 		surfaces.push_back(surface);

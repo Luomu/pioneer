@@ -31,6 +31,14 @@ struct ModelVertex /*: public GLVertex*/ {
 	vector2f uv;
 };
 
+//+tangent
+struct NormalMappedVertex {
+	vector3f position;
+	vector3f normal;
+	vector2f uv;
+	vector3f tangent;
+};
+
 //array or element array buffer base class
 //(think "vertex buffer" & "index buffer")
 class BufferBase {
@@ -165,6 +173,36 @@ public:
 	virtual void SetPointers() {
 		VertexPointer(sizeof(UnlitVertex), offsetof(UnlitVertex, position));
 		ColorPointer(sizeof(UnlitVertex), offsetof(UnlitVertex, color));
+	}
+};
+
+class NormalMappedBuffer : public VertexBuffer {
+public:
+	static const GLuint attrib_tangent = 4;
+
+	NormalMappedBuffer(unsigned int maxElements) : VertexBuffer(maxElements) {
+
+	}
+
+	void TangentPointer(GLsizei stride, size_t pointer) {
+		glVertexAttribPointer(attrib_tangent, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const GLvoid *>(pointer));
+	}
+
+	virtual void SetPointers() {
+		VertexPointer(sizeof(NormalMappedVertex), offsetof(NormalMappedVertex, position));
+		NormalPointer(sizeof(NormalMappedVertex), offsetof(NormalMappedVertex, normal));
+		TexCoordPointer(sizeof(NormalMappedVertex), offsetof(NormalMappedVertex, uv));
+		TangentPointer(sizeof(NormalMappedVertex), offsetof(NormalMappedVertex, tangent));
+	}
+
+	virtual void EnableClientStates() {
+		VertexBuffer::EnableClientStates();
+		glEnableVertexAttribArray(attrib_tangent);
+	}
+
+	virtual void DisableClientStates() {
+		VertexBuffer::DisableClientStates();
+		glDisableVertexAttribArray(attrib_tangent);
 	}
 };
 

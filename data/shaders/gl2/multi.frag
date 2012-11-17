@@ -2,8 +2,9 @@
 uniform sampler2D texture0; //diffuse
 uniform sampler2D texture1; //specular
 uniform sampler2D texture2; //glow
-uniform sampler2D texture3; //pattern
-uniform sampler2D texture4; //color
+uniform sampler2D texture3; //normal
+uniform sampler2D texture4; //pattern
+uniform sampler2D texture5; //color
 varying vec2 texCoord0;
 #endif
 #ifdef VERTEXCOLOR
@@ -11,7 +12,11 @@ varying vec4 vertexColor;
 #endif
 #if (NUM_LIGHTS > 0)
 varying vec3 eyePos;
-varying vec3 normal;
+varying vec3 v_normal;
+#ifdef MAP_NORMAL
+varying vec3 v_tangent;
+varying vec3 v_bitangent;
+#endif
 #endif
 
 uniform Scene scene;
@@ -48,8 +53,8 @@ void main(void)
 #endif
 //patterns - simple lookup
 #ifdef MAP_COLOR
-	float pat = texture2D(texture3, texCoord0).r;
-	vec4 mapColor = texture2D(texture4, vec2(pat, 0.0));
+	float pat = texture2D(texture4, texCoord0).r;
+	vec4 mapColor = texture2D(texture5, vec2(pat, 0.0));
 	color *= mapColor;
 #endif
 
@@ -60,6 +65,13 @@ void main(void)
 
 	//lighting - only one light right now
 #if (NUM_LIGHTS > 0)
+#ifdef MAP_NORMAL
+	vec3 bump = (texture2D(texture3, texCoord0).xyz * 2.0) - vec3(1.0);
+	mat3 tangentFrame = mat3(v_tangent, v_bitangent, v_normal);
+	vec3 normal = tangentFrame * bump;
+#else
+	vec3 normal = v_normal;
+#endif
 	vec4 light = scene.ambient +
 //ambient and emissive only make sense with lighting
 #ifdef MAP_EMISSIVE

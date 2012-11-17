@@ -16,7 +16,7 @@ enum VertexAttrib {
 	ATTRIB_DIFFUSE   = (1u << 2),
 	ATTRIB_UV0       = (1u << 3),
 	//ATTRIB_UV1       = (1u << 4),
-	//ATTRIB_TANGENT   = (1u << 5),
+	ATTRIB_TANGENT   = (1u << 5),
 	//ATTRIB_BITANGENT = (1u << 6),
 	//ATTRIB_CUSTOM?
 };
@@ -51,6 +51,7 @@ public:
 	virtual void Add(const vector3f &v, const Color &c, const vector2f &uv);
 	virtual void Add(const vector3f &v, const vector2f &uv);
 	virtual void Add(const vector3f &v, const vector3f &normal, const vector2f &uv); //lmr static mesh
+	virtual void Add(const vector3f &v, const vector3f &normal, const vector2f &uv, const vector3f &tan); //normalmapped
 	//virtual void Reserve(unsigned int howmuch)
 
 	//could make these private, but it is nice to be able to
@@ -59,6 +60,7 @@ public:
 	std::vector<vector3f> normal;
 	std::vector<Color> diffuse;
 	std::vector<vector2f> uv0;
+	std::vector<vector3f> tangent;
 
 private:
 	int m_attribs;

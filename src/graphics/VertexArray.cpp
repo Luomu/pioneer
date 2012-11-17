@@ -19,6 +19,8 @@ VertexArray::VertexArray(AttributeSet attribs, int size)
 			normal.reserve(size);
 		if (attribs & ATTRIB_UV0)
 			uv0.reserve(size);
+		if (attribs & ATTRIB_TANGENT)
+			tangent.reserve(size);
 	}
 }
 
@@ -43,6 +45,7 @@ void VertexArray::Clear()
 	diffuse.clear();
 	normal.clear();
 	uv0.clear();
+	tangent.clear();
 }
 
 void VertexArray::Add(const vector3f &v)
@@ -81,6 +84,14 @@ void VertexArray::Add(const vector3f &v, const vector3f &n, const vector2f &uv)
 	position.push_back(v);
 	normal.push_back(n);
 	uv0.push_back(uv);
+}
+
+void VertexArray::Add(const vector3f &v, const vector3f &n, const vector2f &uv, const vector3f &tang)
+{
+	position.push_back(v);
+	normal.push_back(n);
+	uv0.push_back(uv);
+	tangent.push_back(tang);
 }
 
 }

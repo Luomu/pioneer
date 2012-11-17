@@ -42,6 +42,7 @@ public:
 	bool atmosphere;
 	bool glowMap;
 	bool lighting;
+	bool normalMap;
 	bool specularMap;
 	bool twoSided;
 	bool usePatterns; //pattern/color system
@@ -65,6 +66,7 @@ public:
 	Texture *texture2;
 	Texture *texture3;
 	Texture *texture4;
+	Texture *texture5;
 
 	Color diffuse;
 	Color specular;

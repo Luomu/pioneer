@@ -173,6 +173,10 @@ void Program::LoadShaders(const std::string &name, const std::string &defines)
 	m_program = glCreateProgram();
 	glAttachShader(m_program, vs.shader);
 	glAttachShader(m_program, fs.shader);
+
+	//extra attribs, if they exist
+	glBindAttribLocation(m_program, 4, "a_tangent");
+
 	glLinkProgram(m_program);
 
 	check_glsl_errors(name.c_str(), m_program);
@@ -193,6 +197,7 @@ void Program::InitUniforms()
 	texture2.Init("texture2", m_program);
 	texture3.Init("texture3", m_program);
 	texture4.Init("texture4", m_program);
+	texture5.Init("texture5", m_program);
 	sceneAmbient.Init("scene.ambient", m_program);
 }
 

@@ -31,6 +31,8 @@ MultiProgram::MultiProgram(const MaterialDescriptor &desc)
 		ss << "#define MAP_SPECULAR\n";
 	if (desc.glowMap)
 		ss << "#define MAP_EMISSIVE\n";
+	if (desc.normalMap && desc.lighting)
+		ss << "#define MAP_NORMAL\n";
 	if (desc.usePatterns)
 		ss << "#define MAP_COLOR\n";
 
@@ -61,6 +63,7 @@ void MultiMaterial::Apply()
 	p->texture2.Set(this->texture2, 2);
 	p->texture3.Set(this->texture3, 3);
 	p->texture4.Set(this->texture4, 4);
+	p->texture5.Set(this->texture5, 5);
 
 	glPushAttrib(GL_ENABLE_BIT);
 	if (this->twoSided)
@@ -71,7 +74,11 @@ void MultiMaterial::Unapply()
 {
 	glPopAttrib();
 	//Might not be necessary to unbind textures, but let's not
-	//confuse UI and LMR
+	//confuse old UI and LMR
+	if (texture5) {
+		static_cast<TextureGL*>(texture5)->Unbind();
+		glActiveTexture(GL_TEXTURE5);
+	}
 	if (texture4) {
 		static_cast<TextureGL*>(texture4)->Unbind();
 		glActiveTexture(GL_TEXTURE3);

@@ -112,7 +112,7 @@ void NModel::SetPattern(unsigned int index)
 		//Set pattern only on a material that supports it
 		//XXX hacky using the descriptor
 		if ((*it).second->GetDescriptor().usePatterns) {
-			(*it).second->texture3 = m_patterns.at(index).texture.Get();
+			(*it).second->texture4 = m_patterns.at(index).texture.Get();
 			m_colorMap.SetSmooth(m_patterns.at(index).smoothColor);
 		}
 	}
@@ -129,7 +129,7 @@ void NModel::SetColors(Graphics::Renderer *r, const std::vector<Color4ub> &color
 		//Set colortexture only on a material that uses patterns
 		//XXX hacky using the descriptor
 		if ((*it).second->GetDescriptor().usePatterns) {
-			(*it).second->texture4 = m_colorMap.GetTexture();
+			(*it).second->texture5 = m_colorMap.GetTexture();
 		}
 	}
 }

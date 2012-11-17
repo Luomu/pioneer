@@ -176,6 +176,8 @@ bool Parser::parseLine(const std::string &line)
 					return checkTexture(ss, m_curMat->tex_spec);
 				else if (match(token, "tex_glow"))
 					return checkTexture(ss, m_curMat->tex_glow);
+				else if (match(token, "tex_norm"))
+					return checkTexture(ss, m_curMat->tex_norm);
 				else if (match(token, "diffuse"))
 					return checkColor(ss, m_curMat->diffuse);
 				else if (match(token, "specular"))

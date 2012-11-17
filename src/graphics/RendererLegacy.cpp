@@ -564,11 +564,14 @@ void RendererLegacy::DisableClientStates()
 
 bool RendererLegacy::BufferStaticMesh(StaticMesh *mesh)
 {
+	//This will never support every possible attribute combination
 	const AttributeSet set = mesh->GetAttributeSet();
 	bool background = false;
 	bool lmr = false;
-	//XXX does this really have to support every case. I don't know.
-	if (set == (ATTRIB_POSITION | ATTRIB_NORMAL | ATTRIB_UV0))
+	bool normalmapped = false;
+	if (set == (ATTRIB_POSITION | ATTRIB_NORMAL | ATTRIB_UV0 | ATTRIB_TANGENT))
+		normalmapped = true;
+	else if (set == (ATTRIB_POSITION | ATTRIB_NORMAL | ATTRIB_UV0))
 		lmr = true;
 	else if (set == (ATTRIB_POSITION | ATTRIB_DIFFUSE))
 		background = true;
@@ -590,7 +593,20 @@ bool RendererLegacy::BufferStaticMesh(StaticMesh *mesh)
 		const VertexArray *va = (*surface)->GetVertices();
 
 		int offset = 0;
-		if (lmr) {
+		if (normalmapped) {
+			ScopedArray<NormalMappedVertex> vts(new NormalMappedVertex[numsverts]);
+			for(int j=0; j<numsverts; j++) {
+				vts[j].position = va->position[j];
+				vts[j].normal = va->normal[j];
+				vts[j].uv = va->uv0[j];
+				vts[j].tangent = va->tangent[j];
+			}
+
+			if (!buf)
+				buf = new NormalMappedBuffer(totalVertices);
+			buf->Bind();
+			buf->BufferData<NormalMappedVertex>(numsverts, vts.Get());
+		} else if (lmr) {
 			ScopedArray<ModelVertex> vts(new ModelVertex[numsverts]);
 			for(int j=0; j<numsverts; j++) {
 				vts[j].position = va->position[j];

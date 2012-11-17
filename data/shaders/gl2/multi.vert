@@ -6,8 +6,13 @@ varying vec4 vertexColor;
 #endif
 #if (NUM_LIGHTS > 0)
 varying vec3 eyePos;
-varying vec3 normal;
+varying vec3 v_normal;
+#ifdef MAP_NORMAL
+attribute vec3 a_tangent;
+varying vec3 v_tangent;
+varying vec3 v_bitangent;
 #endif
+#endif //num_lights
 
 void main(void)
 {
@@ -20,6 +25,10 @@ void main(void)
 #endif
 #if (NUM_LIGHTS > 0)
 	eyePos = vec3(gl_ModelViewMatrix * gl_Vertex);
-	normal = normalize(gl_NormalMatrix * gl_Normal);
+	v_normal = normalize(gl_NormalMatrix * gl_Normal);
+#ifdef MAP_NORMAL
+	v_tangent = gl_NormalMatrix * a_tangent;
+	v_bitangent = gl_NormalMatrix * cross(gl_Normal, a_tangent);
+#endif
 #endif
 }

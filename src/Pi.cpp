@@ -503,6 +503,9 @@ void Pi::HandleEvents()
 			continue;
 
 		Gui::HandleSDLEvent(&event);
+#if WITH_DEVKEYS
+		if (LuaDev::DispatchEvent(event, Lua::manager->GetLuaState())) continue;
+#endif
 		KeyBindings::DispatchSDLEvent(&event);
 
 		switch (event.type) {
@@ -545,29 +548,6 @@ void Pi::HandleEvents()
 						case SDLK_i: // Toggle Debug info
 							Pi::showDebugInfo = !Pi::showDebugInfo;
 							break;
-						case SDLK_m:  // Gimme money!
-							if(Pi::game) {
-								Pi::player->SetMoney(Pi::player->GetMoney() + 10000000);
-							}
-							break;
-						case SDLK_F12:
-						{
-							if(Pi::game) {
-								matrix4x4d m; Pi::player->GetRotMatrix(m);
-								vector3d dir = m*vector3d(0,0,-1);
-								/* add test object */
-								if (KeyState(SDLK_RSHIFT)) {
-									Missile *missile =
-										new Missile(ShipType::MISSILE_GUIDED, Pi::player, Pi::player->GetCombatTarget());
-									missile->SetRotMatrix(m);
-									missile->SetFrame(Pi::player->GetFrame());
-									missile->SetPosition(Pi::player->GetPosition()+50.0*dir);
-									missile->SetVelocity(Pi::player->GetVelocity());
-									game->GetSpace()->AddBody(missile);
-								}
-							}
-							break;
-						}
 #endif /* DEVKEYS */
 #if WITH_OBJECTVIEWER
 						case SDLK_F10:
@@ -798,10 +778,6 @@ void Pi::EndGame()
 void Pi::MainLoop()
 {
 	double time_player_died = 0;
-#ifdef MAKING_VIDEO
-	Uint32 last_screendump = SDL_GetTicks();
-	int dumpnum = 0;
-#endif /* MAKING_VIDEO */
 
 #if WITH_DEVKEYS
 	Uint32 last_stats = SDL_GetTicks();
@@ -944,14 +920,6 @@ void Pi::MainLoop()
 		Pi::statSceneTris = 0;
 		LmrModelClearStatsTris();
 #endif
-
-#ifdef MAKING_VIDEO
-		if (SDL_GetTicks() - last_screendump > 50) {
-			last_screendump = SDL_GetTicks();
-			std::string fname = stringf(Lang::SCREENSHOT_FILENAME_TEMPLATE, formatarg("index", dumpnum++));
-			Screendump(fname.c_str(), GetScrWidth(), GetScrHeight());
-		}
-#endif /* MAKING_VIDEO */
 	}
 }
 

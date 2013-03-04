@@ -4,13 +4,12 @@
 #ifndef _CAMERA_H
 #define _CAMERA_H
 
-#include "graphics/Frustum.h"
-#include "graphics/Light.h"
-#include "vector3.h"
-#include "matrix4x4.h"
+#include "libs.h"
 #include "Background.h"
 #include "Body.h"
-
+#include "GraphicCollector.h"
+#include "graphics/Frustum.h"
+#include "graphics/Light.h"
 
 class Frame;
 namespace Graphics { class Renderer; }
@@ -58,6 +57,8 @@ public:
 
 	// get the frustum. use for projection
 	const Graphics::Frustum &GetFrustum() const { return m_frustum; }
+
+	GraphicCollector &GetCollector() { return m_collector; }
 
 private:
 	void DrawSpike(double rad, const vector3d &viewCoords, const matrix4x4d &viewTransform);
@@ -113,6 +114,7 @@ private:
 	std::vector<LightSource> m_lightSources;
 
 	Graphics::Renderer *m_renderer;
+	GraphicCollector m_collector;
 };
 
 #endif

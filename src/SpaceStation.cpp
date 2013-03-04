@@ -367,11 +367,11 @@ bool SpaceStation::OnCollision(Object *b, Uint32 flags, double relVel)
 //   Stage 1 (clearance granted): open
 //           (clearance expired): close
 //   Docked:                      close
-// 
+//
 // Undocking:
 //   Stage -1 (LaunchShip): open
 //   Post-launch:           close
-//   
+//
 
 void SpaceStation::DockingUpdate(const double timeStep)
 {
@@ -471,7 +471,6 @@ void SpaceStation::PositionDockedShip(Ship *ship, int port) const
 	}
 }
 
-
 void SpaceStation::StaticUpdate(const float timeStep)
 {
 	bool update = false;
@@ -544,7 +543,6 @@ bool SpaceStation::IsGroundStation() const
 	return (m_type->dockMethod == SpaceStationType::SURFACE);
 }
 
-
 /* MarketAgent shite */
 void SpaceStation::Bought(Equip::Type t) {
 	m_equipmentStock[int(t)]++;
@@ -570,7 +568,6 @@ Sint64 SpaceStation::GetPrice(Equip::Type t) const {
 	Sint64 mul = 100 + Pi::game->GetSpace()->GetStarSystem()->GetCommodityBasePriceModPercent(t);
 	return (mul * Sint64(Equip::types[t].basePrice)) / 100;
 }
-
 
 // Calculates the ambiently and directly lit portions of the lighting model taking into account the atmosphere and sun positions at a given location
 // 1. Calculates the amount of direct illumination available taking into account
@@ -636,17 +633,14 @@ void SpaceStation::CalcLighting(Planet *planet, double &ambient, double &intensi
 			light_clamped += sunAngle2;
 	}
 
-
 	// brightness depends on optical depth and intensity of light from all the stars
 	intensity = (Clamp((light),0.0,1.0));
-
 
 	// ambient light fraction
 	// alter ratio between directly and ambiently lit portions towards ambiently lit as sun sets
 	const double fraction = (0.1+0.8*(
 						1.0-light_clamped*(Clamp((opticalThicknessFraction),0.0,1.0))
 						)+0.1); //fraction goes from 0.6 to 1.0
-
 
 	// fraction of light left over to be lit directly
 	intensity = (1.0-fraction)*intensity;
@@ -660,7 +654,7 @@ void SpaceStation::CalcLighting(Planet *planet, double &ambient, double &intensi
 // For surface starports:
 //	Lighting: Calculates available light for model and splits light between directly and ambiently lit
 //            Lighting is done by manipulating global lights or setting uniforms in atmospheric models shader
-void SpaceStation::Render(Graphics::Renderer *r, const Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform)
+void SpaceStation::Render(Graphics::Renderer *r, Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform)
 {
 	Body *b = GetFrame()->GetBody();
 	assert(b);
@@ -760,7 +754,6 @@ void SpaceStation::CreateBB()
 	LuaEvent::Queue("onCreateBB", this);
 	m_bbCreated = true;
 }
-
 
 static int next_ref = 0;
 int SpaceStation::AddBBAdvert(std::string description, AdvertFormBuilder builder)

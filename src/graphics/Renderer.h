@@ -180,6 +180,8 @@ public:
 	RenderInfo *GetRenderInfo() const { return m_renderInfo.Get(); }
 	void SetRenderInfo(RenderInfo *renderInfo) { m_renderInfo.Reset(renderInfo); }
 
+	virtual void Draw(Renderer *r) = 0;
+
 private:
 	ScopedPtr<RenderInfo> m_renderInfo;
 };

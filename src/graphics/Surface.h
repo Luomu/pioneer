@@ -34,6 +34,8 @@ public:
 
 	bool IsIndexed() const { return !m_indices.empty(); }
 
+	virtual void Draw(Renderer *r) { r->DrawSurface(this); }
+
 private:
 	PrimitiveType m_primitiveType;
 	ScopedPtr<VertexArray> m_vertices;

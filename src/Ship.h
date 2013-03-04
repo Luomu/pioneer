@@ -9,10 +9,11 @@
 #include "Camera.h"
 #include "DynamicBody.h"
 #include "EquipSet.h"
-#include "galaxy/SystemPath.h"
+#include "Graphic.h"
 #include "NavLights.h"
 #include "Serializer.h"
 #include "ShipType.h"
+#include "galaxy/SystemPath.h"
 #include "scenegraph/SceneGraph.h"
 #include "scenegraph/ModelSkin.h"
 #include <list>
@@ -63,7 +64,7 @@ public:
 	/** Use GetDockedWith() to determine if docked */
 	SpaceStation *GetDockedWith() const { return m_dockedWith; }
 	int GetDockingPort() const { return m_dockedWithPort; }
-	virtual void Render(Graphics::Renderer *r, const Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform);
+	virtual void Render(Graphics::Renderer *r, Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform);
 
 	void SetThrusterState(int axis, double level) {
 		if (m_thrusterFuel <= 0.f) level = 0.0;
@@ -315,10 +316,9 @@ private:
 
 	SceneGraph::Animation *m_landingGearAnimation;
 	ScopedPtr<NavLights> m_navLights;
+
+	ScopedPtr<ShieldGraphic> m_shieldGraphic;
 };
 
-
-
 #endif /* _SHIP_H */
-
 

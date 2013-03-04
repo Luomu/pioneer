@@ -215,6 +215,8 @@ Ship::Ship(ShipType::Id shipId): DynamicBody(),
 	m_skin.SetPattern(Pi::rng.Int32(0, GetModel()->GetNumPatterns()));
 	m_skin.Apply(GetModel());
 
+	m_shieldGraphic.Reset(new ShieldGraphic(GetModel()->GetRenderer()));
+
 	Init();
 	SetController(new ShipController());
 }
@@ -232,7 +234,6 @@ void Ship::SetController(ShipController *c)
 	m_controller = c;
 	m_controller->m_ship = this;
 }
-
 
 float Ship::GetPercentHull() const
 {
@@ -1083,7 +1084,7 @@ bool Ship::SetWheelState(bool down)
 	return true;
 }
 
-void Ship::Render(Graphics::Renderer *renderer, const Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform)
+void Ship::Render(Graphics::Renderer *renderer, Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform)
 {
 	if (IsDead()) return;
 
@@ -1099,19 +1100,12 @@ void Ship::Render(Graphics::Renderer *renderer, const Camera *camera, const vect
 	// draw shield recharge bubble
 	if (m_stats.shield_mass_left < m_stats.shield_mass) {
 		const float shield = 0.01f*GetPercentShields();
-		renderer->SetBlendMode(Graphics::BLEND_ADDITIVE);
-		glPushMatrix();
+		m_shieldGraphic->SetStrength(shield);
 		matrix4x4f trans = matrix4x4f::Identity();
 		trans.Translate(viewCoords.x, viewCoords.y, viewCoords.z);
 		trans.Scale(GetPhysRadius());
-		renderer->SetTransform(trans);
-
-		//fade based on strength
-		Sfx::shieldEffect->GetMaterial()->diffuse =
-			Color((1.0f-shield),shield,0.0,0.33f*(1.0f-shield));
-		Sfx::shieldEffect->Draw(renderer);
-		glPopMatrix();
-		renderer->SetBlendMode(Graphics::BLEND_SOLID);
+		m_shieldGraphic->SetTransform(trans);
+		camera->GetCollector().AddAdditive(m_shieldGraphic.Get());
 	}
 
 	if (m_ecmRecharge > 0.0f) {

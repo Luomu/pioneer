@@ -222,7 +222,7 @@ void Planet::GenerateRings(Graphics::Renderer *renderer)
 	m_ringMaterial->texture0 = m_ringTexture.Get();
 }
 
-void Planet::DrawGasGiantRings(Renderer *renderer, const Camera *camera)
+void Planet::DrawGasGiantRings(Renderer *renderer, Camera *camera)
 {
 	renderer->SetBlendMode(BLEND_ALPHA_PREMULT);
 	renderer->SetDepthTest(true);
@@ -330,7 +330,7 @@ void Planet::DrawAtmosphere(Renderer *renderer, const vector3d &camPos)
 	glPopMatrix();
 }
 
-void Planet::SubRender(Renderer *r, const Camera *camera, const vector3d &camPos)
+void Planet::SubRender(Renderer *r, Camera *camera, const vector3d &camPos)
 {
 	if (GetSystemBody()->HasRings()) { DrawGasGiantRings(r, camera); }
 	if (!AreShadersEnabled()) DrawAtmosphere(r, camPos);

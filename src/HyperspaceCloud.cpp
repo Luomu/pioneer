@@ -134,7 +134,7 @@ void HyperspaceCloud::UpdateInterpTransform(double alpha)
 	m_interpPos = alpha*GetPosition() + (1.0-alpha)*oldPos;
 }
 
-void HyperspaceCloud::Render(Renderer *renderer, const Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform)
+void HyperspaceCloud::Render(Renderer *renderer, Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform)
 {
 	renderer->SetBlendMode(BLEND_ALPHA_ONE);
 	glPushMatrix();

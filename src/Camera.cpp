@@ -3,13 +3,14 @@
 
 #include "Camera.h"
 #include "Frame.h"
-#include "galaxy/StarSystem.h"
-#include "Space.h"
-#include "Player.h"
-#include "Pi.h"
-#include "Sfx.h"
 #include "Game.h"
+#include "Graphic.h"
+#include "Pi.h"
 #include "Planet.h"
+#include "Player.h"
+#include "Sfx.h"
+#include "Space.h"
+#include "galaxy/StarSystem.h"
 #include "graphics/Graphics.h"
 #include "graphics/Renderer.h"
 #include "graphics/VertexArray.h"
@@ -103,6 +104,7 @@ void Camera::Draw(Renderer *renderer, const Body *excludeBody)
 	if (!renderer) return;
 
 	m_renderer = renderer;
+	m_collector.Reset();
 
 	glPushAttrib(GL_ALL_ATTRIB_BITS & (~GL_POINT_BIT));
 
@@ -185,6 +187,25 @@ void Camera::Draw(Renderer *renderer, const Body *excludeBody)
 	}
 
 	Sfx::RenderAll(renderer, Pi::game->GetSpace()->GetRootFrame(), m_camFrame);
+
+	renderer->SetDepthWrite(true);
+	renderer->SetDepthTest(true);
+	GraphicCollector::GraphicList::const_iterator grit;
+	for (grit = m_collector.BeginOpaque(); grit != m_collector.EndOpaque(); ++grit) {
+		//(sort) and draw
+		(*grit)->Draw();
+	}
+
+	renderer->SetDepthWrite(false);
+	for (grit = m_collector.BeginTransparent(); grit != m_collector.EndTransparent(); ++grit) {
+		//sort and draw
+		(*grit)->Draw();
+	}
+
+	renderer->SetBlendMode(Graphics::BLEND_ADDITIVE);
+	for (grit = m_collector.BeginAdditive(); grit != m_collector.EndAdditive(); ++grit) {
+		(*grit)->Draw();
+	}
 
 	m_frame->RemoveChild(m_camFrame);
 	delete m_camFrame;

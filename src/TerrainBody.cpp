@@ -56,7 +56,7 @@ void TerrainBody::Load(Serializer::Reader &rd, Space *space)
 	InitTerrainBody(sbody);
 }
 
-void TerrainBody::Render(Graphics::Renderer *renderer, const Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform)
+void TerrainBody::Render(Graphics::Renderer *renderer, Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform)
 {
 	matrix4x4d ftran = viewTransform;
 	vector3d fpos = viewCoords;

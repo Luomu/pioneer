@@ -38,6 +38,8 @@ public:
 	const SurfaceIterator SurfacesBegin() const { return m_surfaces.begin(); }
 	const SurfaceIterator SurfacesEnd() const { return m_surfaces.end(); }
 
+	virtual void Draw(Renderer *r) { r->DrawStaticMesh(this); }
+
 	bool cached;
 
 	static const int MAX_VERTICES = 65536;

@@ -74,4 +74,20 @@ private:
 	float m_strength;
 };
 
+class LaserGraphic : public Graphic {
+public:
+	LaserGraphic(Graphics::Renderer *r);
+
+	void SetColor(const Color &c) { m_color = c; }
+	void SetSideIntensity(float i) { m_sideIntensity = i; }
+	void SetGlowIntensity(float i) { m_glowIntensity = i; }
+
+	virtual void Draw();
+
+private:
+	Color m_color;
+	float m_sideIntensity;
+	float m_glowIntensity;
+};
+
 #endif

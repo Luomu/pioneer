@@ -103,11 +103,11 @@ void Projectile::FreeModel()
 Projectile::Projectile(): Body()
 {
 	if (!s_sideMat) BuildModel();
+	m_graphic.Reset(new LaserGraphic(Pi::renderer));
 	SetOrient(matrix3x3d::Identity());
 	m_type = 1;
 	m_age = 0;
 	m_parent = 0;
-	m_flags |= FLAG_DRAW_LAST;
 }
 
 Projectile::~Projectile()
@@ -263,45 +263,32 @@ void Projectile::Render(Graphics::Renderer *renderer, Camera *camera, const vect
 	m[13] = from.y;
 	m[14] = from.z;
 
-	renderer->SetBlendMode(Graphics::BLEND_ALPHA_ONE);
-	renderer->SetDepthWrite(false);
-
-	glPushMatrix();
-	glMultMatrixf(&m[0]);
-
 	// increase visible size based on distance from camera, z is always negative
 	// allows them to be smaller while maintaining visibility for game play
 	const float dist_scale = float(viewCoords.z / -500);
 	const float length = Equip::lasers[m_type].length + dist_scale;
 	const float width = Equip::lasers[m_type].width + dist_scale;
-	glScalef(width, width, length);
 
-	Color color = Equip::lasers[m_type].color;
+	m.Scale(width, width, length);
+
 	// fade them out as they age so they don't suddenly disappear
 	// this matches the damage fall-off calculation
 	const float base_alpha = sqrt(1.0f - m_age/Equip::lasers[m_type].lifespan);
-	// fade out side quads when viewing nearly edge on
-	vector3f view_dir = vector3f(viewCoords).Normalized();
-	color.a = base_alpha * (1.f - powf(fabs(dir.Dot(view_dir)), length));
 
-	if (color.a > 0.01f) {
-		s_sideMat->diffuse = color;
-		renderer->DrawTriangles(s_sideVerts.Get(), s_sideMat.Get());
-	}
+	// fade out side quads when viewing nearly edge on
+	const vector3f view_dir = vector3f(viewCoords).Normalized();
+	float intensity = base_alpha * (1.f - powf(fabs(dir.Dot(view_dir)), length));
+	m_graphic->SetSideIntensity(intensity);
 
 	// fade out glow quads when viewing nearly edge on
 	// these and the side quads fade at different rates
 	// so that they aren't both at the same alpha as that looks strange
-	color.a = base_alpha * powf(fabs(dir.Dot(view_dir)), width);
+	intensity = base_alpha * powf(fabs(dir.Dot(view_dir)), width);
+	m_graphic->SetGlowIntensity(intensity);
 
-	if (color.a > 0.01f) {
-		s_glowMat->diffuse = color;
-		renderer->DrawTriangles(s_glowVerts.Get(), s_glowMat.Get());
-	}
-
-	glPopMatrix();
-	renderer->SetBlendMode(Graphics::BLEND_SOLID);
-	renderer->SetDepthWrite(true);
+	m_graphic->SetColor(Equip::lasers[m_type].color);
+	m_graphic->SetTransform(m);
+	camera->GetCollector().AddAdditive(m_graphic.Get());
 }
 
 void Projectile::Add(Body *parent, Equip::Type type, const vector3d &pos, const vector3d &baseVel, const vector3d &dirVel)

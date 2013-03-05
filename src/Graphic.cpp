@@ -3,6 +3,7 @@
 
 #include "Graphic.h"
 #include "Sfx.h"
+#include "Projectile.h"
 #include "graphics/Drawables.h"
 #include "graphics/Renderer.h"
 #include "graphics/Material.h"
@@ -60,4 +61,26 @@ void ShieldGraphic::Draw()
 	Sfx::shieldEffect->GetMaterial()->diffuse =
 		Color((1.0f - m_strength), m_strength, 0.0, 0.33f * (1.0f - m_strength));
 	Sfx::shieldEffect->Draw(GetRenderer());
+}
+
+LaserGraphic::LaserGraphic(Renderer *r)
+: Graphic(r)
+, m_color(Color::WHITE)
+, m_sideIntensity(0.f)
+, m_glowIntensity(0.f)
+{
+}
+
+void LaserGraphic::Draw()
+{
+	//Using the shared resources in Projectile
+	GetRenderer()->SetTransform(m_transform);
+	if (m_sideIntensity > 0.01f) {
+		Projectile::s_sideMat->diffuse = m_color * m_sideIntensity;
+		GetRenderer()->DrawTriangles(Projectile::s_sideVerts.Get(), Projectile::s_sideMat.Get());
+	}
+	if (m_glowIntensity > 0.01f) {
+		Projectile::s_glowMat->diffuse = m_color * m_glowIntensity;
+		GetRenderer()->DrawTriangles(Projectile::s_glowVerts.Get(), Projectile::s_glowMat.Get());
+	}
 }

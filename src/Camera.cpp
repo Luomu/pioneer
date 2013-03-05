@@ -188,6 +188,7 @@ void Camera::Draw(Renderer *renderer, const Body *excludeBody)
 
 	Sfx::RenderAll(renderer, Pi::game->GetSpace()->GetRootFrame(), m_camFrame);
 
+	glPushMatrix();
 	renderer->SetDepthWrite(true);
 	renderer->SetDepthTest(true);
 	GraphicCollector::GraphicList::const_iterator grit;
@@ -206,6 +207,7 @@ void Camera::Draw(Renderer *renderer, const Body *excludeBody)
 	for (grit = m_collector.BeginAdditive(); grit != m_collector.EndAdditive(); ++grit) {
 		(*grit)->Draw();
 	}
+	glPopMatrix();
 
 	m_frame->RemoveChild(m_camFrame);
 	delete m_camFrame;

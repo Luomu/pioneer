@@ -4,10 +4,11 @@
 #ifndef _PROJECTILE_H
 #define _PROJECTILE_H
 
+#include "libs.h"
 #include "Body.h"
 #include "EquipType.h"
+#include "Graphic.h"
 #include "graphics/Material.h"
-#include "SmartPtr.h"
 
 class Frame;
 namespace Graphics {
@@ -35,6 +36,7 @@ public:
 protected:
 	virtual void Save(Serializer::Writer &wr, Space *space);
 	virtual void Load(Serializer::Reader &rd, Space *space);
+
 private:
 	float GetDamage() const;
 	double GetRadius() const;
@@ -48,6 +50,9 @@ private:
 
 	static void BuildModel();
 
+	ScopedPtr<LaserGraphic> m_graphic;
+
+public:
 	static ScopedPtr<Graphics::VertexArray> s_sideVerts;
 	static ScopedPtr<Graphics::VertexArray> s_glowVerts;
 	static ScopedPtr<Graphics::Material> s_sideMat;

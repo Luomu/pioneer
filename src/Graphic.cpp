@@ -26,10 +26,12 @@ void RenderableGraphic::Draw()
 	m_renderable->Draw(m_renderer);
 }
 
-TriangleGraphic::TriangleGraphic(Renderer *renderer, VertexArray *v, RefCountedPtr<Graphics::Material> m)
+TriangleGraphic::TriangleGraphic(Renderer *renderer, VertexArray *v,
+	RefCountedPtr<Graphics::Material> m, Graphics::PrimitiveType pt)
 : Graphic(renderer)
 , m_vertexArray(v)
 , m_material(m)
+, m_primitiveType(pt)
 {
 }
 
@@ -46,7 +48,7 @@ void TriangleGraphic::SetVertexArray(VertexArray *v)
 void TriangleGraphic::Draw()
 {
 	m_renderer->SetTransform(m_transform);
-	m_renderer->DrawTriangles(m_vertexArray.Get(), m_material.Get());
+	m_renderer->DrawTriangles(m_vertexArray.Get(), m_material.Get(), m_primitiveType);
 }
 
 ShieldGraphic::ShieldGraphic(Renderer *r)

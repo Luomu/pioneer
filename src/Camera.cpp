@@ -198,6 +198,7 @@ void Camera::Draw(Renderer *renderer, const Body *excludeBody)
 	}
 
 	renderer->SetDepthWrite(false);
+	renderer->SetBlendMode(Graphics::BLEND_ALPHA);
 	for (grit = m_collector.BeginTransparent(); grit != m_collector.EndTransparent(); ++grit) {
 		//sort and draw
 		(*grit)->Draw();

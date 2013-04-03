@@ -5,17 +5,14 @@
 #define _GRAPHIC_H
 
 #include "libs.h"
+#include "graphics/Renderer.h"
 
-namespace Graphics {
-	class Material;
-	class Renderer;
-	class VertexArray;
-	struct Renderable;
-}
-
-// A graphic is a combination of a transform and something renderable
+// A Graphic is a combination of a transform and something renderable
 // (vertex array + material, StaticMesh)
 // A graphic is not shared, but the renderables may be
+//
+// Goal: use the generic Graphic types when you can,
+// implement custom ones when you have to
 
 class Graphic {
 public:
@@ -48,7 +45,8 @@ private:
 //takes ownership of vertex array
 class TriangleGraphic : public Graphic {
 public:
-	TriangleGraphic(Graphics::Renderer*, Graphics::VertexArray*, RefCountedPtr<Graphics::Material>);
+	TriangleGraphic(Graphics::Renderer*, Graphics::VertexArray*,
+		RefCountedPtr<Graphics::Material>, Graphics::PrimitiveType = Graphics::TRIANGLES);
 
 	RefCountedPtr<Graphics::Material> &GetMaterial() { return m_material; }
 	void SetMaterial(RefCountedPtr<Graphics::Material> m) { m_material = m; }
@@ -61,6 +59,7 @@ public:
 private:
 	ScopedPtr<Graphics::VertexArray> m_vertexArray;
 	RefCountedPtr<Graphics::Material> m_material;
+	Graphics::PrimitiveType m_primitiveType;
 };
 
 class ShieldGraphic : public Graphic {

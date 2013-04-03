@@ -5,7 +5,6 @@
 #define _RENDERER_H
 
 #include "libs.h"
-#include <map>
 
 namespace Graphics {
 
@@ -49,7 +48,7 @@ enum LineType {
 enum PrimitiveType {
 	TRIANGLES = GL_TRIANGLES,
 	TRIANGLE_STRIP = GL_TRIANGLE_STRIP,
-	TRIANGLE_FAN = GL_TRIANGLE_FAN,
+	TRIANGLE_FAN = GL_TRIANGLE_FAN, //not available DX10
 	POINTS = GL_POINTS
 };
 

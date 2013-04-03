@@ -89,6 +89,11 @@ void Camera::Update()
 		attrs.body = b;
 		Frame::GetFrameRenderTransform(b->GetFrame(), m_camFrame, attrs.viewTransform);
 		attrs.viewCoords = attrs.viewTransform * b->GetInterpPosition();
+
+		// frustum cull
+		if (!m_frustum.TestPointInfinite(attrs.viewCoords, b->GetClipRadius()))
+			continue;
+
 		attrs.camDist = attrs.viewCoords.Length();
 		attrs.bodyFlags = b->GetFlags();
 		m_sortedBodies.push_back(attrs);
@@ -118,7 +123,6 @@ void Camera::Draw(Renderer *renderer, const Body *excludeBody)
 
 	// Pick up to four suitable system light sources (stars)
 	m_lightSources.clear();
-	m_lightSources.reserve(4);
 	position_system_lights(m_camFrame, Pi::game->GetSpace()->GetRootFrame(), m_lightSources);
 
 	if (m_lightSources.empty()) {
@@ -135,7 +139,7 @@ void Camera::Draw(Renderer *renderer, const Body *excludeBody)
 		if (camParentBody && camParentBody->IsType(Object::PLANET)) {
 			Planet *planet = static_cast<Planet*>(camParentBody);
 			const vector3f relpos(planet->GetInterpPositionRelTo(m_camFrame));
-			double altitude(relpos.Length());
+			const double altitude(relpos.Length());
 			double pressure, density;
 			planet->GetAtmosphericState(altitude, &pressure, &density);
 			if (pressure >= 0.001)
@@ -156,12 +160,10 @@ void Camera::Draw(Renderer *renderer, const Body *excludeBody)
 	Pi::game->GetSpace()->GetBackground().SetIntensity(bgIntensity);
 	Pi::game->GetSpace()->GetBackground().Draw(renderer, trans2bg);
 
-	{
-		std::vector<Graphics::Light> rendererLights;
-		for (size_t i = 0; i < m_lightSources.size(); i++)
-			rendererLights.push_back(m_lightSources[i].GetLight());
-		renderer->SetLights(rendererLights.size(), &rendererLights[0]);
-	}
+	std::vector<Graphics::Light> rendererLights;
+	for (size_t i = 0; i < m_lightSources.size(); i++)
+		rendererLights.push_back(m_lightSources[i].GetLight());
+	renderer->SetLights(rendererLights.size(), &rendererLights[0]);
 
 	for (std::list<BodyAttrs>::iterator i = m_sortedBodies.begin(); i != m_sortedBodies.end(); ++i) {
 		BodyAttrs *attrs = &(*i);
@@ -170,15 +172,13 @@ void Camera::Draw(Renderer *renderer, const Body *excludeBody)
 		if (attrs->body == excludeBody)
 			continue;
 
-		double rad = attrs->body->GetClipRadius();
-		if (!m_frustum.TestPointInfinite((*i).viewCoords, rad))
-			continue;
+		const double rad = attrs->body->GetClipRadius();
 
 		// draw spikes for far objects
-		double screenrad = 500 * rad / attrs->camDist;      // approximate pixel size
+		const double screenrad = 500 * rad / attrs->camDist; // approximate pixel size
 		if (attrs->body->IsType(Object::PLANET) && screenrad < 2) {
 			// absolute bullshit
-			double spikerad = (7 + 1.5*log10(screenrad)) * rad / screenrad;
+			const double spikerad = (7 + 1.5*log10(screenrad)) * rad / screenrad;
 			DrawSpike(spikerad, attrs->viewCoords, attrs->viewTransform);
 		}
 		else if (screenrad >= 2 || attrs->body->IsType(Object::STAR) ||

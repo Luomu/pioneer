@@ -6,8 +6,8 @@
 
 #include "libs.h"
 #include "Body.h"
-#include "vector3.h"
 #include "CollMesh.h"
+#include "Graphic.h"
 
 class Geom;
 class Camera;
@@ -37,7 +37,7 @@ public:
 
 	void SetModel(const char *modelName);
 
-	void RenderModel(Graphics::Renderer *r, const Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform, const bool setLighting=true);
+	void RenderModel(Graphics::Renderer *r, Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform, const bool setLighting=true);
 
 protected:
 	virtual void Save(Serializer::Writer &wr, Space *space);
@@ -55,6 +55,8 @@ private:
 	Geom *m_geom;
 	std::string m_modelName;
 	SceneGraph::Model *m_model;
+
+	ScopedPtr<ModelGraphic> m_transparentModelGraphic;
 };
 
 #endif /* _MODELBODY_H */

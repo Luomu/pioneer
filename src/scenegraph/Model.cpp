@@ -84,7 +84,7 @@ Model *Model::MakeInstance() const
 	return m;
 }
 
-void Model::Render(const matrix4x4f &trans, RenderData *rd)
+void Model::UpdateInstanceMaterials()
 {
 	//update color parameters (materials are shared by model instances)
 	if (m_curPattern) {
@@ -100,25 +100,38 @@ void Model::Render(const matrix4x4f &trans, RenderData *rd)
 	for (unsigned int i=0; i < MAX_DECAL_MATERIALS; i++)
 		if (m_decalMaterials[i].Valid())
 			m_decalMaterials[i]->texture0 = m_curDecals[i];
+}
 
-	//Override renderdata if this model is called from ModelNode
-	RenderData *params = (rd != 0) ? rd : &m_renderData;
+void Model::Render(const matrix4x4f &trans, unsigned int nodeMask)
+{
+	UpdateInstanceMaterials();
 
-	m_renderer->SetBlendMode(Graphics::BLEND_SOLID);
-	m_renderer->SetTransform(trans);
-	//using the entire model bounding radius for all nodes at the moment.
-	//BR could also be a property of Node.
+	RenderData *params = &m_renderData;
+	params->boundingRadius = GetDrawClipRadius(); //needed by lod nodes
+	params->nodemask = nodeMask;
+
+	m_root->Render(trans, params);
+}
+
+void Model::Render(const matrix4x4f &trans)
+{
+	UpdateInstanceMaterials();
+
+	RenderData *params = &m_renderData;
 	params->boundingRadius = GetDrawClipRadius();
 
-	//render in two passes, if this is the top-level model
-	if (params->nodemask & MASK_IGNORE) {
-		m_root->Render(trans, params);
-	} else {
-		params->nodemask = NODE_SOLID;
-		m_root->Render(trans, params);
-		params->nodemask = NODE_TRANSPARENT;
-		m_root->Render(trans, params);
-	}
+	params->nodemask = NODE_SOLID;
+	m_renderer->SetDepthWrite(true);
+	m_root->Render(trans, params);
+	params->nodemask = NODE_TRANSPARENT;
+	m_renderer->SetDepthWrite(false);
+	m_root->Render(trans, params);
+}
+
+void Model::RenderAsSubModel(const matrix4x4f &trans, RenderData *rd)
+{
+	UpdateInstanceMaterials();
+	m_root->Render(trans, rd);
 }
 
 RefCountedPtr<CollMesh> Model::CreateCollisionMesh()
@@ -298,7 +311,6 @@ void Model::Save(Serializer::Writer &wr) const
 	for (AnimationContainer::const_iterator i = m_animations.begin(); i != m_animations.end(); ++i)
 		wr.Double((*i)->GetProgress());
 }
-
 
 class LoadVisitor : public NodeVisitor {
 public:

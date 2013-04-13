@@ -8,6 +8,7 @@
 #include "graphics/Renderer.h"
 #include "graphics/Material.h"
 #include "graphics/VertexArray.h"
+#include "scenegraph/Model.h"
 
 using Graphics::Renderer;
 using Graphics::Renderable;
@@ -85,4 +86,16 @@ void LaserGraphic::Draw()
 		Projectile::s_glowMat->diffuse = m_color * m_glowIntensity;
 		GetRenderer()->DrawTriangles(Projectile::s_glowVerts.Get(), Projectile::s_glowMat.Get());
 	}
+}
+
+ModelGraphic::ModelGraphic(SceneGraph::Model *m, unsigned int n)
+: Graphic(0)
+, m_model(m)
+, m_nodeMask(n)
+{
+}
+
+void ModelGraphic::Draw()
+{
+	m_model->Render(m_transform, m_nodeMask);
 }

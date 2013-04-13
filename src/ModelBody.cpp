@@ -113,6 +113,8 @@ void ModelBody::SetModel(const char *modelName)
 	SetClipRadius(m_model->GetDrawClipRadius());
 
 	RebuildCollisionMesh();
+
+	m_transparentModelGraphic.Reset(new ModelGraphic(m_model, SceneGraph::NODE_TRANSPARENT));
 }
 
 void ModelBody::SetPosition(const vector3d &p)
@@ -289,8 +291,10 @@ void ModelBody::ResetLighting(Graphics::Renderer *r, const std::vector<Graphics:
 	r->SetAmbientColor(oldAmbient);
 }
 
-void ModelBody::RenderModel(Graphics::Renderer *r, const Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform, const bool setLighting)
+void ModelBody::RenderModel(Graphics::Renderer *r, Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform, const bool setLighting)
 {
+	glPushMatrix(); //XXX remove
+
 	std::vector<Graphics::Light> oldLights;
 	Color oldAmbient;
 	if (setLighting)
@@ -299,7 +303,7 @@ void ModelBody::RenderModel(Graphics::Renderer *r, const Camera *camera, const v
 	matrix4x4d m2 = GetInterpOrient();
 	m2.SetTranslate(GetInterpPosition());
 	matrix4x4d t = viewTransform * m2;
-	glPushMatrix();				// Otherwise newmodels leave a dirty matrix
+
 	matrix4x4f trans;
 	for (int i=0; i<12; i++) trans[i] = float(t[i]);
 	trans[12] = viewCoords.x;
@@ -307,9 +311,19 @@ void ModelBody::RenderModel(Graphics::Renderer *r, const Camera *camera, const v
 	trans[14] = viewCoords.z;
 	trans[15] = 1.0f;
 
-	m_model->Render(trans);
-	glPopMatrix();
+	if (m_model->ContainsNodeMask(SceneGraph::NODE_SOLID)) {
+		r->SetDepthWrite(true);
+		r->SetBlendMode(Graphics::BLEND_SOLID);
+		m_model->Render(trans, SceneGraph::NODE_SOLID);
+	}
+
+	if (m_model->ContainsNodeMask(SceneGraph::NODE_TRANSPARENT)) {
+		m_transparentModelGraphic->SetTransform(trans);
+		camera->GetCollector().AddAdditive(m_transparentModelGraphic.Get());
+	}
 
 	if (setLighting)
 		ResetLighting(r, oldLights, oldAmbient);
+
+	glPopMatrix(); //XXX remove
 }

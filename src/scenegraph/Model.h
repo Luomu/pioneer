@@ -68,7 +68,6 @@
 #include "CollMesh.h"
 #include "graphics/Material.h"
 #include "Serializer.h"
-#include <stdexcept>
 
 namespace Graphics { class Renderer; }
 
@@ -91,7 +90,12 @@ public:
 	~Model();
 	Model *MakeInstance() const;
 	float GetDrawClipRadius() const { return m_boundingRadius; }
-	void Render(const matrix4x4f &trans, RenderData *params = 0); //ModelNode can override RD
+	bool ContainsNodeMask(unsigned int) const { return true; }
+
+	void Render(const matrix4x4f &trans, unsigned int nodeMask); //just one pass
+	void Render(const matrix4x4f &trans); //render solid & transparent (for modelviewer, intro etc.)
+	void RenderAsSubModel(const matrix4x4f &trans, RenderData *parentModelParams);
+	void UpdateInstanceMaterials();
 	RefCountedPtr<CollMesh> CreateCollisionMesh();
 	CollMesh *GetCollisionMesh() const { return m_collMesh.Get(); }
 	RefCountedPtr<Group> GetRoot() { return m_root; }
@@ -115,7 +119,6 @@ public:
 	void ClearDecals();
 	void SetLabel(const std::string&);
 
-	//for modelviewer, at least
 	bool SupportsDecals();
 	bool SupportsPatterns();
 

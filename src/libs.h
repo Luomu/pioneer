@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <stdexcept>
 
 /* on unix this would probably become $PREFIX/pioneer */
 #ifndef PIONEER_DATA_DIR

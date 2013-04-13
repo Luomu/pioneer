@@ -9,7 +9,6 @@
  */
 #include "Loader.h"
 #include "FileSystem.h"
-#include <stdexcept>
 
 namespace SceneGraph {
 

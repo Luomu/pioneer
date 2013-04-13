@@ -78,7 +78,6 @@ void Thruster::Render(const matrix4x4f &trans, RenderData *rd)
 
 	Graphics::Renderer *r = GetRenderer();
 	r->SetBlendMode(Graphics::BLEND_ADDITIVE);
-	r->SetDepthWrite(false);
 	r->SetTransform(trans);
 
 	m_tMat->diffuse = baseColor * power;
@@ -87,8 +86,6 @@ void Thruster::Render(const matrix4x4f &trans, RenderData *rd)
 	vector3f vdir(-trans[2], -trans[6], -trans[10]);
 	m_tMat->diffuse.a = 1.f - Clamp(vdir.Dot(cdir), 0.f, 1.f);*/
 	r->DrawTriangles(m_tVerts.Get(), m_tMat.Get());
-	r->SetBlendMode(Graphics::BLEND_SOLID);
-	r->SetDepthWrite(true);
 }
 
 Graphics::VertexArray *Thruster::CreateGeometry()

@@ -60,10 +60,7 @@ void Billboard::Render(const matrix4x4f &trans, RenderData *rd)
 
 	r->SetTransform(trans);
 	r->SetBlendMode(Graphics::BLEND_ADDITIVE);
-	r->SetDepthWrite(false);
 	r->DrawTriangles(&va, m_material.Get());
-	r->SetBlendMode(Graphics::BLEND_SOLID);
-	r->SetDepthWrite(true);
 }
 
 }

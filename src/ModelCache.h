@@ -8,7 +8,6 @@
  * Also it only deals in New Models
  */
 #include "libs.h"
-#include <stdexcept>
 
 namespace Graphics { class Renderer; }
 namespace SceneGraph { class Model; }

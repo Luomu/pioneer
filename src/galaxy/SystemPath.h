@@ -4,9 +4,9 @@
 #ifndef _SYSTEMPATH_H
 #define _SYSTEMPATH_H
 
+#include "libs.h"
 #include "Serializer.h"
 #include "LuaWrappable.h"
-#include <stdexcept>
 
 class SystemPath : public LuaWrappable {
 public:

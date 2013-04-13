@@ -13,6 +13,9 @@
 //
 // Goal: use the generic Graphic types when you can,
 // implement custom ones when you have to
+//
+
+namespace SceneGraph { class Model; }
 
 class Graphic {
 public:
@@ -87,6 +90,19 @@ private:
 	Color m_color;
 	float m_sideIntensity;
 	float m_glowIntensity;
+};
+
+// XXX silly. Just change Model to be a Graphic!
+class ModelGraphic : public Graphic {
+public:
+	ModelGraphic(SceneGraph::Model *model, unsigned int nodeMask);
+	virtual void Draw();
+	unsigned int GetNodeMask() const { return m_nodeMask; }
+	void SetNodeMask(unsigned int i) { m_nodeMask = i; }
+
+private:
+	unsigned int m_nodeMask;
+	SceneGraph::Model *m_model;
 };
 
 #endif

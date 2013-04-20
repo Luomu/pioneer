@@ -238,7 +238,6 @@ void Ship::SetController(ShipController *c)
 	m_controller->m_ship = this;
 }
 
-
 float Ship::GetPercentHull() const
 {
 	return 100.0f * (m_stats.hull_mass_left / float(m_type->hullMass));
@@ -298,18 +297,12 @@ bool Ship::OnDamage(Object *attacker, float kgDamage)
 			if (attacker) {
 				if (attacker->IsType(Object::BODY))
 					LuaEvent::Queue("onShipDestroyed", this, dynamic_cast<Body*>(attacker));
-
-				if (attacker->IsType(Object::SHIP))
-					Polit::NotifyOfCrime(static_cast<Ship*>(attacker), Polit::CRIME_MURDER);
 			}
 
 			Explode();
 		}
 
 		else {
-			if (attacker && attacker->IsType(Object::SHIP))
-				Polit::NotifyOfCrime(static_cast<Ship*>(attacker), Polit::CRIME_PIRACY);
-
 			if (Pi::rng.Double() < kgDamage)
 				Sfx::Add(this, Sfx::TYPE_DAMAGE);
 
@@ -812,7 +805,6 @@ void Ship::FireWeapon(int num)
 			}
 	*/
 
-	Polit::NotifyOfCrime(this, Polit::CRIME_WEAPON_DISCHARGE);
 	Sound::BodyMakeNoise(this, "Pulse_Laser", 1.0f);
 }
 

@@ -51,7 +51,6 @@ namespace Polit {
 		GOV_RAND_MAX = GOV_MAX-1, // <enum skip>
 	};
 
-	void NotifyOfCrime(Ship *s, enum Crime c);
 	void GetSysPolitStarSystem(const StarSystem *s, const fixed human_infestedness, SysPolit &outSysPolit);
 	bool IsCommodityLegal(const StarSystem *s, const Equip::Type t);
 	void Init();

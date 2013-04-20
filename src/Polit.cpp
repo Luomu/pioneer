@@ -121,30 +121,6 @@ static int GetCrimeIdxFromEnum(enum Crime crime)
 	return 0;
 }
 
-void NotifyOfCrime(Ship *s, enum Crime crime)
-{
-	// ignore crimes of NPCs for the time being
-	if (!s->IsType(Object::PLAYER)) return;
-	// find nearest starport to this evil criminal
-	SpaceStation *station = static_cast<SpaceStation*>(Pi::game->GetSpace()->FindNearestTo(s, Object::SPACESTATION));
-	if (station) {
-		double dist = station->GetPositionRelTo(s).Length();
-		// too far away for crime to be noticed :)
-		if (dist > 100000.0) return;
-		const int crimeIdx = GetCrimeIdxFromEnum(crime);
-		Pi::cpan->MsgLog()->ImportantMessage(station->GetLabel(),
-				stringf(Lang::X_CANNOT_BE_TOLERATED_HERE, formatarg("crime", crimeNames[crimeIdx])));
-
-		float lawlessness = Pi::game->GetSpace()->GetStarSystem()->GetSysPolit().lawlessness.ToFloat();
-		Sint64 oldCrimes, oldFine;
-		GetCrime(&oldCrimes, &oldFine);
-		Sint64 newFine = std::max(1, 1 + int(crimeBaseFine[crimeIdx] * (1.0-lawlessness)));
-		// don't keep compounding fines (maybe should for murder, etc...)
-		if ( (!(crime & CRIME_MURDER)) && (newFine < oldFine) ) newFine = 0;
-		AddCrime(crime, newFine);
-	}
-}
-
 void AddCrime(Sint64 crimeBitset, Sint64 addFine)
 {
 	const Faction *faction = (Pi::game->GetSpace()->GetStarSystem()->GetFaction());

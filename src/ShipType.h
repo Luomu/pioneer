@@ -62,7 +62,6 @@ struct ShipType {
 	int minCrew, maxCrew; // XXX really only for Lua, but needs to be declared in the ship def
 	///////
 
-	static std::string POLICE;
 	static std::string MISSILE_GUIDED;
 	static std::string MISSILE_NAVAL;
 	static std::string MISSILE_SMART;

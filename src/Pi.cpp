@@ -451,7 +451,6 @@ void Pi::Init()
 	vector3d vel4 = c2->GetVelocityRelTo(c1);
 	double speed4 = c2->GetVelocityRelTo(c1).Length();
 
-
 	root->UpdateOrbitRails(0, 1.0);
 
 	//buildrotate test
@@ -610,6 +609,11 @@ void Pi::HandleEvents()
 			continue;
 
 		Gui::HandleSDLEvent(&event);
+
+#if WITH_DEVKEYS
+		if (LuaDev::DispatchEvent(event, Lua::manager->GetLuaState())) continue;
+#endif
+
 		if (!Pi::IsConsoleActive())
 			KeyBindings::DispatchSDLEvent(&event);
 		else
@@ -657,58 +661,6 @@ void Pi::HandleEvents()
 						case SDLK_i: // Toggle Debug info
 							Pi::showDebugInfo = !Pi::showDebugInfo;
 							break;
-						case SDLK_m:  // Gimme money!
-							if(Pi::game) {
-								Pi::player->SetMoney(Pi::player->GetMoney() + 10000000);
-							}
-							break;
-						case SDLK_F12:
-						{
-							if(Pi::game) {
-								vector3d dir = -Pi::player->GetOrient().VectorZ();
-								/* add test object */
-								if (KeyState(SDLK_RSHIFT)) {
-									Missile *missile =
-										new Missile(ShipType::MISSILE_GUIDED, Pi::player);
-									missile->SetOrient(Pi::player->GetOrient());
-									missile->SetFrame(Pi::player->GetFrame());
-									missile->SetPosition(Pi::player->GetPosition()+50.0*dir);
-									missile->SetVelocity(Pi::player->GetVelocity());
-									game->GetSpace()->AddBody(missile);
-									missile->AIKamikaze(Pi::player->GetCombatTarget());
-								} else if (KeyState(SDLK_LSHIFT)) {
-									SpaceStation *s = static_cast<SpaceStation*>(Pi::player->GetNavTarget());
-									if (s) {
-										int port = s->GetFreeDockingPort();
-										if (port != -1) {
-											printf("Putting ship into station\n");
-											// Make police ship intent on killing the player
-											Ship *ship = new Ship(ShipType::POLICE);
-											ship->AIKill(Pi::player);
-											ship->SetFrame(Pi::player->GetFrame());
-											ship->SetDockedWith(s, port);
-											game->GetSpace()->AddBody(ship);
-										} else {
-											printf("No docking ports free dude\n");
-										}
-									} else {
-											printf("Select a space station...\n");
-									}
-								} else {
-									Ship *ship = new Ship(ShipType::POLICE);
-									ship->AIKill(Pi::player);
-									ship->m_equipment.Set(Equip::SLOT_LASER, 0, Equip::PULSECANNON_DUAL_1MW);
-									ship->m_equipment.Add(Equip::LASER_COOLING_BOOSTER);
-									ship->m_equipment.Add(Equip::ATMOSPHERIC_SHIELDING);
-									ship->SetFrame(Pi::player->GetFrame());
-									ship->SetPosition(Pi::player->GetPosition()+100.0*dir);
-									ship->SetVelocity(Pi::player->GetVelocity());
-									ship->UpdateStats();
-									game->GetSpace()->AddBody(ship);
-								}
-							}
-							break;
-						}
 #endif /* DEVKEYS */
 #if WITH_OBJECTVIEWER
 						case SDLK_F10:
@@ -947,10 +899,6 @@ void Pi::EndGame()
 void Pi::MainLoop()
 {
 	double time_player_died = 0;
-#ifdef MAKING_VIDEO
-	Uint32 last_screendump = SDL_GetTicks();
-	int dumpnum = 0;
-#endif /* MAKING_VIDEO */
 
 #if WITH_DEVKEYS
 	Uint32 last_stats = SDL_GetTicks();
@@ -1095,14 +1043,6 @@ void Pi::MainLoop()
 		}
 		Pi::statSceneTris = 0;
 #endif
-
-#ifdef MAKING_VIDEO
-		if (SDL_GetTicks() - last_screendump > 50) {
-			last_screendump = SDL_GetTicks();
-			std::string fname = stringf(Lang::SCREENSHOT_FILENAME_TEMPLATE, formatarg("index", dumpnum++));
-			Screendump(fname.c_str(), GetScrWidth(), GetScrHeight());
-		}
-#endif /* MAKING_VIDEO */
 	}
 }
 

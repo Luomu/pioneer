@@ -75,7 +75,6 @@ void SpaceStation::Save(Serializer::Writer &wr, Space *space)
 	wr.Bool(m_bbCreated);
 	wr.Double(m_lastUpdatedShipyard);
 	wr.Int32(space->GetIndexForSystemBody(m_sbody));
-	wr.Int32(m_numPoliceDocked);
 
 	wr.Double(m_doorAnimationStep);
 	wr.Double(m_doorAnimationState);
@@ -136,10 +135,6 @@ void SpaceStation::Load(Serializer::Reader &rd, Space *space)
 	m_bbCreated = rd.Bool();
 	m_lastUpdatedShipyard = rd.Double();
 	m_sbody = space->GetSystemBodyByIndex(rd.Int32());
-	m_numPoliceDocked = rd.Int32();
-
-	m_doorAnimationStep = rd.Double();
-	m_doorAnimationState = rd.Double();
 
 	InitStation();
 
@@ -158,7 +153,6 @@ SpaceStation::SpaceStation(const SystemBody *sbody): ModelBody()
 {
 	m_sbody = sbody;
 	m_lastUpdatedShipyard = 0;
-	m_numPoliceDocked = Pi::rng.Int32(3,10);
 	m_bbCreated = false;
 	m_bbShuffled = false;
 
@@ -176,9 +170,9 @@ void SpaceStation::InitStation()
 	for(int i=0; i<NUM_STATIC_SLOTS; i++) m_staticSlot[i] = false;
 	Random rand(m_sbody->seed);
 	bool ground = m_sbody->type == SystemBody::TYPE_STARPORT_ORBITAL ? false : true;
-	if (ground) { 
+	if (ground) {
 		m_type = &SpaceStationType::surfaceStationTypes[ rand.Int32(SpaceStationType::surfaceStationTypes.size()) ];
-	} else { 
+	} else {
 		m_type = &SpaceStationType::orbitalStationTypes[ rand.Int32(SpaceStationType::orbitalStationTypes.size()) ];
 	}
 
@@ -328,7 +322,7 @@ bool SpaceStation::LaunchShip(Ship *ship, int port)
 	const Aabb& aabb = ship->GetAabb();
 	const matrix3x3d mt = ship->GetOrient();
 	const vector3d up = mt.VectorY().Normalized() * aabb.min.y;
-	
+
 	sd.fromPos = (ship->GetPosition() - GetPosition() + up) * GetOrient();	// station space
 	sd.fromRot = Quaterniond::FromMatrix3x3(GetOrient().Transpose() * mt);
 
@@ -419,11 +413,11 @@ bool SpaceStation::OnCollision(Object *b, Uint32 flags, double relVel)
 //   Stage 1 (clearance granted): open
 //           (clearance expired): close
 //   Docked:                      close
-// 
+//
 // Undocking:
 //   Stage -1 (LaunchShip): open
 //   Post-launch:           close
-//   
+//
 
 void SpaceStation::DockingUpdate(const double timeStep)
 {
@@ -493,7 +487,7 @@ void SpaceStation::DockingUpdate(const double timeStep)
 			m_doorAnimationStep = -0.3; // close door
 		}
 	}
-	
+
 	m_doorAnimationState = Clamp(m_doorAnimationState + m_doorAnimationStep*timeStep, 0.0, 1.0);
 	if (m_doorAnimation)
 		m_doorAnimation->SetProgress(m_doorAnimationState);
@@ -523,7 +517,6 @@ void SpaceStation::PositionDockedShip(Ship *ship, int port) const
 	}
 }
 
-
 void SpaceStation::StaticUpdate(const float timeStep)
 {
 	bool update = false;
@@ -546,7 +539,6 @@ void SpaceStation::StaticUpdate(const float timeStep)
 		m_lastUpdatedShipyard = Pi::game->GetTime() + 3600.0 + 3600.0*Pi::rng.Double();
 	}
 
-	DoLawAndOrder(timeStep);
 	DockingUpdate(timeStep);
 	m_navLights->Update(timeStep);
 }
@@ -597,7 +589,6 @@ bool SpaceStation::IsGroundStation() const
 {
 	return (m_type->dockMethod == SpaceStationType::SURFACE);
 }
-
 
 /* MarketAgent shite */
 void SpaceStation::Bought(Equip::Type t) {
@@ -699,7 +690,6 @@ void SpaceStation::CreateBB()
 	m_bbCreated = true;
 }
 
-
 static int next_ref = 0;
 int SpaceStation::AddBBAdvert(std::string description, AdvertFormBuilder builder)
 {
@@ -769,38 +759,6 @@ vector3d SpaceStation::GetTargetIndicatorPosition(const Frame *relTo) const
 		}
 	}
 	return GetInterpPositionRelTo(relTo);
-}
-
-// XXX this whole thing should be done by Lua
-void SpaceStation::DoLawAndOrder(const double timeStep)
-{
-	Sint64 fine, crimeBitset;
-	Polit::GetCrime(&crimeBitset, &fine);
-	if (Pi::player->GetFlightState() != Ship::DOCKED
-			&& m_numPoliceDocked
-			&& (fine > 1000)
-			&& (GetPositionRelTo(Pi::player).Length() < 100000.0)) {
-		int port = GetFreeDockingPort();
-		// at 60 Hz updates (ie, 1x time acceleration),
-		// this spawns a police ship with probability ~0.83% each frame
-		// This makes it unlikely (but not impossible) that police will spawn on top of each other
-		// the expected number of game-time seconds between spawns: 120 (2*60 Hz)
-		// variance is quite high though
-		if (port != -1 && 2.0*Pi::rng.Double() < timeStep) {
-			m_numPoliceDocked--;
-			// Make police ship intent on killing the player
-			Ship *ship = new Ship(ShipType::POLICE);
-			ship->AIKill(Pi::player);
-			ship->SetFrame(GetFrame());
-			ship->SetDockedWith(this, port);
-			Pi::game->GetSpace()->AddBody(ship);
-			ship->SetLabel(Lang::POLICE_SHIP_REGISTRATION);
-			ship->m_equipment.Set(Equip::SLOT_LASER, 0, Equip::PULSECANNON_DUAL_1MW);
-			ship->m_equipment.Add(Equip::LASER_COOLING_BOOSTER);
-			ship->m_equipment.Add(Equip::ATMOSPHERIC_SHIELDING);
-			ship->UpdateStats();
-		}
-	}
 }
 
 bool SpaceStation::IsPortLocked(const int bay) const

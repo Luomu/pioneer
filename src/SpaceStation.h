@@ -117,7 +117,6 @@ protected:
 private:
 	void DockingUpdate(const double timeStep);
 	void PositionDockedShip(Ship *ship, int port) const;
-	void DoLawAndOrder(const double timeStep);
 	bool IsPortLocked(const int bay) const;
 	void LockPort(const int bay, const bool lockIt);
 
@@ -157,7 +156,7 @@ private:
 	double m_lastUpdatedShipyard;
 	CityOnPlanet *m_adjacentCity;
 	double m_distFromPlanet;
-	int m_numPoliceDocked;
+
 	enum { NUM_STATIC_SLOTS = 4 };
 	bool m_staticSlot[NUM_STATIC_SLOTS];
 

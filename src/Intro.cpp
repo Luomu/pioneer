@@ -109,7 +109,6 @@ void Intro::Draw(float _time)
 
 	glPushAttrib(GL_ALL_ATTRIB_BITS & (~GL_POINT_BIT));
 
-	const Color oldSceneAmbientColor = m_renderer->GetAmbientColor();
 	m_renderer->SetAmbientColor(m_ambientColor);
 	m_renderer->SetLights(m_lights.size(), &m_lights[0]);
 
@@ -120,7 +119,6 @@ void Intro::Draw(float _time)
 		matrix4x4f::RotateXMatrix(_time*0.7f);
 	m_model->Render(trans);
 
-	m_renderer->SetAmbientColor(oldSceneAmbientColor);
 	glPopAttrib();
 
 	m_renderer->SetViewport(0, 0, Graphics::GetScreenWidth(), Graphics::GetScreenHeight());

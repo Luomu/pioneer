@@ -605,11 +605,6 @@ Sint64 SpaceStation::GetPrice(Equip::Type t) const {
 	return (mul * Sint64(Equip::types[t].basePrice)) / 100;
 }
 
-// Renders space station and adjacent city if applicable
-// For orbital starports: renders as normal
-// For surface starports:
-//	Lighting: Calculates available light for model and splits light between directly and ambiently lit
-//            Lighting is done by manipulating global lights or setting uniforms in atmospheric models shader
 void SpaceStation::Render(Graphics::Renderer *r, const Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform)
 {
 	Body *b = GetFrame()->GetBody();
@@ -621,10 +616,6 @@ void SpaceStation::Render(Graphics::Renderer *r, const Camera *camera, const vec
 	}
 
 	else {
-		std::vector<Graphics::Light> oldLights;
-		Color oldAmbient;
-		SetLighting(r, camera, oldLights, oldAmbient);
-
 		Planet *planet = static_cast<Planet*>(b);
 		/* don't render city if too far away */
 		if (viewCoords.Length() < 1000000.0){
@@ -634,9 +625,7 @@ void SpaceStation::Render(Graphics::Renderer *r, const Camera *camera, const vec
 			m_adjacentCity->Render(r, camera, this, viewCoords, viewTransform);
 		}
 
-		RenderModel(r, camera, viewCoords, viewTransform, false);
-
-		ResetLighting(r, oldLights, oldAmbient);
+		RenderModel(r, camera, viewCoords, viewTransform);
 	}
 }
 

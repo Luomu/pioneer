@@ -37,18 +37,13 @@ public:
 
 	void SetModel(const char *modelName);
 
-	void RenderModel(Graphics::Renderer *r, const Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform, const bool setLighting=true);
+	void RenderModel(Graphics::Renderer *r, const Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform);
 
 protected:
 	virtual void Save(Serializer::Writer &wr, Space *space);
 	virtual void Load(Serializer::Reader &rd, Space *space);
 
-	void SetLighting(Graphics::Renderer *r, const Camera *camera, std::vector<Graphics::Light> &oldLights, Color &oldAmbient);
-	void ResetLighting(Graphics::Renderer *r, const std::vector<Graphics::Light> &oldLights, const Color &oldAmbient);
-
 private:
-	void CalcLighting(double &ambient, double &direct, const Camera *camera);
-
 	bool m_isStatic;
 	bool m_colliding;
 	RefCountedPtr<CollMesh> m_collMesh;

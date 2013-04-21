@@ -358,7 +358,6 @@ public:
 	}
 };
 
-
 class GeoPatch {
 public:
 	RefCountedPtr<GeoPatchContext> ctx;
@@ -471,7 +470,6 @@ public:
 		abort();
 		return -1;
 	}
-
 
 	void FixEdgeNormals(const int edge, const vector3d *ev) {
 		int x, y;
@@ -1395,34 +1393,16 @@ void GeoSphere::Render(Graphics::Renderer *renderer, vector3d campos, const floa
 
 	if (!m_patches[0]) BuildFirstPatches();
 
-	Color ambient;
 	Color &emission = m_surfaceMaterial->emissive;
 
-	// save old global ambient
-	const Color oldAmbient = renderer->GetAmbientColor();
-
 	if ((m_sbody->GetSuperType() == SystemBody::SUPERTYPE_STAR) || (m_sbody->type == SystemBody::TYPE_BROWN_DWARF)) {
-		// stars should emit light and terrain should be visible from distance
-		ambient.r = ambient.g = ambient.b = 0.2f;
-		ambient.a = 1.0f;
+		// stars should emit light
 		emission.r = StarSystem::starRealColors[m_sbody->type][0];
 		emission.g = StarSystem::starRealColors[m_sbody->type][1];
 		emission.b = StarSystem::starRealColors[m_sbody->type][2];
 		emission.a = 1.f;
 	}
 
-	else {
-		// give planet some ambient lighting if the viewer is close to it
-		double camdist = campos.Length();
-		camdist = 0.1 / (camdist*camdist);
-		// why the fuck is this returning 0.1 when we are sat on the planet??
-		// JJ: Because campos is relative to a unit-radius planet - 1.0 at the surface
-		// XXX oh well, it is the value we want anyway...
-		ambient.r = ambient.g = ambient.b = float(camdist);
-		ambient.a = 1.0f;
-	}
-
-	renderer->SetAmbientColor(ambient);
 	// this is pretty much the only place where a non-renderer is allowed to call Apply()
 	// to be removed when someone rewrites terrain
 	m_surfaceMaterial->Apply();
@@ -1432,8 +1412,6 @@ void GeoSphere::Render(Graphics::Renderer *renderer, vector3d campos, const floa
 	}
 
 	m_surfaceMaterial->Unapply();
-
-	renderer->SetAmbientColor(oldAmbient);
 
 	// if the update thread has deleted any geopatches, destroy the vbos
 	// associated with them

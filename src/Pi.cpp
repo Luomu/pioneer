@@ -817,10 +817,6 @@ void Pi::Start()
 
 	ui->SetInnerWidget(ui->CallTemplate("MainMenu"));
 
-	//XXX global ambient colour hack to make explicit the old default ambient colour dependency
-	// for some models
-	Pi::renderer->SetAmbientColor(Color(0.2f, 0.2f, 0.2f, 1.f));
-
 	ui->Layout();
 
 	Uint32 last_time = SDL_GetTicks();

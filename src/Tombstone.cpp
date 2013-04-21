@@ -26,7 +26,6 @@ void Tombstone::Draw(float _time)
 
 	glPushAttrib(GL_ALL_ATTRIB_BITS & (~GL_POINT_BIT));
 
-	const Color oldSceneAmbientColor = m_renderer->GetAmbientColor();
 	m_renderer->SetAmbientColor(m_ambientColor);
 	m_renderer->SetLights(m_lights.size(), &m_lights[0]);
 
@@ -34,5 +33,4 @@ void Tombstone::Draw(float _time)
 	rot[14] = -std::max(150.0f - 30.0f*_time, 30.0f);
 	m_model->Render(rot);
 	glPopAttrib();
-	m_renderer->SetAmbientColor(oldSceneAmbientColor);
 }

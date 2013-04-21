@@ -110,6 +110,8 @@ void Camera::Draw(Renderer *renderer, const Body *excludeBody)
 	m_renderer->SetTransform(matrix4x4f::Identity());
 	m_renderer->ClearScreen();
 
+	m_renderer->SetAmbientColor(Color(0.15f));
+
 	matrix4x4d trans2bg;
 	Frame::GetFrameRenderTransform(Pi::game->GetSpace()->GetRootFrame(), m_camFrame, trans2bg);
 	trans2bg.ClearToRotOnly();

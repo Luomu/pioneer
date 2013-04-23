@@ -14,11 +14,9 @@ static const std::string thrusterTextureFilename("textures/thruster.png");
 static const std::string thrusterGlowTextureFilename("textures/halo.png");
 static Color baseColor(0.7f, 0.6f, 1.f, 1.f);
 
-Thruster::Thruster(Graphics::Renderer *r, bool _linear, const vector3f &_pos, const vector3f &_dir)
+Thruster::Thruster(Graphics::Renderer *r)
 : Node(r, NODE_TRANSPARENT)
-, linearOnly(_linear)
-, dir(_dir)
-, pos(_pos)
+, m_intensity(0.f)
 {
 	m_tVerts.Reset(CreateGeometry());
 
@@ -34,9 +32,6 @@ Thruster::Thruster(Graphics::Renderer *r, bool _linear, const vector3f &_pos, co
 Thruster::Thruster(const Thruster &thruster, NodeCopyCache *cache)
 : Node(thruster, cache)
 , m_tMat(thruster.m_tMat)
-, linearOnly(thruster.linearOnly)
-, dir(thruster.dir)
-, pos(thruster.pos)
 {
 	m_tVerts.Reset(CreateGeometry());
 }
@@ -53,42 +48,21 @@ void Thruster::Accept(NodeVisitor &nv)
 
 void Thruster::Render(const matrix4x4f &trans, RenderData *rd)
 {
-	float power = 0.f;
-	power = -dir.Dot(vector3f(rd->linthrust));
-
-	if (!linearOnly) {
-		// pitch X
-		// yaw   Y
-		// roll  Z
-		//model center is at 0,0,0, no need for invSubModelMat stuff
-		const vector3f at = vector3f(rd->angthrust);
-		const vector3f angdir = pos.Cross(dir);
-
-		const float xp = angdir.x * at.x;
-		const float yp = angdir.y * at.y;
-		const float zp = angdir.z * at.z;
-
-		if (xp+yp+zp > 0) {
-			if (xp > yp && xp > zp && fabs(at.x) > power) power = fabs(at.x);
-			else if (yp > xp && yp > zp && fabs(at.y) > power) power = fabs(at.y);
-			else if (zp > xp && zp > yp && fabs(at.z) > power) power = fabs(at.z);
-		}
-	}
-	if (power < 0.001f) return;
+	if (m_intensity < 0.001f) return;
 
 	Graphics::Renderer *r = GetRenderer();
 	r->SetBlendMode(Graphics::BLEND_ADDITIVE);
 	r->SetDepthWrite(false);
 	r->SetTransform(trans);
-
-	m_tMat->diffuse = baseColor * power;
-	//directional fade
-	/*vector3f cdir(0.f, 0.f, -1.f);
-	vector3f vdir(-trans[2], -trans[6], -trans[10]);
-	m_tMat->diffuse.a = 1.f - Clamp(vdir.Dot(cdir), 0.f, 1.f);*/
+	m_tMat->diffuse = baseColor * m_intensity;
 	r->DrawTriangles(m_tVerts.Get(), m_tMat.Get());
 	r->SetBlendMode(Graphics::BLEND_SOLID);
 	r->SetDepthWrite(true);
+}
+
+void Thruster::SetIntensity(float i)
+{
+	m_intensity = Clamp(i, 0.f, 1.f);
 }
 
 Graphics::VertexArray *Thruster::CreateGeometry()

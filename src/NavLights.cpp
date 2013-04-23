@@ -3,7 +3,6 @@
 
 #include "NavLights.h"
 #include "graphics/TextureBuilder.h"
-#include "scenegraph/FindNodeVisitor.h"
 #include "scenegraph/SceneGraph.h"
 
 const float BILLBOARD_SIZE = 5.f;

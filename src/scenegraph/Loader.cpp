@@ -715,29 +715,6 @@ void Loader::CreateLabel(Group *parent, const matrix4x4f &m)
 	parent->AddChild(trans);
 }
 
-void Loader::CreateThruster(Group* parent, const matrix4x4f &m, const std::string &name, const matrix4x4f& accum)
-{
-	const bool linear = starts_with(name, "thruster_linear");
-	//not supposed to create a new thruster node every time since they contain their geometry
-	//it is fine to create one thruster node and add that to various parents
-	//(it wouldn't really matter, it's a tiny amount of geometry)
-	MatrixTransform *trans = new MatrixTransform(m_renderer, m);
-
-	//need the accumulated transform or the direction is off
-	matrix4x4f transform = accum * m;
-	vector3f pos = transform.GetTranslate();
-	transform.ClearToRotOnly();
-
-	const vector3f direction = transform * vector3f(0.f, 0.f, 1.f);
-
-	Thruster *thruster = new Thruster(m_renderer, linear,
-		pos, direction.Normalized());
-
-	thruster->SetName(name);
-	trans->AddChild(thruster);
-	parent->AddChild(trans);
-}
-
 void Loader::ConvertNodes(aiNode *node, Group *_parent, std::vector<RefCountedPtr<StaticGeometry> >& geoms, const matrix4x4f &accum)
 {
 	Group *parent = _parent;
@@ -749,13 +726,19 @@ void Loader::ConvertNodes(aiNode *node, Group *_parent, std::vector<RefCountedPt
 	if (node->mNumChildren == 0 && node->mNumMeshes == 0) {
 		if (starts_with(nodename, "navlight_")) {
 			//Create a MT, lights are attached by client.
-			matrix4x4f lightPos = matrix4x4f::Translation(m.GetTranslate());
+			const matrix4x4f lightPos = matrix4x4f::Translation(m.GetTranslate());
 			MatrixTransform *lightPoint = new MatrixTransform(m_renderer, lightPos);
 			lightPoint->SetNodeMask(0x0); //don't render
 			lightPoint->SetName(nodename);
 			_parent->AddChild(lightPoint);
 		} else if (starts_with(nodename, "thruster_")) {
-			CreateThruster(parent, m, nodename, accum);
+			// Add thruster points outside the lod structure, actual thrusters
+			// are created by client
+			const matrix4x4f thrusterPos = accum * m;
+			MatrixTransform *thrusterPoint = new MatrixTransform(m_renderer, thrusterPos);
+			thrusterPoint->SetNodeMask(0x0);
+			thrusterPoint->SetName(nodename);
+			m_model->GetRoot()->AddChild(thrusterPoint);
 		} else if (starts_with(nodename, "label_")) {
 			CreateLabel(parent, m);
 		} else if (starts_with(nodename, "tag_")) {

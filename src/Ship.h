@@ -12,6 +12,7 @@
 #include "NavLights.h"
 #include "Serializer.h"
 #include "ShipType.h"
+#include "Thrusters.h"
 #include "scenegraph/SceneGraph.h"
 #include "scenegraph/ModelSkin.h"
 #include <list>
@@ -65,15 +66,12 @@ public:
 	int GetDockingPort() const { return m_dockedWithPort; }
 	virtual void Render(Graphics::Renderer *r, const Camera *camera, const vector3d &viewCoords, const matrix4x4d &viewTransform);
 
-	void SetThrusterState(int axis, double level) {
-		if (m_thrusterFuel <= 0.f) level = 0.0;
-		m_thrusters[axis] = Clamp(level, -1.0, 1.0);
-	}
+	// XXX kill these and access through GetThrusters()->
+	void SetThrusterState(int axis, double level);
 	void SetThrusterState(const vector3d &levels);
-	vector3d GetThrusterState() const { return m_thrusters; }
-	void SetAngThrusterState(int axis, double level) { m_angThrusters[axis] = Clamp(level, -1.0, 1.0); }
+	vector3d GetThrusterState() const;
+	void SetAngThrusterState(int axis, double level);
 	void SetAngThrusterState(const vector3d &levels);
-	vector3d GetAngThrusterState() const { return m_angThrusters; }
 	void ClearThrusterState();
 
 	vector3d GetMaxThrust(const vector3d &dir) const;
@@ -291,9 +289,6 @@ private:
 	float m_wheelState;
 	int m_wheelTransition;
 
-	vector3d m_thrusters;
-	vector3d m_angThrusters;
-
 	AlertState m_alertState;
 	double m_lastFiringAlert;
 
@@ -317,10 +312,8 @@ private:
 
 	SceneGraph::Animation *m_landingGearAnimation;
 	ScopedPtr<NavLights> m_navLights;
+	ScopedPtr<Thrusters> m_thrusters;
 };
 
-
-
 #endif /* _SHIP_H */
-
 

@@ -61,6 +61,7 @@
 #include "SystemInfoView.h"
 #include "SystemView.h"
 #include "Tombstone.h"
+#include "Thrusters.h"
 #include "UIView.h"
 #include "WorldView.h"
 #include "EnumStrings.h"
@@ -391,6 +392,7 @@ void Pi::Init()
 	draw_progress(0.9f);
 
 	NavLights::Init(Pi::renderer);
+	Thrusters::Init(Pi::renderer);
 	Sfx::Init(Pi::renderer);
 	draw_progress(0.95f);
 
@@ -554,6 +556,7 @@ void Pi::Quit()
 	delete Pi::intro;
 	delete Pi::gameMenuView;
 	delete Pi::luaConsole;
+	Thrusters::Uninit();
 	NavLights::Uninit();
 	Sfx::Uninit();
 	Sound::Uninit();

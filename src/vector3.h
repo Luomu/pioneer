@@ -53,6 +53,7 @@ public:
 	friend vector3 operator*(const vector3 &a, const double scalar) { return vector3(T(a.x*scalar), T(a.y*scalar), T(a.z*scalar)); }
 	friend vector3 operator*(const float  scalar, const vector3 &a) { return a*scalar; }
 	friend vector3 operator*(const double scalar, const vector3 &a) { return a*scalar; }
+	friend vector3 operator*(const vector3 &a, const vector3 &b)    { return vector3(T(a.x)*T(b.x), T(a.y)*T(b.y), T(a.z)*T(b.z)); }
 	friend vector3 operator/(const vector3 &a, const float  scalar) { const T inv = 1.0/scalar; return vector3(a.x*inv, a.y*inv, a.z*inv); }
 	friend vector3 operator/(const vector3 &a, const double scalar) { const T inv = 1.0/scalar; return vector3(a.x*inv, a.y*inv, a.z*inv); }
 

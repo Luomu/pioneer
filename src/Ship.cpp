@@ -63,8 +63,6 @@ void Ship::Save(Serializer::Writer &wr, Space *space)
 {
 	DynamicBody::Save(wr, space);
 	m_skin.Save(wr);
-	wr.Vector3d(m_angThrusters);
-	wr.Vector3d(m_thrusters);
 	wr.Int32(m_wheelTransition);
 	wr.Float(m_wheelState);
 	wr.Float(m_launchLockTimeout);
@@ -99,6 +97,7 @@ void Ship::Save(Serializer::Writer &wr, Space *space)
 	m_controller->Save(wr, space);
 
 	m_navLights->Save(wr);
+	m_thrusters->Save(wr);
 }
 
 void Ship::Load(Serializer::Reader &rd, Space *space)
@@ -106,9 +105,6 @@ void Ship::Load(Serializer::Reader &rd, Space *space)
 	DynamicBody::Load(rd, space);
 	m_skin.Load(rd);
 	m_skin.Apply(GetModel());
-	// needs fixups
-	m_angThrusters = rd.Vector3d();
-	m_thrusters = rd.Vector3d();
 	m_wheelTransition = rd.Int32();
 	m_wheelState = rd.Float();
 	m_launchLockTimeout = rd.Float();
@@ -153,6 +149,7 @@ void Ship::Load(Serializer::Reader &rd, Space *space)
 	m_controller->Load(rd);
 
 	m_navLights->Load(rd);
+	m_thrusters->Load(rd);
 
 	m_equipment.onChange.connect(sigc::mem_fun(this, &Ship::OnEquipmentChange));
 }
@@ -161,6 +158,7 @@ void Ship::Init()
 {
 	m_navLights.Reset(new NavLights(GetModel()));
 	m_navLights->SetEnabled(true);
+	m_thrusters.Reset(new Thrusters(GetModel()));
 
 	SetMassDistributionFromModel();
 	UpdateStats();
@@ -198,8 +196,6 @@ Ship::Ship(ShipType::Id shipId): DynamicBody(),
 	m_dockedWith = 0;
 	m_dockedWithPort = 0;
 	SetShipId(shipId);
-	m_thrusters.x = m_thrusters.y = m_thrusters.z = 0;
-	m_angThrusters.x = m_angThrusters.y = m_angThrusters.z = 0;
 	m_equipment.InitSlotSizes(shipId);
 	m_hyperspace.countdown = 0;
 	m_hyperspace.now = false;
@@ -373,22 +369,33 @@ void Ship::Explode()
 	ClearThrusterState();
 }
 
+void Ship::SetThrusterState(int axis, double level)
+{
+	if (m_thrusterFuel <= 0.f) level = 0.0;
+	m_thrusters->SetLinear(axis, level);
+}
+
 void Ship::SetThrusterState(const vector3d &levels)
 {
-	if (m_thrusterFuel <= 0.f) {
-		m_thrusters = vector3d(0.0);
-	} else {
-		m_thrusters.x = Clamp(levels.x, -1.0, 1.0);
-		m_thrusters.y = Clamp(levels.y, -1.0, 1.0);
-		m_thrusters.z = Clamp(levels.z, -1.0, 1.0);
-	}
+	if (m_thrusterFuel <= 0.f)
+		m_thrusters->SetLinear(vector3d(0.0));
+	else
+		m_thrusters->SetLinear(levels);
+}
+
+void Ship::SetAngThrusterState(int axis, double level)
+{
+	m_thrusters->SetAngular(axis, level);
 }
 
 void Ship::SetAngThrusterState(const vector3d &levels)
 {
-	m_angThrusters.x = Clamp(levels.x, -1.0, 1.0);
-	m_angThrusters.y = Clamp(levels.y, -1.0, 1.0);
-	m_angThrusters.z = Clamp(levels.z, -1.0, 1.0);
+	m_thrusters->SetAngular(levels);
+}
+
+vector3d Ship::GetThrusterState() const
+{
+	return m_thrusters->GetLinear();
 }
 
 vector3d Ship::GetMaxThrust(const vector3d &dir) const
@@ -413,8 +420,8 @@ double Ship::GetAccelMin() const
 
 void Ship::ClearThrusterState()
 {
-	m_angThrusters = vector3d(0,0,0);
-	if (m_launchLockTimeout <= 0.0f) m_thrusters = vector3d(0,0,0);
+	m_thrusters->SetAngular(vector3d(0.0));
+	if (m_launchLockTimeout <= 0.0f) m_thrusters->SetLinear(vector3d(0.0));
 }
 
 Equip::Type Ship::GetHyperdriveFuelType() const
@@ -699,11 +706,10 @@ void Ship::TimeStepUpdate(const float timeStep)
 	// If docked, station is responsible for updating position/orient of ship
 	// but we call this crap anyway and hope it doesn't do anything bad
 
-	vector3d maxThrust = GetMaxThrust(m_thrusters);
-	vector3d thrust = vector3d(maxThrust.x*m_thrusters.x, maxThrust.y*m_thrusters.y,
-		maxThrust.z*m_thrusters.z);
+	const vector3d maxThrust = GetMaxThrust(m_thrusters->GetLinear());
+	const vector3d thrust = maxThrust * m_thrusters->GetLinear();
 	AddRelForce(thrust);
-	AddRelTorque(GetShipType()->angThrust * m_angThrusters);
+	AddRelTorque(GetShipType()->angThrust * m_thrusters->GetAngular());
 
 	DynamicBody::TimeStepUpdate(timeStep);
 
@@ -712,6 +718,7 @@ void Ship::TimeStepUpdate(const float timeStep)
 
 	m_navLights->SetEnabled(m_wheelState > 0.01f);
 	m_navLights->Update(timeStep);
+	m_thrusters->Update(timeStep);
 
 	if (m_landingGearAnimation)
 		static_cast<SceneGraph::Model*>(GetModel())->UpdateAnimations();
@@ -742,7 +749,7 @@ void Ship::DoThrusterSounds() const
 		sndev.Play("Thruster_large", 0.0f, 0.0f, Sound::OP_REPEAT);
 		sndev.VolumeAnimate(targetVol, dv_dt);
 	}
-	float angthrust = 0.1f * v_env * float(GetAngThrusterState().Length());
+	float angthrust = 0.1f * v_env * float(m_thrusters->GetAngular().Length());
 
 	static Sound::Event angThrustSnd;
 	if (!angThrustSnd.VolumeAnimate(angthrust, angthrust, 5.0f, 5.0f)) {
@@ -1054,9 +1061,10 @@ void Ship::StaticUpdate(const float timeStep)
 	}
 
 	//Add smoke trails for missiles on thruster state
-	if (m_type->tag == ShipType::TAG_MISSILE && m_thrusters.z < 0.0 && 0.1*Pi::rng.Double() < timeStep) {
+	const double zThrust = m_thrusters->GetLinear().z;
+	if (m_type->tag == ShipType::TAG_MISSILE && zThrust < 0.0 && 0.1*Pi::rng.Double() < timeStep) {
 		vector3d pos = GetOrient() * vector3d(0, 0 , 5);
-		Sfx::AddThrustSmoke(this, Sfx::TYPE_SMOKE, std::min(10.0*GetVelocity().Length()*abs(m_thrusters.z),100.0),pos);
+		Sfx::AddThrustSmoke(this, Sfx::TYPE_SMOKE, std::min(10.0*GetVelocity().Length()*abs(zThrust),100.0),pos);
 	}
 }
 
@@ -1107,7 +1115,8 @@ void Ship::Render(Graphics::Renderer *renderer, const Camera *camera, const vect
 	if (IsDead()) return;
 
 	//angthrust negated, for some reason
-	GetModel()->SetThrust(vector3f(m_thrusters), -vector3f(m_angThrusters));
+	//XXX kill this
+	//GetModel()->SetThrust(vector3f(m_thrusters), -vector3f(m_angThrusters));
 
 	if (m_landingGearAnimation)
 		m_landingGearAnimation->SetProgress(m_wheelState);

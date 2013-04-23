@@ -9,6 +9,7 @@
 #include "libs.h"
 #include "LuaManager.h"
 #include "NavLights.h"
+#include "Thrusters.h"
 #include "graphics/Renderer.h"
 #include "graphics/Texture.h"
 #include "scenegraph/SceneGraph.h"
@@ -87,6 +88,7 @@ private:
 	ScopedPtr<NavLights> m_navLights;
 	ScopedPtr<SceneGraph::Model> m_gunModel;
 	ScopedPtr<SceneGraph::Model> m_scaleModel;
+	ScopedPtr<Thrusters> m_thrusters;
 	std::string m_modelName;
 	RefCountedPtr<UI::Context> m_ui;
 

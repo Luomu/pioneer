@@ -592,6 +592,7 @@ void ModelViewer::MainLoop()
 		//update animations, draw model etc.
 		if (m_model) {
 			m_navLights->Update(m_frameTime);
+			m_thrusters->Update(m_frameTime);
 			DrawModel();
 		}
 
@@ -670,8 +671,8 @@ void ModelViewer::OnPatternChanged(unsigned int index, const std::string &value)
 
 void ModelViewer::OnThrustChanged(float)
 {
-	vector3f linthrust;
-	vector3f angthrust;
+	vector3d linthrust;
+	vector3d angthrust;
 
 	linthrust.x = get_thrust(thrustSliders[0]);
 	linthrust.y = get_thrust(thrustSliders[1]);
@@ -682,7 +683,8 @@ void ModelViewer::OnThrustChanged(float)
 	angthrust.y = -get_thrust(thrustSliders[4]);
 	angthrust.z = -get_thrust(thrustSliders[5]);
 
-	m_model->SetThrust(linthrust, angthrust);
+	m_thrusters->SetLinear(linthrust);
+	m_thrusters->SetAngular(angthrust);
 }
 
 void ModelViewer::PollEvents()
@@ -846,6 +848,7 @@ void ModelViewer::SetModel(const std::string &filename, bool resetCamera /* true
 		//note: stations won't demonstrate full docking light logic in MV
 		m_navLights.Reset(new NavLights(m_model));
 		m_navLights->SetEnabled(true);
+		m_thrusters.Reset(new Thrusters(m_model));
 
 	} catch (SceneGraph::LoadingError &err) {
 		// report the error and show model picker.

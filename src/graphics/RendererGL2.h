@@ -36,6 +36,7 @@ public:
 	virtual const char* GetName() const { return "GL2 renderer"; }
 
 	virtual bool BeginFrame();
+	virtual bool EndFrame();
 
 	virtual bool SetRenderTarget(RenderTarget*);
 
@@ -50,6 +51,8 @@ public:
 	virtual RenderTarget *CreateRenderTarget(const RenderTargetDesc &);
 
 	virtual bool ReloadShaders();
+
+	virtual void Init();
 
 private:
 	GL2::Program* GetOrCreateProgram(GL2::Material*);

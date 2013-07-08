@@ -584,6 +584,8 @@ void ModelViewer::MainLoop()
 
 		m_renderer->ClearScreen();
 
+		m_renderer->BeginFrame();
+
 		PollEvents();
 		UpdateCamera();
 
@@ -594,6 +596,8 @@ void ModelViewer::MainLoop()
 			m_navLights->Update(m_frameTime);
 			DrawModel();
 		}
+
+		m_renderer->EndFrame();
 
 		m_ui->Update();
 		if (m_options.showUI && !m_screenshotQueued) {

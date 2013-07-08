@@ -160,6 +160,11 @@ void Program::Unuse()
 	glUseProgram(0);
 }
 
+GLint Program::GetUniformLocation(const char *name) const
+{
+	return glGetUniformLocation(m_program, name);
+}
+
 //load, compile and link
 void Program::LoadShaders(const std::string &name, const std::string &defines)
 {

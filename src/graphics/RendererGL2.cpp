@@ -8,6 +8,7 @@
 #include "Texture.h"
 #include "TextureGL.h"
 #include "VertexArray.h"
+#include "TextureBuilder.h"
 #include "gl2/GeoSphereMaterial.h"
 #include "gl2/GL2Material.h"
 #include "gl2/GL2RenderTarget.h"
@@ -23,6 +24,19 @@ typedef std::vector<std::pair<MaterialDescriptor, GL2::Program*> >::const_iterat
 // for material-less line and point drawing
 GL2::MultiProgram *vtxColorProg;
 GL2::MultiProgram *flatColorProg;
+
+namespace Targets {
+	RenderTarget *scene;
+}
+
+namespace Filters {
+	GL2::Program *show;
+	GL2::Program *grayscale;
+}
+
+namespace Resources {
+	TextureGL *scanline;
+}
 
 RendererGL2::RendererGL2(const Graphics::Settings &vs)
 : RendererLegacy(vs)
@@ -46,12 +60,81 @@ RendererGL2::RendererGL2(const Graphics::Settings &vs)
 RendererGL2::~RendererGL2()
 {
 	while (!m_programs.empty()) delete m_programs.back().second, m_programs.pop_back();
+
+	delete Targets::scene;
+	delete Filters::show;
+	delete Filters::grayscale;
+	delete Resources::scanline;
+}
+
+void RendererGL2::Init()
+{
+	RenderTargetDesc rtd(m_width, m_height, TEXTURE_RGB_888, TEXTURE_DEPTH, false);
+	Targets::scene = CreateRenderTarget(rtd);
+
+	Filters::show = new GL2::Program("post_show", "");
+	Filters::grayscale = new GL2::Program("post_grayscale", "");
+
+	Resources::scanline = static_cast<TextureGL*>(TextureBuilder("textures/scanline.png", LINEAR_REPEAT, false, false, false).CreateTexture(this));
 }
 
 bool RendererGL2::BeginFrame()
 {
+	SetDepthWrite(true);
 	glClearColor(0,0,0,0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	SetRenderTarget(Targets::scene);
+	SetDepthWrite(true);
+	glClearColor(0,0,0,0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	return true;
+}
+
+void fs_tri() {
+
+}
+
+bool RendererGL2::EndFrame()
+{
+	SetRenderTarget(0);
+
+	//draw a textured full screen triangle
+	static const float vts[] = {
+		-3.f, -1.f, 0.f,
+		1.f, -1.f, 0.f,
+		1.f, 3.f, 0.f,
+	};
+
+	static const float uvs[] = {
+		-1.f, 0.f,
+		1.f, 0.f,
+		1.f, 2.f,
+	};
+
+	TextureGL* sceneTex = static_cast<TextureGL*>(Targets::scene->GetColorTexture());
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &vts[0]);
+	glTexCoordPointer(2, GL_FLOAT, 0, &uvs[0]);
+
+	//Filters::show->Use();
+	Filters::grayscale->Use();
+	glActiveTexture(GL_TEXTURE0);
+	sceneTex->Bind();
+	glActiveTexture(GL_TEXTURE1);
+	Resources::scanline->Bind();
+	Filters::grayscale->texture0.Set(0);
+	Filters::grayscale->texture1.Set(1);
+	glUniform2f(Filters::grayscale->GetUniformLocation("texelSize"), 1.f/m_width, 1.f/m_height);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	glActiveTexture(GL_TEXTURE0);
+	sceneTex->Unbind(); //must unbind for RTT to work again
+
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	return true;
 }
 

@@ -146,6 +146,7 @@ Renderer* Init(Settings vs)
 		renderer = new RendererGL2(vs);
 	else
 		renderer = new RendererLegacy(vs);
+	renderer->Init();
 
 	printf("Initialized %s\n", renderer->GetName());
 

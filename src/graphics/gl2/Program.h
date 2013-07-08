@@ -25,6 +25,8 @@ namespace Graphics {
 			virtual void Use();
 			virtual void Unuse();
 
+			GLint GetUniformLocation(const char*) const;
+
 			// Some generic uniforms.
 			// to be added: matrices etc.
 			Uniform invLogZfarPlus1;

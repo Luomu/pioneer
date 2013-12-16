@@ -22,6 +22,7 @@
 #include <map>
 #include <algorithm>
 #include <memory>
+#include <cstring>
 
 #include "glew/glew.h"
 

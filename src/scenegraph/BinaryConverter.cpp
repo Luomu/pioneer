@@ -121,11 +121,10 @@ Model *BinaryConverter::Load(const std::string &shortname, const std::string &ba
 				if (m_curPath[m_curPath.length()-1] == '/')
 					m_curPath = m_curPath.substr(0, m_curPath.length()-1);
 
-				FILE *binfile = fopen(info.GetAbsolutePath().c_str(), "rb");
-				if (binfile) {
-					Serializer::Reader rd(binfile);
+				RefCountedPtr<FileSystem::FileData> binfile = info.Read();
+				if (binfile.Valid()) {
+					Serializer::Reader rd(binfile->AsByteRange());
 					Model* model = CreateModel(rd);
-					fclose(binfile);
 					return model;
 				}
 			}

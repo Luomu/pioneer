@@ -6,6 +6,11 @@ newoption {
    description = "Location of third-party dependencies package (optional)",
 }
 
+newoption {
+	trigger     = "noconsole",
+	description = "Don't open a console window when running the game"
+}
+
 solution "Pioneer"
 	location "build"
 	configurations { "Debug", "Release" }
@@ -109,18 +114,13 @@ solution "Pioneer"
 		kind "StaticLib"
 		files { LIBDIR .. "*.h", LIBDIR .. "*.cpp" }
 
-	--app(s)
-	CONTRIB_LIBS = "-lglew -ljenkins -ljson -llua -lpicodds"
-	CORE_LIBS  = "-lcollider -lgui -lscenegraph -ltext -lui -lgraphics -lwin32"
-	GAME_LIBS = "-lgalaxy -lterrain -lgameui"
-	SDL2_LIBS = "-lSDL2main -lSDL2 -lSDL2_Image"
-	MORE_LIBS = "-lpng -lsigc-2.0.dll -lfreetype -lassimp3.0 -lvorbisfile -lvorbis -logg -lopengl32 -lshlwapi"
-
+	--main application
 	project "pioneer"
 		SRC = "src/"
 		kind "ConsoleApp"
 		files {
-			SRC .. "*.cpp"
+			SRC .. "*.cpp",
+			SRC .. "*.h"
 		}
 		excludes {
 			SRC .. "test*",
@@ -128,6 +128,18 @@ solution "Pioneer"
 			SRC .. "textstress.cpp"
 		}
 		libdirs { "build/bin/Debug" }
-		linkoptions { "-mwindows", GAME_LIBS, CORE_LIBS, CONTRIB_LIBS, "-lmingw32", SDL2_LIBS, MORE_LIBS }
+		if _OPTIONS["noconsole"] ~= nil then
+			linkoptions "-mwindows"
+		end
+		links { "galaxy", "terrain", "gameui", "collider", "gui",
+			"scenegraph", "text", "ui", "graphics", "win32", "glew",
+			"jenkins", "json", "lua", "picodds"
+		}
+		links { "mingw32", "SDL2main", "SDL2", "SDL2_Image", "png",
+			"sigc-2.0.dll", "freetype", "assimp3.0.dll", "vorbisfile",
+			"vorbis", "ogg", "opengl32", "shlwapi"
+		}
 		targetdir "."
+		configuration "Debug"
+			targetsuffix "_debug"
 

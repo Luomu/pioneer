@@ -55,6 +55,7 @@ private:
 	void ResetThrusters();
 	void Screenshot();
 	void SetModel(const std::string& name, bool resetCamera = true);
+	void SetBinaryModel(const std::string);
 	void SetupFilePicker();
 	void SetupUI();
 	void UpdateAnimList();

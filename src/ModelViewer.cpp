@@ -14,6 +14,7 @@
 #include "StringF.h"
 #include "ModManager.h"
 #include <sstream>
+#include "scenegraph/BinaryConverter.h"
 
 //default options
 ModelViewer::Options::Options()
@@ -716,6 +717,9 @@ void ModelViewer::PollEvents()
 			case SDLK_TAB:
 				m_options.showUI = !m_options.showUI;
 				break;
+			case SDLK_b:
+				SetBinaryModel(m_model->GetName());
+				break;
 			case SDLK_t:
 				m_options.showTags = !m_options.showTags;
 				break;
@@ -794,6 +798,38 @@ void ModelViewer::Screenshot()
 	AddLog(stringf("Screenshot %0 saved", buf));
 }
 
+void ModelViewer::SetBinaryModel(const std::string filename)
+{
+	AddLog(stringf("Loading binary model %0...", filename));
+	m_renderer->RemoveAllCachedTextures();
+	ClearModel();
+
+	try {
+		m_modelName = filename;
+
+		SceneGraph::BinaryConverter bloader(m_renderer);
+		m_model = bloader.Load(filename);
+
+		OnDecalChanged(0, "pioneer");
+
+		SceneGraph::DumpVisitor d(m_model);
+		m_model->GetRoot()->Accept(d);
+		AddLog(d.GetModelStatistics());
+
+		//note: stations won't demonstrate full docking light logic in MV
+		m_navLights.reset(new NavLights(m_model));
+		m_navLights->SetEnabled(true);
+
+		ResetCamera();
+
+		onModelChanged.emit();
+
+	} catch (SceneGraph::LoadingError &err) {
+		m_model = nullptr;
+		AddLog(stringf("Could not load model %0: %1", filename, err.what()));
+	}
+}
+
 void ModelViewer::SetModel(const std::string &filename, bool resetCamera /* true */)
 {
 	AddLog(stringf("Loading model %0...", filename));
@@ -803,8 +839,16 @@ void ModelViewer::SetModel(const std::string &filename, bool resetCamera /* true
 
 	try {
 		m_modelName = filename;
+
+		const double startt = SDL_GetTicks() * 0.001;
 		SceneGraph::Loader loader(m_renderer, true);
 		m_model = loader.LoadModel(filename);
+		const double endt = SDL_GetTicks() * 0.001;
+		printf("Elapsed %f\n", endt - startt);
+
+		//save binary model
+		SceneGraph::BinaryConverter bc(m_renderer);
+		bc.Save(m_model->GetName(), m_model);
 
 		//set decal textures, max 4 supported.
 		//Identical texture at the moment
